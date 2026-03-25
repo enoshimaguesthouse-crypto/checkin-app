@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>チェックイン受付</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ocean-deep:  #0d4f6e;
+    --ocean-mid:   #1a7a9a;
+    --ocean-light: #5ab4cc;
+    --ocean-pale:  #d4eef5;
+    --foam:        #f0f9fc;
+    --sand:        #f5efe6;
+    --sand-dark:   #e8ddd0;
+    --shell:       #e8c89a;
+    --shell-light: #f5e4c8;
+    --ink:         #0d2d3a;
+    --gray:        #5a7a88;
+    --border:      #b8d8e4;
+    --red:         #c0392b;
+    --shadow:      rgba(13,79,110,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--foam);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(90,180,204,0.15) 0%, transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(26,122,154,0.10) 0%, transparent 55%);
+  }
+
+  /* Wave top border */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--ocean-deep), var(--ocean-light), var(--shell), var(--ocean-light), var(--ocean-deep));
+    z-index: 100;
+  }
+
+  /* SVG wave background decoration */
+  .wave-bg {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 180px;
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    padding: 48px 0 36px;
+  }
+
+  .shell-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .header-en {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    color: var(--ocean-mid);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .header-ja {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--ocean-deep);
+    margin-bottom: 8px;
+  }
+
+  .header-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0 10px;
+  }
+
+  .header-divider::before,
+  .header-divider::after {
+    content: '';
+    width: 48px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ocean-light));
+  }
+  .header-divider::after {
+    background: linear-gradient(90deg, var(--ocean-light), transparent);
+  }
+
+  .header-sub {
+    font-size: 11.5px;
+    color: var(--gray);
+    line-height: 1.9;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Progress ── */
+  .progress-container { margin-bottom: 30px; }
+
+  .progress-steps {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .step { display: flex; align-items: center; }
+
+  .step-dot {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-family: 'Shippori Mincho', serif;
+    color: var(--gray);
+    background: white;
+    transition: all 0.4s;
+  }
+
+  .step-dot.active {
+    border-color: var(--ocean-mid);
+    color: var(--ocean-mid);
+    background: #e8f6fb;
+    box-shadow: 0 0 0 4px rgba(26,122,154,0.1);
+  }
+
+  .step-dot.completed {
+    border-color: var(--ocean-mid);
+    background: var(--ocean-mid);
+    color: white;
+  }
+
+  .step-line {
+    width: 64px; height: 1px;
+    background: var(--border);
+    transition: background 0.4s;
+  }
+  .step-line.completed { background: var(--ocean-mid); }
+
+  .step-labels {
+    display: flex;
+    justify-content: center;
+  }
+
+  .step-label {
+    font-size: 10px;
+    color: var(--gray);
+    text-align: center;
+    width: 100px;
+    letter-spacing: 0.04em;
+  }
+  .step-label.active { color: var(--ocean-mid); font-weight: 500; }
+
+  /* ── Sections ── */
+  .form-section { display: none; animation: fadeUp 0.45s ease; }
+  .form-section.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Cards ── */
+  .section-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 18px var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .section-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--ocean-deep), var(--ocean-light), var(--shell), var(--ocean-light), var(--ocean-deep));
+  }
+
+  /* Shell watermark */
+  .section-card::after {
+    content: '';
+    position: absolute;
+    right: -16px; bottom: -16px;
+    width: 80px; height: 80px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 10 C30 10 15 25 15 45 C15 65 30 80 50 85 C70 80 85 65 85 45 C85 25 70 10 50 10Z' fill='none' stroke='%235ab4cc' stroke-width='1.5' opacity='0.3'/%3E%3Cpath d='M50 20 C35 20 25 32 25 45 C25 58 35 68 50 72 C65 68 75 58 75 45 C75 32 65 20 50 20Z' fill='none' stroke='%235ab4cc' stroke-width='1' opacity='0.2'/%3E%3Cpath d='M50 10 L50 85 M15 45 L85 45 M22 25 L78 65 M78 25 L22 65' stroke='%235ab4cc' stroke-width='0.8' opacity='0.15'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: none;
+  }
+
+  .section-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--ocean-deep);
+    margin-bottom: 2px;
+  }
+
+  .section-title-en {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--ocean-light);
+    font-family: 'Shippori Mincho', serif;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+    margin: 10px 0 20px;
+  }
+
+  /* ── Fields ── */
+  .field-group {
+    display: flex; flex-direction: column; gap: 5px;
+    margin-bottom: 16px;
+  }
+  .field-group:last-child { margin-bottom: 0; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--gray);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .req { color: var(--red); font-size: 10px; }
+  .opt {
+    font-size: 9px; font-weight: 300;
+    background: var(--ocean-pale); color: var(--ocean-mid);
+    padding: 1px 5px; border-radius: 10px;
+  }
+
+  input[type="text"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="date"],
+  select {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--foam);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 12px 14px;
+    width: 100%;
+    transition: all 0.2s;
+    appearance: none; -webkit-appearance: none;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--ocean-mid);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(26,122,154,0.1);
+  }
+
+  input::placeholder { color: #aac8d4; font-size: 13px; }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a7a88' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+    padding-right: 34px;
+    cursor: pointer;
+  }
+
+  .field-error {
+    font-size: 11px;
+    color: var(--red);
+    display: none;
+    margin-top: 2px;
+  }
+  .has-error input, .has-error select { border-color: var(--red) !important; }
+  .has-error .field-error { display: block; }
+
+  /* ── Guest type tabs ── */
+  .nat-tabs {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+
+  .nat-tab {
+    flex: 1;
+    padding: 13px 8px;
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    background: var(--foam);
+    color: var(--gray);
+    border: none;
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: all 0.25s;
+    line-height: 1.4;
+  }
+
+  .nat-tab.active {
+    background: linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid));
+    color: white;
+    font-weight: 500;
+  }
+
+  .nat-fields { display: none; }
+  .nat-fields.active { display: block; }
+
+  /* ── Camera / Passport ── */
+  .camera-area {
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 22px 16px;
+    text-align: center;
+    background: var(--foam);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .camera-area:hover { border-color: var(--ocean-light); background: #e8f6fb; }
+
+  .camera-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px;
+    background: linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid));
+    color: white;
+    border: none; border-radius: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    box-shadow: 0 3px 12px rgba(13,79,110,0.25);
+  }
+  .camera-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(13,79,110,0.3); }
+
+  .camera-hint {
+    font-size: 11px;
+    color: var(--gray);
+    line-height: 1.7;
+  }
+
+  .passport-preview { display: none; text-align: center; margin-top: 10px; }
+  .passport-preview img {
+    width: 100%; max-height: 220px;
+    object-fit: cover; border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .passport-retake {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 10px; padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--border); border-radius: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px; color: var(--gray);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .passport-retake:hover { border-color: var(--ocean-mid); color: var(--ocean-deep); }
+
+  #passportInput { display: none; }
+
+  /* ── Contact note ── */
+  .contact-note {
+    font-size: 11px;
+    color: var(--ocean-deep);
+    background: var(--ocean-pale);
+    border-radius: 3px;
+    padding: 9px 13px;
+    margin-bottom: 14px;
+    border-left: 3px solid var(--ocean-light);
+    line-height: 1.6;
+  }
+
+  /* ── Confirm table ── */
+  .confirm-table { width: 100%; border-collapse: collapse; }
+  .confirm-table tr { border-bottom: 1px solid var(--border); }
+  .confirm-table tr:last-child { border-bottom: none; }
+  .confirm-table th {
+    font-size: 11px; font-weight: 500;
+    color: var(--gray); padding: 11px 0;
+    width: 120px; vertical-align: top; text-align: left;
+    letter-spacing: 0.06em;
+  }
+  .confirm-table td { font-size: 14px; padding: 11px 0; line-height: 1.5; }
+  .passport-thumb {
+    max-width: 180px; border-radius: 3px;
+    border: 1px solid var(--border); margin-top: 4px;
+  }
+
+  /* ── Buttons ── */
+  .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+
+  .btn-back {
+    flex: 0 0 88px; padding: 14px;
+    background: transparent;
+    border: 1px solid var(--border); border-radius: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px; color: var(--gray);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-back:hover { border-color: var(--ocean-mid); color: var(--ocean-deep); }
+
+  .btn-next {
+    flex: 1; padding: 15px;
+    background: linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid));
+    border: none; border-radius: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; font-weight: 500; letter-spacing: 0.15em;
+    color: white; cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(13,79,110,0.25);
+  }
+  .btn-next:hover { transform: translateY(-1px); box-shadow: 0 7px 22px rgba(13,79,110,0.35); }
+
+  .btn-submit {
+    flex: 1; padding: 15px;
+    background: linear-gradient(135deg, var(--shell), #d4a060);
+    border: none; border-radius: 3px;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 15px; font-weight: 500; letter-spacing: 0.2em;
+    color: white; cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(232,200,154,0.4);
+  }
+  .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 7px 22px rgba(232,200,154,0.55); }
+
+  /* ── Complete ── */
+  .complete-screen {
+    display: none; text-align: center; padding: 60px 20px;
+    animation: fadeUp 0.6s ease;
+  }
+  .complete-screen.active { display: block; }
+
+  .complete-icon {
+    width: 72px; height: 72px;
+    border: 2px solid var(--ocean-mid);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 22px;
+    background: var(--ocean-pale);
+  }
+
+  .complete-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 22px; font-weight: 500; letter-spacing: 0.2em;
+    color: var(--ocean-deep); margin-bottom: 12px;
+  }
+
+  .complete-sub {
+    font-size: 13px; color: var(--gray); line-height: 1.9; margin-bottom: 28px;
+  }
+
+  .complete-number {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 13px; letter-spacing: 0.15em;
+    color: var(--ocean-mid); margin-bottom: 32px;
+  }
+
+  .btn-restart {
+    padding: 13px 36px;
+    background: transparent;
+    border: 1px solid var(--ocean-deep); border-radius: 3px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px; letter-spacing: 0.12em;
+    color: var(--ocean-deep);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-restart:hover { background: var(--ocean-deep); color: white; }
+
+  /* ── Sending overlay ── */
+  .sending-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(240,249,252,0.94);
+    z-index: 999;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 18px;
+  }
+  .sending-overlay.active { display: flex; }
+
+  .spinner {
+    width: 38px; height: 38px;
+    border: 2px solid var(--border);
+    border-top-color: var(--ocean-mid);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sending-text {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 14px; letter-spacing: 0.15em; color: var(--gray);
+  }
+
+  @media (max-width: 560px) {
+    .section-card { padding: 22px 18px; }
+    .field-row { grid-template-columns: 1fr; }
+    .header-ja { font-size: 22px; }
+    .step-line { width: 40px; }
+    .step-label { width: 80px; font-size: 9px; }
+    .nat-tab { font-size: 12px; padding: 11px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Wave background -->
+<svg class="wave-bg" viewBox="0 0 1440 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0,80 C240,140 480,20 720,80 C960,140 1200,20 1440,80 L1440,180 L0,180 Z" fill="#1a7a9a"/>
+  <path d="M0,110 C360,60 720,160 1080,100 C1260,70 1380,130 1440,110 L1440,180 L0,180 Z" fill="#0d4f6e"/>
+</svg>
+
+<div class="sending-overlay" id="sendingOverlay">
+  <div class="spinner"></div>
+  <div class="sending-text">送信中...</div>
+</div>
+
+<div class="app-wrapper">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="shell-icon">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Shell shape -->
+        <path d="M24 6 C14 6 7 13 7 22 C7 32 14 40 24 43 C34 40 41 32 41 22 C41 13 34 6 24 6Z" fill="none" stroke="#1a7a9a" stroke-width="1.5"/>
+        <!-- Shell ribs -->
+        <path d="M24 6 L24 43" stroke="#5ab4cc" stroke-width="0.8" opacity="0.6"/>
+        <path d="M24 6 C18 14 10 20 7 22" stroke="#5ab4cc" stroke-width="0.8" opacity="0.5"/>
+        <path d="M24 6 C30 14 38 20 41 22" stroke="#5ab4cc" stroke-width="0.8" opacity="0.5"/>
+        <path d="M24 6 C20 18 12 28 10 34" stroke="#5ab4cc" stroke-width="0.7" opacity="0.4"/>
+        <path d="M24 6 C28 18 36 28 38 34" stroke="#5ab4cc" stroke-width="0.7" opacity="0.4"/>
+        <path d="M24 43 C16 36 8 30 7 22" stroke="#5ab4cc" stroke-width="0.6" opacity="0.3"/>
+        <path d="M24 43 C32 36 40 30 41 22" stroke="#5ab4cc" stroke-width="0.6" opacity="0.3"/>
+        <!-- Pearl -->
+        <circle cx="24" cy="22" r="3" fill="#e8c89a" opacity="0.9"/>
+        <circle cx="24" cy="22" r="1.5" fill="white" opacity="0.6"/>
+      </svg>
+    </div>
+    <div class="header-en">Guest Check-in</div>
+    <div class="header-ja">チェックイン受付</div>
+    <div class="header-divider">
+      <svg width="16" height="10" viewBox="0 0 16 10" fill="none">
+        <path d="M8 0 C5 0 2 2 2 5 C2 8 5 10 8 10 C11 10 14 8 14 5 C14 2 11 0 8 0Z" fill="none" stroke="#5ab4cc" stroke-width="1"/>
+        <path d="M8 0 L8 10 M2 5 L14 5" stroke="#5ab4cc" stroke-width="0.6" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="header-sub">旅館業法に基づく宿泊者名簿への記入にご協力ください<br>Please fill in the guest register as required by Japanese law.</div>
+  </header>
+
+  <!-- Progress: 2 steps -->
+  <div class="progress-container">
+    <div class="progress-steps">
+      <div class="step">
+        <div class="step-dot active" id="dot1">1</div>
+        <div class="step-line" id="line1"></div>
+      </div>
+      <div class="step">
+        <div class="step-dot" id="dot2">2</div>
+      </div>
+    </div>
+    <div class="step-labels">
+      <div class="step-label active" id="label1">お客様情報・宿泊日程</div>
+      <div class="step-label" id="label2">確認</div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 1 ═══ -->
+  <div class="form-section active" id="section1">
+
+    <!-- 宿泊者区分 -->
+    <div class="section-card">
+      <div class="section-title">宿泊者区分</div>
+      <div class="section-title-en">Guest Type</div>
+      <div class="divider"></div>
+
+      <div class="nat-tabs">
+        <button class="nat-tab active" onclick="switchNat('jp')">🇯🇵　日本在住</button>
+        <button class="nat-tab" onclick="switchNat('foreign')">🌏　外国人（日本国外在住）</button>
+      </div>
+
+      <!-- 日本在住 -->
+      <div class="nat-fields active" id="nat-jp">
+        <div class="field-row">
+          <div class="field-group">
+            <label>氏名（姓） <span class="req">必須</span></label>
+            <input type="text" id="lastName" placeholder="山田">
+            <span class="field-error">入力してください</span>
+          </div>
+          <div class="field-group">
+            <label>氏名（名） <span class="req">必須</span></label>
+            <input type="text" id="firstName" placeholder="太郎">
+            <span class="field-error">入力してください</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>都道府県 <span class="req">必須</span></label>
+          <select id="prefecture">
+            <option value="">選択してください</option>
+            <option>北海道</option><option>青森県</option><option>岩手県</option><option>宮城県</option>
+            <option>秋田県</option><option>山形県</option><option>福島県</option><option>茨城県</option>
+            <option>栃木県</option><option>群馬県</option><option>埼玉県</option><option>千葉県</option>
+            <option>東京都</option><option>神奈川県</option><option>新潟県</option><option>富山県</option>
+            <option>石川県</option><option>福井県</option><option>山梨県</option><option>長野県</option>
+            <option>岐阜県</option><option>静岡県</option><option>愛知県</option><option>三重県</option>
+            <option>滋賀県</option><option>京都府</option><option>大阪府</option><option>兵庫県</option>
+            <option>奈良県</option><option>和歌山県</option><option>鳥取県</option><option>島根県</option>
+            <option>岡山県</option><option>広島県</option><option>山口県</option><option>徳島県</option>
+            <option>香川県</option><option>愛媛県</option><option>高知県</option><option>福岡県</option>
+            <option>佐賀県</option><option>長崎県</option><option>熊本県</option><option>大分県</option>
+            <option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option>
+          </select>
+          <span class="field-error">都道府県を選択してください</span>
+        </div>
+        <div class="field-group">
+          <label>住所（市区町村・番地） <span class="req">必須</span></label>
+          <input type="text" id="address" placeholder="鎌倉市○○1-2-3">
+          <span class="field-error">住所を入力してください</span>
+        </div>
+      </div>
+
+      <!-- 外国人 -->
+      <div class="nat-fields" id="nat-foreign">
+        <div class="field-row">
+          <div class="field-group">
+            <label>Family Name <span class="req">必須</span></label>
+            <input type="text" id="lastNameEn" placeholder="YAMADA">
+            <span class="field-error">Please enter your family name</span>
+          </div>
+          <div class="field-group">
+            <label>Given Name <span class="req">必須</span></label>
+            <input type="text" id="firstNameEn" placeholder="TARO">
+            <span class="field-error">Please enter your given name</span>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Nationality / 国籍 <span class="req">必須</span></label>
+          <select id="nationalitySelect">
+            <option value="">選択してください / Select nationality</option>
+            <option>アメリカ合衆国 / United States</option>
+            <option>中国 / China</option><option>韓国 / South Korea</option>
+            <option>台湾 / Taiwan</option><option>香港 / Hong Kong</option>
+            <option>タイ / Thailand</option><option>シンガポール / Singapore</option>
+            <option>マレーシア / Malaysia</option><option>インドネシア / Indonesia</option>
+            <option>フィリピン / Philippines</option><option>ベトナム / Vietnam</option>
+            <option>インド / India</option><option>オーストラリア / Australia</option>
+            <option>ニュージーランド / New Zealand</option><option>イギリス / United Kingdom</option>
+            <option>フランス / France</option><option>ドイツ / Germany</option>
+            <option>イタリア / Italy</option><option>スペイン / Spain</option>
+            <option>カナダ / Canada</option><option>ブラジル / Brazil</option>
+            <option>その他 / Other</option>
+          </select>
+          <span class="field-error">国籍を選択してください</span>
+        </div>
+        <div class="field-group">
+          <label>Passport Number / 旅券番号 <span class="req">必須</span></label>
+          <input type="text" id="passportNo" placeholder="AB1234567" style="text-transform:uppercase;">
+          <span class="field-error">旅券番号を入力してください</span>
+        </div>
+        <!-- パスポート撮影 -->
+        <div class="field-group">
+          <label>Passport Photo / パスポート写真 <span class="opt">任意</span></label>
+          <div class="camera-area" id="cameraArea" onclick="document.getElementById('passportInput').click()">
+            <button class="camera-btn" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              パスポートを撮影 / Take Photo
+            </button>
+            <input type="file" id="passportInput" accept="image/*" capture="environment" onchange="handlePassportPhoto(this)">
+            <div class="camera-hint">カメラでパスポートの顔写真ページを撮影してください<br>Please take a photo of the passport ID page</div>
+          </div>
+          <div class="passport-preview" id="passportPreview">
+            <img id="passportImg" src="" alt="パスポート写真">
+            <br>
+            <button class="passport-retake" type="button" onclick="retakePhoto()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.54"/></svg>
+              撮り直す / Retake
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 宿泊日程（宿泊者区分の次） -->
+    <div class="section-card">
+      <div class="section-title">宿泊日程</div>
+      <div class="section-title-en">Stay Dates</div>
+      <div class="divider"></div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>チェックイン日 <span class="req">必須</span></label>
+          <input type="date" id="checkinDate">
+          <span class="field-error">日付を選択してください</span>
+        </div>
+        <div class="field-group">
+          <label>チェックアウト日 <span class="req">必須</span></label>
+          <input type="date" id="checkoutDate">
+          <span class="field-error">チェックインより後の日付を選択してください</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 連絡先 -->
+    <div class="section-card">
+      <div class="section-title">連絡先</div>
+      <div class="section-title-en">Contact Information</div>
+      <div class="divider"></div>
+      <div class="contact-note">📞 電話番号またはメールアドレスのどちらか一方をご入力ください<br>Please enter either your phone number or email address.</div>
+      <div class="field-group">
+        <label>電話番号 / Phone</label>
+        <input type="tel" id="phone" placeholder="090-1234-5678" inputmode="tel">
+      </div>
+      <div class="field-group">
+        <label>メールアドレス / Email</label>
+        <input type="email" id="email" placeholder="example@email.com" inputmode="email">
+      </div>
+      <div class="field-error" id="contactError" style="margin-top:-8px;">電話番号またはメールアドレスを入力してください</div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-next" onclick="goTo(2)">確認画面へ　→</button>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 2: 確認 ═══ -->
+  <div class="form-section" id="section2">
+    <div class="section-card">
+      <div class="section-title">入力内容の確認</div>
+      <div class="section-title-en">Confirmation</div>
+      <div class="divider"></div>
+      <table class="confirm-table" id="confirmTable"></table>
+    </div>
+    <div class="btn-group">
+      <button class="btn-back" onclick="goTo(1)">← 戻る</button>
+      <button class="btn-submit" onclick="submitForm()">チェックイン登録</button>
+    </div>
+  </div>
+
+  <!-- Complete -->
+  <div class="complete-screen" id="completeScreen">
+    <div class="complete-icon">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <path d="M5 15l7 7 13-13" stroke="#1a7a9a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="complete-title">チェックイン完了</div>
+    <div class="complete-sub">
+      ご登録ありがとうございます。<br>
+      フロントスタッフよりお部屋のご案内をいたします。<br>
+      少々お待ちください。<br><br>
+      Thank you. Our staff will guide you to your room shortly.
+    </div>
+    <div class="complete-number" id="registrationNo"></div>
+    <button class="btn-restart" onclick="restartForm()">最初に戻る（次のお客様）</button>
+  </div>
+
+</div><!-- /app-wrapper -->
+
+<script>
+  let currentNat = 'jp';
+  let currentSection = 1;
+  let passportDataUrl = null;
+
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxy0Ta3OJU6rLqhH9jYkvi7TepzAcVOFrI4EdGmgU-ZihbXG2Pg55HU71nXiCVjFxMO6Q/exec';
+
+  /* ── nationality switch ── */
+  function switchNat(type) {
+    currentNat = type;
+    document.querySelectorAll('.nat-tab').forEach((t, i) =>
+      t.classList.toggle('active', (i===0&&type==='jp')||(i===1&&type==='foreign')));
+    document.getElementById('nat-jp').classList.toggle('active', type==='jp');
+    document.getElementById('nat-foreign').classList.toggle('active', type==='foreign');
+  }
+
+  /* ── passport photo（Canvas圧縮） ── */
+  function handlePassportPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => {
+      img.onload = () => {
+        // 長辺1200px以内に縮小して品質0.7でJPEG圧縮
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        passportDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        document.getElementById('passportImg').src = passportDataUrl;
+        document.getElementById('passportPreview').style.display = 'block';
+        document.getElementById('cameraArea').style.display = 'none';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function retakePhoto() {
+    passportDataUrl = null;
+    document.getElementById('passportPreview').style.display = 'none';
+    document.getElementById('cameraArea').style.display = 'block';
+    document.getElementById('passportInput').value = '';
+  }
+
+  /* ── step navigation ── */
+  function goTo(step) {
+    if (step > currentSection && !validateSection(currentSection)) return;
+    if (step === 2) buildConfirmTable();
+    document.getElementById('section' + currentSection).classList.remove('active');
+    document.getElementById('section' + step).classList.add('active');
+    for (let i = 1; i <= 2; i++) {
+      const dot = document.getElementById('dot' + i);
+      dot.classList.remove('active','completed');
+      if (i < step) dot.classList.add('completed');
+      else if (i === step) dot.classList.add('active');
+      document.getElementById('label' + i).classList.toggle('active', i === step);
+      if (i < 2) document.getElementById('line' + i).classList.toggle('completed', i < step);
+    }
+    currentSection = step;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  /* ── validation ── */
+  function validateSection(s) {
+    let ok = true;
+    if (s === 1) {
+      if (currentNat === 'jp') {
+        ok = req('lastName') & req('firstName') & req('address');
+        const pref = document.getElementById('prefecture');
+        if (!pref.value) { pref.closest('.field-group').classList.add('has-error'); ok = false; }
+      } else {
+        ok = req('lastNameEn') & req('firstNameEn');
+        const nat = document.getElementById('nationalitySelect');
+        if (!nat.value) { nat.closest('.field-group').classList.add('has-error'); ok = false; }
+        const pp = document.getElementById('passportNo');
+        if (!pp.value.trim()) { pp.closest('.field-group').classList.add('has-error'); ok = false; }
+      }
+      // 宿泊日程
+      if (!req('checkinDate') | !req('checkoutDate')) ok = false;
+      const ci = document.getElementById('checkinDate').value;
+      const co = document.getElementById('checkoutDate').value;
+      if (ci && co && co <= ci) {
+        document.getElementById('checkoutDate').closest('.field-group').classList.add('has-error');
+        ok = false;
+      }
+      // 連絡先
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      if (!phone && !email) {
+        document.getElementById('contactError').style.display = 'block';
+        ok = false;
+      } else {
+        document.getElementById('contactError').style.display = 'none';
+      }
+    }
+    return !!ok;
+  }
+
+  function req(id) {
+    const el = document.getElementById(id);
+    const p = el.closest('.field-group');
+    if (!el.value.trim()) { p.classList.add('has-error'); return false; }
+    p.classList.remove('has-error'); return true;
+  }
+
+  function v(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+
+  /* ── confirm table ── */
+  function buildConfirmTable() {
+    const rows = [];
+    if (currentNat === 'jp') {
+      rows.push(['氏名',       v('lastName') + ' ' + v('firstName')]);
+      rows.push(['都道府県',   v('prefecture')]);
+      rows.push(['住所',       v('address')]);
+    } else {
+      rows.push(['氏名 / Name',           v('lastNameEn') + ' ' + v('firstNameEn')]);
+      rows.push(['国籍 / Nationality',    v('nationalitySelect')]);
+      rows.push(['旅券番号 / Passport No.', v('passportNo')]);
+    }
+    rows.push(['チェックイン',   v('checkinDate')]);
+    rows.push(['チェックアウト', v('checkoutDate')]);
+    if (v('phone')) rows.push(['電話番号', v('phone')]);
+    if (v('email')) rows.push(['メール / Email', v('email')]);
+
+    let html = rows.map(([k, val]) =>
+      `<tr><th>${k}</th><td>${val || '—'}</td></tr>`
+    ).join('');
+
+    if (currentNat === 'foreign' && passportDataUrl) {
+      html += `<tr><th>パスポート写真</th><td><img src="${passportDataUrl}" class="passport-thumb" alt="passport"></td></tr>`;
+    }
+    document.getElementById('confirmTable').innerHTML = html;
+  }
+
+  /* ── submit（テキストデータ → 写真の順で2回送信） ── */
+  function submitForm() {
+    document.getElementById('sendingOverlay').classList.add('active');
+
+    const now = new Date();
+    const reg = 'CI-' + now.getFullYear()
+      + String(now.getMonth()+1).padStart(2,'0')
+      + String(now.getDate()).padStart(2,'0')
+      + '-' + String(Math.floor(Math.random()*9000)+1000);
+
+    // ① テキストデータを送信（写真なし）
+    const formData = {
+      action:        'saveRecord',
+      registrationNo: reg,
+      natType:     currentNat === 'jp' ? '日本在住' : '外国人',
+      name:        currentNat === 'jp'
+                     ? v('lastName') + ' ' + v('firstName')
+                     : v('lastNameEn') + ' ' + v('firstNameEn'),
+      prefecture:  currentNat === 'jp' ? v('prefecture') : '',
+      address:     currentNat === 'jp' ? v('address') : '',
+      nationality: v('nationalitySelect'),
+      passportNo:  v('passportNo'),
+      phone:       v('phone'),
+      email:       v('email'),
+      checkinDate:  v('checkinDate'),
+      checkoutDate: v('checkoutDate')
+    };
+
+    const sendText = fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    // ② 写真がある場合は別リクエストで送信
+    const sendPhoto = passportDataUrl
+      ? fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'savePhoto',
+            registrationNo: reg,
+            passportPhoto: passportDataUrl
+          })
+        })
+      : Promise.resolve();
+
+    Promise.all([sendText, sendPhoto])
+      .then(() => {
+        document.getElementById('sendingOverlay').classList.remove('active');
+        document.getElementById('section2').classList.remove('active');
+        document.getElementById('registrationNo').textContent = '受付番号：' + reg;
+        document.getElementById('completeScreen').classList.add('active');
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      })
+      .catch(() => {
+        document.getElementById('sendingOverlay').classList.remove('active');
+        alert('送信に失敗しました。通信状況を確認してください。');
+      });
+  }
+
+  /* ── restart ── */
+  function restartForm() {
+    document.getElementById('completeScreen').classList.remove('active');
+    document.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], input[type="date"]')
+      .forEach(el => el.value = '');
+    document.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+    document.getElementById('contactError').style.display = 'none';
+    retakePhoto();
+    switchNat('jp');
+    currentSection = 1;
+    document.getElementById('section2').classList.remove('active');
+    document.getElementById('section1').classList.add('active');
+    for (let i = 1; i <= 2; i++) {
+      const dot = document.getElementById('dot' + i);
+      dot.classList.remove('active','completed');
+      if (i===1) dot.classList.add('active');
+      document.getElementById('label' + i).classList.toggle('active', i===1);
+      if (i < 2) document.getElementById('line' + i).classList.remove('completed');
+    }
+    setDefaultDates();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function setDefaultDates() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('checkinDate').value = today;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('checkoutDate').value = tomorrow.toISOString().split('T')[0];
+  }
+
+  setDefaultDates();
+
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', () => {
+      el.closest('.field-group')?.classList.remove('has-error');
+      if (el.id === 'phone' || el.id === 'email') {
+        document.getElementById('contactError').style.display = 'none';
+      }
+    });
+  });
+</script>
+</body>
+</html>
