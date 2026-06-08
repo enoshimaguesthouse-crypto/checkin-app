@@ -905,6 +905,34 @@ function showScreen(id) {
 //  予約検索
 // ═══════════════════════════════════════
 // 宿泊者名簿と同じGAS（Google Drive上のJSON）から全予約データを取得して検索する
+// ── 部屋マスター（GAS・localStorage が使えない場合のフォールバック）──
+// hotel_v3.html の rooms 配列と id・no を一致させること
+const DEFAULT_ROOMS = [
+  {id:0,  no:'1'},
+  {id:1,  no:'2'},
+  {id:2,  no:'3-G'},
+  {id:3,  no:'4'},
+  {id:4,  no:'5'},
+  {id:5,  no:'6'},
+  {id:6,  no:'7'},
+  {id:7,  no:'8'},
+  {id:8,  no:'9'},
+  {id:9,  no:'10'},
+  {id:10, no:'11'},
+  {id:11, no:'12'},
+  {id:12, no:'13'},
+  {id:13, no:'14'},
+  {id:14, no:'3-A'},
+  {id:15, no:'3-B'},
+  {id:16, no:'3-C'},
+  {id:17, no:'3-D'},
+  {id:18, no:'19'},
+  {id:19, no:'20'},
+  {id:20, no:'21'},
+  {id:21, no:'22'},
+  {id:22, no:'23'},
+  {id:23, no:'24'},
+];
 const HOTEL_DATA_GAS_URL = 'https://script.google.com/macros/s/AKfycbxRIQQy4vygxy0NM9QlBBqwYUQucNmlwJI7TuIsCSwTkAkW7q585aO0qcLO0cjUIUpwnw/exec';
 
 // guestDataのキー "month:roomId:day"（年は2026固定）から日付文字列を生成
@@ -988,7 +1016,7 @@ async function searchReservation() {
       };
 
       // rooms 配列から表示用の部屋番号（no）を逆引き
-      // GAS取得分を優先、なければ localStorage にキャッシュ済みの rooms を使用
+      // GAS取得分 → localStorage → DEFAULT_ROOMS の順でフォールバック
       let roomsArr = data.rooms || [];
       if(!roomsArr.length){
         try{
@@ -996,6 +1024,7 @@ async function searchReservation() {
           if(cached) roomsArr = JSON.parse(cached);
         }catch(e){}
       }
+      if(!roomsArr.length) roomsArr = DEFAULT_ROOMS;
       const matchedRoom = roomsArr.find(r =>
         String(r.id) === String(best.roomId) || r.id === best.roomId
       );
@@ -1466,7 +1495,8 @@ function _resolveRoomSetting(roomSettings, roomId){
 
 async function applyRoomGuide(roomId){
   try{
-    const { roomSettings: allSettings, rooms: allRooms } = await _fetchRoomSettings();
+    const { roomSettings: allSettings, rooms: gasRooms } = await _fetchRoomSettings();
+    const allRooms = gasRooms.length ? gasRooms : DEFAULT_ROOMS;
 
     // デバッグ：取得した roomSettings のキー一覧
     console.log('roomSettings keys:', Object.keys(allSettings));
