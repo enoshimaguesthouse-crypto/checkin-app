@@ -1018,16 +1018,23 @@ async function searchReservation() {
       // rooms 配列から表示用の部屋番号（no）を逆引き
       // GAS取得分 → localStorage → DEFAULT_ROOMS の順でフォールバック
       let roomsArr = data.rooms || [];
+      console.log('GAS data.rooms:', data.rooms ? `${data.rooms.length}件` : 'なし（undefined）');
       if(!roomsArr.length){
         try{
           const cached = localStorage.getItem('hotel_rooms');
           if(cached) roomsArr = JSON.parse(cached);
+          console.log('localStorage hotel_rooms:', roomsArr.length ? `${roomsArr.length}件` : 'なし');
         }catch(e){}
       }
-      if(!roomsArr.length) roomsArr = DEFAULT_ROOMS;
+      if(!roomsArr.length){
+        roomsArr = DEFAULT_ROOMS;
+        console.log('DEFAULT_ROOMS を使用');
+      }
+      console.log('最終的な roomsArr[2]:', roomsArr[2]);
       const matchedRoom = roomsArr.find(r =>
         String(r.id) === String(best.roomId) || r.id === best.roomId
       );
+      console.log('best.roomId:', best.roomId, '/ matchedRoom:', matchedRoom);
       reservationData.roomNo = matchedRoom ? String(matchedRoom.no) : String(best.roomId || '—');
       reservationData.roomType = matchedRoom ? matchedRoom.type : (best.type || '');
 
