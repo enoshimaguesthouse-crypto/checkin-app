@@ -675,6 +675,13 @@ input.needs-input::placeholder { color:#d08a3a; }
 
     <!-- 入室案内・Wi-Fi（roomSettings連携） -->
     <div class="card" id="guide-card" style="display:none;">
+      <!-- 部屋案内メディア（動画優先 / 画像スライドショー） -->
+      <div id="media-container" style="display:none;position:relative;margin-bottom:14px;border-radius:12px;overflow:hidden;background:#000;">
+        <div id="media-stage" style="position:relative;width:100%;"></div>
+        <button id="media-prev" onclick="mediaCarousel(-1)" style="display:none;position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;">◀</button>
+        <button id="media-next" onclick="mediaCarousel(1)" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;">▶</button>
+        <div id="media-dots" style="position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:2;"></div>
+      </div>
       <div id="guide-roomname" style="font-size:15px;font-weight:600;color:#1a5a6e;margin-bottom:10px;"></div>
       <div id="guide-text" style="font-size:13px;line-height:1.9;color:#444;white-space:pre-wrap;"></div>
       <div id="wifi-box" style="display:none;margin-top:14px;padding:12px 14px;background:#eef6f9;border-radius:10px;">
@@ -1359,6 +1366,14 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
     if(gid && String(gid).trim() === targetId){
       g.status = newStatus;
       g.checkedInAt = nowIso;
+      // チェックインアプリで入力・確定した連絡先を最優先で同期（空でない場合のみ上書き）
+      if(updatedGuestData && updatedGuestData.reservationId===targetId){
+        if(updatedGuestData.email)   g.email   = updatedGuestData.email;
+        if(updatedGuestData.phone)   g.phone   = updatedGuestData.phone;
+        if(updatedGuestData.address){
+          g.address = (updatedGuestData.prefecture||'') + (updatedGuestData.address||'');
+        }
+      }
       updated++;
     }
   });
@@ -1560,6 +1575,9 @@ async function applyRoomGuide(roomId){
     el('wifi-ssid').textContent = settings.wifiSsid || '';
     el('wifi-pass').textContent = settings.wifiPass || '';
 
+    // 部屋案内メディア（動画優先 / 画像スライドショー）
+    renderRoomMedia(Array.isArray(settings.media)?settings.media:[]);
+
     // 音声テキスト：guideText を優先、[鍵番号]プレースホルダを置換
     const ttsLang = _roomLangToTTS(roomLang);
     let speakText = guideText.replace(/\[鍵番号\]|\[暗証番号\]/g, pinNo);
@@ -1581,6 +1599,125 @@ async function applyRoomGuide(roomId){
 
 function replayGuideVoice(){
   if(_lastGuideText) speakLang(_lastGuideText, _lastGuideTTSLang);
+}
+
+// ══════════════════════════════════════════════
+//  部屋案内メディア（URL方式：YouTube/Slides/動画/画像）
+// ══════════════════════════════════════════════
+let _mediaList=[], _mediaIdx=0, _mediaSlideTimer=null, _mediaMode='none';
+
+function _clearMediaTimers(){
+  if(_mediaSlideTimer){ clearInterval(_mediaSlideTimer); _mediaSlideTimer=null; }
+}
+
+// URL → 埋め込みHTML生成
+function _mediaEmbedHtml(m){
+  const url=m.url||'';
+  switch(m.type){
+    case 'youtube': {
+      // 動画IDを抽出
+      let id='';
+      const m1=url.match(/[?&]v=([^&]+)/); const m2=url.match(/youtu\.be\/([^?&]+)/); const m3=url.match(/embed\/([^?&]+)/);
+      id=(m1&&m1[1])||(m2&&m2[1])||(m3&&m3[1])||'';
+      return `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+    }
+    case 'vimeo': {
+      const vm=url.match(/vimeo\.com\/(\d+)/);
+      const id=vm?vm[1]:'';
+      return `<iframe src="https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1" frameborder="0" allow="autoplay; fullscreen" style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+    }
+    case 'gslides': {
+      // ウェブに公開URLに自動めくり(5秒)を付与
+      let src=url;
+      if(!/\/embed/.test(src)) src=src.replace(/\/(pub|edit).*$/,'/embed');
+      const sep=src.includes('?')?'&':'?';
+      src=src+sep+'start=true&loop=true&delayms=5000';
+      return `<iframe src="${src}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+    }
+    case 'gdrive': {
+      // /preview 形式に変換
+      let src=url.replace(/\/view.*$/,'/preview').replace(/\/edit.*$/,'/preview');
+      if(!/\/preview/.test(src)){
+        const fm=url.match(/\/d\/([^/]+)/);
+        if(fm) src=`https://drive.google.com/file/d/${fm[1]}/preview`;
+      }
+      return `<iframe src="${src}" frameborder="0" allow="autoplay" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+    }
+    case 'video':
+      return `<video id="media-video" src="${url}" muted playsinline loop controls style="width:100%;display:block;border-radius:12px;"></video>`;
+    case 'image':
+      return `<img src="${url}" style="width:100%;display:block;border-radius:12px;object-fit:cover;max-height:280px;">`;
+    default:
+      return `<iframe src="${url}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+  }
+}
+
+// 自動で次へ送る対象か（画像・Googleスライドは自動送り、動画/YouTube等は手動）
+function _isAutoAdvance(m){
+  return m && (m.type==='image');
+}
+
+function renderRoomMedia(media){
+  _clearMediaTimers();
+  const cont=el('media-container'), stage=el('media-stage'), dots=el('media-dots');
+  if(!cont||!stage)return;
+
+  if(!media || !media.length){ cont.style.display='none'; stage.innerHTML=''; if(dots)dots.innerHTML=''; _mediaMode='none'; _mediaList=[]; return; }
+
+  // 動画系（youtube/vimeo/video/gdrive）があればそれを優先、なければ全メディア
+  const videoTypes=['youtube','vimeo','video','gdrive'];
+  const videos=media.filter(m=>videoTypes.includes(m.type));
+  const others=media.filter(m=>!videoTypes.includes(m.type)); // image / gslides / iframe
+
+  if(videos.length){ _mediaList=videos; _mediaMode='video'; }
+  else { _mediaList=others.length?others:media; _mediaMode='other'; }
+
+  _mediaIdx=0;
+  cont.style.display='block';
+
+  // 矢印（複数のときだけ）
+  const showArrows=_mediaList.length>1;
+  el('media-prev').style.display=showArrows?'block':'none';
+  el('media-next').style.display=showArrows?'block':'none';
+
+  // ドット
+  if(_mediaList.length>1){
+    dots.innerHTML=_mediaList.map((_,i)=>`<span class="m-dot" data-i="${i}" style="width:8px;height:8px;border-radius:50%;background:${i===0?'#fff':'rgba(255,255,255,.45)'};cursor:pointer;"></span>`).join('');
+    dots.querySelectorAll('.m-dot').forEach(d=>d.onclick=()=>_showMedia(Number(d.dataset.i)));
+  } else { dots.innerHTML=''; }
+
+  _showMedia(0);
+
+  // 画像が複数 → 5秒スライドショー（Googleスライド自体は内部で自動めくり）
+  const allImages=_mediaList.every(m=>m.type==='image');
+  if(allImages && _mediaList.length>1){
+    _mediaSlideTimer=setInterval(()=>{ _showMedia((_mediaIdx+1)%_mediaList.length); },5000);
+  }
+}
+
+function _showMedia(i){
+  const stage=el('media-stage'), dots=el('media-dots');
+  if(!stage||!_mediaList[i])return;
+  _mediaIdx=i;
+  const m=_mediaList[i];
+  stage.innerHTML=_mediaEmbedHtml(m);
+
+  // ローカル動画は完了イベント内で確実に再生
+  if(m.type==='video'){
+    const v=el('media-video');
+    if(v){
+      v.muted=true; v.setAttribute('playsinline','');
+      const p=v.play();
+      if(p&&p.catch) p.catch(()=>{});
+    }
+  }
+  if(dots){ dots.querySelectorAll('.m-dot').forEach((d,di)=>{ d.style.background=di===i?'#fff':'rgba(255,255,255,.45)'; }); }
+}
+
+function mediaCarousel(dir){
+  if(!_mediaList.length)return;
+  let ni=(_mediaIdx+dir+_mediaList.length)%_mediaList.length;
+  _showMedia(ni);
 }
 
 // 言語コードを明示指定して発話（高品質音声を優先選択）
@@ -1631,6 +1768,7 @@ function speak(text) {
 function restartApp() {
   window.speechSynthesis && window.speechSynthesis.cancel();
   _lastGuideText=''; _lastGuideTTSLang='ja-JP';
+  if(typeof _clearMediaTimers==='function')_clearMediaTimers();
   reservationData = null;
   passportDataUrl = null;
   currentNat = 'jp';
