@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.3, maximum-scale=5.0">
 <title>宿泊者名簿 — 江ノ島ゲストハウス134</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <style>
@@ -3334,8 +3335,8 @@ function renderReg(){
       html+=row;
     }); // end grp.rooms.forEach
 
-    // グループ間の区切り線
-    html+=`<tr><td colspan="${days+2}" style="height:3px;background:${grp.color}22;border-top:1.5px solid ${grp.color}44;padding:0;"></td></tr>`;
+    // グループ間の区切り帯（4px 濃いグレー）
+    html+=`<tr><td colspan="${days+2}" style="height:4px;background:#b0bec5;padding:0;border:none;"></td></tr>`;
   }); // end groups.forEach
   document.getElementById('main-table').innerHTML=html+'</tbody>';
   // 曜日行のtopを日付行の高さに合わせて動的設定
@@ -4149,7 +4150,7 @@ function importAirhostCSV(text){
     const price=priceRaw>0?Math.round(priceRaw):null;
     const nat=get(cols,'国籍')||'';
     const guestCount=parseInt(get(cols,'ゲスト数'))||1;
-    const note=String(get(cols,'コメント')||'').slice(0,120);
+    const note=''; // CSVのコメントは取り込まない（スタッフ手入力のみ備考扱い）
     // 連絡先・住所を独立フィールドへ（noteへの混在を解消）
     const phone=String(get(cols,'電話番号')||'').trim();
     const address=String(get(cols,'ゲスト住所')||'').trim();
@@ -4219,21 +4220,23 @@ function importCSVText(text){
     const planName=get(cols,'商品プラン名称');
     const yoyakuNo=get(cols,'予約番号');
 
-    // 備考
-    let note=[get(cols,'備考1'),get(cols,'備考2'),get(cols,'メモ')].filter(Boolean).join(' ').replace(/\n/g,' ');
+    // 備考：CSVのOTA文言は取り込まない（スタッフ手入力のみ備考扱い）
+    // ただしチェックボックス自動判定用に、判定元テキストは別変数で保持
+    const _detectText=[get(cols,'備考1'),get(cols,'備考2'),get(cols,'メモ')].filter(Boolean).join(' ').replace(/\n/g,' ');
+    let note=''; // 表示用備考は空で初期化（手入力のみ反映）
 
     // ─── 商品プランルール適用（PLAN_RULES テーブル） ───────────
-    // planName（商品プラン名称）にキーワードが含まれる場合、noteTagを備考に追記
+    // planName・判定元テキストにキーワードが含まれる場合、noteTagを備考に追記
+    // （noteTagはgetCellIconsのアイコン自動判定に使用。OTA本文は含めない）
     PLAN_RULES.forEach(rule=>{
       if(planName.includes(rule.keyword)){
-        // 備考に重複なく追記（getCellIconsがnoteTagで判定するため）
         if(!note.includes(rule.noteTag))note=note?note+' '+rule.noteTag:rule.noteTag;
       }
     });
-    // note自体にキーワードが含まれる場合もnoteTagを追記
+    // 判定元テキスト（CSV備考）にキーワードが含まれる場合もnoteTagを追記
     PLAN_RULES.forEach(rule=>{
-      if(note.includes(rule.keyword)&&!note.includes(rule.noteTag))
-        note=note+' '+rule.noteTag;
+      if(_detectText.includes(rule.keyword)&&!note.includes(rule.noteTag))
+        note=note?note+' '+rule.noteTag:rule.noteTag;
     });
     note=note.trim().slice(0,120);
 
@@ -4355,7 +4358,15 @@ function importCSVText(text){
     const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
     // 連絡先・住所を独立フィールドへ
     const phone=String(get(cols,'電話番号')||'').trim();
-    const address=String(addr1).trim();
+    // 住所：TY始まりの予約は住所1が空の場合に備考2から抽出
+    let address=String(addr1).trim();
+    if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
+      const biko2addr=String(get(cols,'備考2')||'').trim();
+      if(biko2addr){
+        // 先頭の「数字+コロン（全角半角）+スペース」を除去
+        address=biko2addr.replace(/^\d+[:：]\s*/,'').trim();
+      }
+    }
     // メールアドレス：複数列名に対応 + 一休.com備考2からの正規表現抽出
     const _emailRe=/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
     let email=String(
