@@ -862,6 +862,7 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
       　同一 <code style="background:#f1f3f4;padding:1px 5px;border-radius:3px;">reservationId</code> の予約は自動スキップ（重複防止）
     </div>
     <div id="import-result"></div>
+    <div id="unassigned-panel" style="display:none;"></div>
   </div>
   <div class="card">
     <div style="font-size:13px;font-weight:600;margin-bottom:10px;">取込ルール</div>
@@ -1270,6 +1271,61 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
 </div>
 
 <!-- 自動部屋割り設定モーダル -->
+<div class="mbg" id="manual-assign-modal" onclick="if(event.target===this)document.getElementById('manual-assign-modal').classList.remove('open')">
+  <div class="mbox" style="max-width:480px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid #c0392b;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:#fff5f5;padding:14px 22px;font-size:14px;font-weight:800;color:#c0392b;border-bottom:1px solid #f0d0d0;">⚠ 手動で部屋を割り当て</div>
+    <div style="padding:20px 22px;">
+      <div id="ma-info" style="font-size:13px;color:#555;margin-bottom:14px;padding:8px 10px;background:#f8f8f8;border-radius:6px;"></div>
+      <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">割り当てる部屋</label>
+      <select id="ma-room" style="width:100%;border:1.5px solid #d0dce6;border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;"></select>
+      <div style="font-size:11px;color:#999;margin-top:8px;line-height:1.6;">※「埋まっています」の部屋を選ぶと保存できません。既存予約は上書きされません。</div>
+    </div>
+    <div style="display:flex;gap:10px;padding:14px 22px;background:#f8f8f8;border-top:1px solid #eee;">
+      <button onclick="document.getElementById('manual-assign-modal').classList.remove('open')" class="btn" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
+      <button onclick="saveManualAssign()" class="btn btn-blue" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="mbg" id="sn-edit-modal" onclick="if(event.target===this)document.getElementById('sn-edit-modal').classList.remove('open')">
+  <div class="mbox" style="max-width:500px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid #0f6c8c;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:#f0f7fa;padding:14px 22px;font-size:14px;font-weight:800;color:#0f6c8c;border-bottom:1px solid #d0e8f0;display:flex;align-items:center;gap:8px;">✏ TODO 編集</div>
+    <div style="padding:20px 22px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:2px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">種別</label>
+          <select id="sn-edit-type" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:13px;color:#1a2b3a;background:transparent;font-family:inherit;">
+            <option value="指示">● 指示</option>
+            <option value="引継ぎ">◎ 引継ぎ</option>
+            <option value="メモ">○ メモ</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">ランク</label>
+          <select id="sn-edit-rank" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:13px;color:#1a2b3a;background:transparent;font-family:inherit;">
+            <option value="A">A（最重要）</option>
+            <option value="B">B（重要）</option>
+            <option value="C">C（通常）</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">タイトル（必須）</label>
+        <input id="sn-edit-title" placeholder="タイトルを入力" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:14px;color:#1a2b3a;background:transparent;font-family:inherit;box-sizing:border-box;" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))saveSN()">
+      </div>
+      <div style="margin-top:16px;">
+        <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">詳細（任意）</label>
+        <textarea id="sn-edit-detail" rows="4" placeholder="詳細を入力（任意）" style="width:100%;border:1px solid #d0dce6;border-radius:4px;padding:8px;font-size:13px;color:#1a2b3a;background:#fff;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;padding:14px 22px;background:#f8f8f8;border-top:1px solid #eee;align-items:center;">
+      <button onclick="deleteSNFromEdit()" class="btn btn-red btn-xs" style="margin-right:auto;padding:9px 16px;font-size:13px;">🗑 削除</button>
+      <button onclick="document.getElementById('sn-edit-modal').classList.remove('open')" class="btn" style="padding:9px 18px;font-size:13px;">キャンセル</button>
+      <button onclick="saveSN()" class="btn btn-blue" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="mbg" id="auto-assign-modal" onclick="if(event.target===this)closeM('auto-assign-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:min(700px,96vw);max-height:85vh;overflow-y:auto;">
   <h3 style="margin-bottom:4px;">🔀 自動部屋割り設定</h3>
@@ -2028,6 +2084,7 @@ const FILTER_GROUPS=[
 let roomFilter=Object.fromEntries(FILTER_GROUPS.map(g=>[g.key,true]));
 let cancelList=[];
 let surfList=[];
+let unassignedReservations=[]; // 自動割当に失敗した未割当予約キュー
 let parkData={};
 let rentalSpaceReservations=[];
 let rentalYear=2026,rentalMonth=new Date().getMonth()+1;
@@ -2183,6 +2240,7 @@ function applySnapshot(snap){
   parkData=s.parkData||{};
   if(s.rentalSpaceReservations){rentalSpaceReservations=s.rentalSpaceReservations;nextRentalId=rentalSpaceReservations.reduce((mx,r)=>Math.max(mx,(r.id||0)+1),1);}
   surfList=s.surfList||[];
+  unassignedReservations=s.unassignedReservations||[];
   staffNotes=s.staffNotes||[];
   nextSnId=staffNotes.reduce((m,x)=>Math.max(m,(x.id||0)+1),0);
   if(s.salesData)Object.keys(s.salesData).forEach(y=>{
@@ -2990,7 +3048,7 @@ function renderReg(){
     const todayNumHtml=isToday
       ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#185FA5;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
-    html+=`<th${todayId} style="min-width:86px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="font-size:9px;color:#e65100;">📷</span>`:''}</th>`;
+    html+=`<th${todayId} style="min-width:86px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
   html+=`</tr>`;
   // 曜日行（sticky top:日付行高さ分）
@@ -3251,9 +3309,14 @@ function renderReg(){
             else{planBorder='#FF8F00';planBg='#FFF8E1';}
           }
           const planStyle=planBorder
-            ? (planBorder.includes(',')
-                ? `border-left:3px solid transparent;border-image:linear-gradient(to bottom,${planBorder}) 1;background:${planBg};`
-                : `border-left:3px solid ${planBorder};background:${planBg};`)
+            ? (cin
+                // チェックイン済み：背景は通常の緑グラデーションを活かし、左ボーダーのみオプション色を残す
+                ? (planBorder.includes(',')
+                    ? `border-left:3px solid transparent;border-image:linear-gradient(to bottom,${planBorder}) 1;`
+                    : `border-left:3px solid ${planBorder};`)
+                : (planBorder.includes(',')
+                    ? `border-left:3px solid transparent;border-image:linear-gradient(to bottom,${planBorder}) 1;background:${planBg};`
+                    : `border-left:3px solid ${planBorder};background:${planBg};`))
             : '';
 
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
@@ -3938,14 +4001,44 @@ function exportCSV(){
 function handleDrop(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');const file=e.dataTransfer.files[0];if(file)processCSV(file);}
 function handleFileSelect(e){const file=e.target.files[0];if(file)processCSV(file);e.target.value='';}
 // CSV取込: 部屋タイプ名 → group → 空き部屋を順番に割当
-function getRoomIdByType(typeName, month, day, nights){
-  // 完全一致
-  const exact=rooms.find(r=>r.type===typeName);
-  if(exact)return exact.id;
+// ── エラー理由判定 ──────────────────────────────────────
+function _judgeAssignError(typeName,month,day,nights,guests){
+  let group=null;
+  if(/本館.*ダブル|本館.*クイーン|本館.*ツイン/i.test(typeName)) group='本館−個室';
+  else if(/本館.*ドミトリー|本館.*混合/i.test(typeName)) group='本館−男女混合ドミトリー';
+  else if(/ANNEX.*個室/i.test(typeName))           group='ANNEX−個室';
+  else if(/ANNEX.*ドミトリー/i.test(typeName))     group='ANNEX−ドミトリー';
+  else if(/Southern Court|サザン|アパートメント/i.test(typeName)) group='アパートメント−Southern Court';
+  else if(/Sea Breeze.*鎌倉/i.test(typeName)) group='Sea Breeze 鎌倉';
+  else if(/Sea Breeze.*三浦/i.test(typeName)) group='Sea Breeze 三浦';
+  if(!group)return '部屋タイプ不明';
+  const groupRooms=rooms.filter(r=>r.group===group);
+  if(!groupRooms.length)return '対象部屋なし';
+  let anyFreeOneNight=false;
+  for(const r of groupRooms){
+    if(!guestData[gk(month,r.id,day)]){anyFreeOneNight=true;break;}
+  }
+  if(!anyFreeOneNight)return '空室不足';
+  if(nights>1)return '連泊可能な空床なし';
+  return '空室不足';
+}
 
-  // 本館ダブル・ツインは固定割当（グループ内の空き探しをしない）
-  if(/本館.*ダブル|本館.*クイーン/i.test(typeName)) return 0;
-  if(/本館.*ツイン/i.test(typeName))                return 1;
+function getRoomIdByType(typeName, month, day, nights){
+  // 空き判定ヘルパー（月跨ぎ対応）
+  const _isFree=(rid)=>{
+    for(let n=0;n<(nights||1);n++){
+      const {m:nm,d:nd}=addDays(month,(day||1),n);
+      if(guestData[gk(nm,rid,nd)])return false;
+    }
+    return true;
+  };
+  // 完全一致（空いている場合のみ）
+  const exact=rooms.find(r=>r.type===typeName);
+  if(exact&&_isFree(exact.id))return exact.id;
+
+  // 本館ダブル・ツインは固定割当（空いている場合のみ）
+  if(/本館.*ダブル|本館.*クイーン/i.test(typeName)) return _isFree(0)?0:null;
+  if(/本館.*ツイン/i.test(typeName))                return _isFree(1)?1:null;
 
   // グループ判定（部屋タイプ名からグループを特定）
   let group=null;
@@ -3957,18 +4050,14 @@ function getRoomIdByType(typeName, month, day, nights){
   else if(/Sea Breeze.*三浦|三浦.*Sea Breeze/i.test(typeName)) group='Sea Breeze 三浦';
 
   if(group){
-    // グループ内で対象日程が空いている部屋を探す（優先順位ソート済み）
+    // グループ内で対象日程が空いている部屋を探す（優先順位ソート済み・月跨ぎ対応）
     const groupRooms=rooms.filter(r=>r.group===group)
       .slice().sort((a,b)=>getRoomPriority(a.id)-getRoomPriority(b.id));
     for(const r of groupRooms){
-      let available=true;
-      for(let n=0;n<(nights||1);n++){
-        if(guestData[gk(month,r.id,(day||1)+n)]){available=false;break;}
-      }
-      if(available)return r.id;
+      if(_isFree(r.id))return r.id;
     }
-    // 全部埋まっていたら最初の部屋を返す（上書き通知は呼び元で）
-    return groupRooms[0]?.id??0;
+    // 全部埋まっていたら null を返す（既存予約の上書きを防止）
+    return null;
   }
 
   // 未知タイプ→新規作成
@@ -4196,7 +4285,7 @@ function importCSVText(text){
     const v=cols[idx[key]];
     return (v===undefined||v===null||v==='NaN')?'':(v+'').trim();
   };
-  let imported=0,cancelled=0,skipped=0,parkAdded=0,surfAdded=0,charterCount=0;
+  let imported=0,cancelled=0,skipped=0,parkAdded=0,surfAdded=0,charterCount=0,unassignedCount=0;
   const monthCounts={};
   // 貸切の重複予約番号を管理（同一予約番号は1回だけ取り込む）
   const processedCharter=new Set();
@@ -4338,6 +4427,7 @@ function importCSVText(text){
     // ─── 部屋割当 ────────────────────────────────────────
     let rid=0;
     let charterGroupRooms=[];
+    let effectiveType=typeName||'';
     if(isCharter){
       if(isAnnexCharter){
         charterGroupRooms=rooms.filter(r=>r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー');
@@ -4348,8 +4438,31 @@ function importCSVText(text){
       }
       rid=charterGroupRooms.length>0?charterGroupRooms[0].id:0;
     } else {
-      const effectiveType=typeName||'';
       rid=effectiveType?getRoomIdByType(effectiveType,cm,cd,nights):0;
+    }
+
+    // 自動割当に失敗（空室なし）→ 未割当キューへ退避（既存予約を上書きしない）
+    if(rid===null){
+      const guestNameEarly=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
+      if(guestNameEarly){
+        const resId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
+        // 既に未割当キューにある同一予約は重複追加しない
+        if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===resId&&resId)){
+          unassignedReservations.push({
+            name:guestNameEarly,
+            reservationId:resId,
+            yoyakuNo:yoyakuNo||'',
+            checkinMonth:cm,checkinDay:cd,nights,
+            guests:guestCount,
+            site,cat,sex,pay:payMethod,price,
+            typeName:effectiveType,
+            reason:_judgeAssignError(effectiveType,cm,cd,nights,guestCount),
+            addedAt:new Date().toISOString(),
+          });
+        }
+      }
+      unassignedCount++;
+      continue; // カレンダーには一切書き込まない
     }
 
     // ─── guestData への書き込み ───────────────────────────
@@ -4394,9 +4507,11 @@ function importCSVText(text){
 
     if(isCharter&&charterGroupRooms.length>0){
       // 貸切: グループ全部屋×全泊に書き込み（月跨ぎ対応）
+      // 【最終防衛】既存予約のある部屋・日程は上書きしない
       charterGroupRooms.forEach((room,ri)=>{
         for(let n=0;n<nights;n++){
           const {m:nm,d:nd}=addDays(cm,cd,n);
+          if(guestData[gk(nm,room.id,nd)])continue; // 既存予約を保護
           guestData[gk(nm,room.id,nd)]={
             ...gBase,roomId:room.id,day:nd,
             price:ri===0&&n===0?gBase.price:null,
@@ -4452,6 +4567,24 @@ function importCSVText(text){
         });
       } else {
         // 通常：月跨ぎ対応で全nights分を書き込む
+        // 【最終防衛】書き込み先に既存予約があれば上書きせず未割当キューへ退避
+        let blocked=false;
+        for(let n=0;n<nights;n++){
+          const {m:nm,d:nd}=addDays(cm,cd,n);
+          if(guestData[gk(nm,rid,nd)]){blocked=true;break;}
+        }
+        if(blocked){
+          if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===reservationId&&reservationId)){
+            unassignedReservations.push({
+              name:guestName,reservationId,yoyakuNo:yoyakuNo||'',
+              checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
+              site,cat,sex,pay:payMethod,price,typeName:typeName||'',
+              reason:'連泊可能な空床なし',addedAt:new Date().toISOString(),
+            });
+          }
+          unassignedCount++;
+          continue;
+        }
         for(let n=0;n<nights;n++){
           const {m:nm,d:nd}=addDays(cm,cd,n);
           guestData[gk(nm,rid,nd)]={...gBase,day:nd,price:n===0?gBase.price:null,cont:n>0};
@@ -4481,8 +4614,100 @@ function importCSVText(text){
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
     ${charterCount>0?`<br>🔒 貸切予約 <strong>${charterCount}件</strong>検出`:''}
+    ${unassignedCount>0?`<br><span style="color:#c0392b;font-weight:700;">⚠ 割当エラー：${unassignedCount}件（名簿へ未反映・下記から手動割当してください）</span>`:''}
   </div>${skipped>0?`<div class="import-warn">※ 重複・2泊目以降（${skipped}行）はスキップ</div>`:''}`;
+  renderUnassignedPanel();
   renderReg();autoSave();
+}
+
+// ══════════════════════════════════════════════
+//  未割当予約パネル＆手動割当
+// ══════════════════════════════════════════════
+function renderUnassignedPanel(){
+  const el=document.getElementById('unassigned-panel');
+  if(!el)return;
+  if(!unassignedReservations.length){ el.innerHTML=''; el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML=`
+    <div style="margin-top:16px;padding:14px 16px;background:#fff5f5;border:1.5px solid #f0b0b0;border-radius:8px;">
+      <div style="font-size:13px;font-weight:700;color:#c0392b;margin-bottom:10px;">⚠ 部屋割当エラー（${unassignedReservations.length}件）</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${unassignedReservations.map((u,i)=>{
+          const co=_calcCheckout(u.checkinMonth,u.checkinDay,u.nights);
+          return `<div style="background:#fff;border:1px solid #e0c0c0;border-radius:6px;padding:10px 12px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;color:#1a2b3a;font-size:13px;margin-bottom:3px;">${u.name} <span style="font-weight:400;color:#888;font-size:11px;">${u.reservationId?'#'+u.reservationId:''}</span></div>
+                <div style="color:#666;line-height:1.6;">
+                  ${u.checkinMonth}/${u.checkinDay} → ${co}　${u.nights}泊　${u.guests}名　${u.site||''}<br>
+                  希望: ${u.typeName||'-'}　区分: ${u.cat||'-'}<br>
+                  <span style="color:#c0392b;font-weight:600;">理由: ${u.reason||'空室不足'}</span>
+                </div>
+              </div>
+              <button onclick="openManualAssign(${i})" class="btn btn-blue btn-xs" style="flex-shrink:0;white-space:nowrap;">名簿へ手動追加</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function _calcCheckout(m,d,nights){
+  const {m:om,d:od}=addDays(m,d,nights||1);
+  return `${om}/${od}`;
+}
+
+let _manualAssignIdx=null;
+function openManualAssign(idx){
+  _manualAssignIdx=idx;
+  const u=unassignedReservations[idx];
+  if(!u)return;
+  // 部屋セレクト生成（全部屋、空き状況付き）
+  const sel=document.getElementById('ma-room');
+  sel.innerHTML=rooms.map(r=>{
+    let free=true;
+    for(let n=0;n<(u.nights||1);n++){
+      const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
+      if(guestData[gk(nm,r.id,nd)]){free=false;break;}
+    }
+    return `<option value="${r.id}">${r.no}　${r.type}　${free?'（空き）':'⚠ 埋まっています'}</option>`;
+  }).join('');
+  document.getElementById('ma-info').textContent=`${u.name} / ${u.checkinMonth}/${u.checkinDay} ${u.nights}泊 ${u.guests}名`;
+  document.getElementById('manual-assign-modal').classList.add('open');
+}
+
+function saveManualAssign(){
+  const idx=_manualAssignIdx;
+  const u=unassignedReservations[idx];
+  if(!u)return;
+  const rid=parseInt(document.getElementById('ma-room').value);
+  // 空き再チェック（保険：既存予約を絶対上書きしない）
+  for(let n=0;n<(u.nights||1);n++){
+    const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
+    if(guestData[gk(nm,rid,nd)]){
+      alert('選択した部屋は'+nm+'/'+nd+'に既に予約が入っています。別の部屋を選んでください。');
+      return;
+    }
+  }
+  // guestDataへ書き込み（全泊）
+  const gBase={
+    name:u.name,site:u.site,pay:u.pay,price:u.price,nat:'',sex:u.sex||'',cat:u.cat||'Ｓ',note:'',
+    phone:'',address:'',email:'',
+    status:'reserved',roomId:rid,day:u.checkinDay,guests:u.guests||1,
+    arrivalTime:'',charter:false,charterGroup:null,
+    reservationId:u.reservationId||'',
+  };
+  for(let n=0;n<(u.nights||1);n++){
+    const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
+    guestData[gk(nm,rid,nd)]={...gBase,day:nd,price:n===0?u.price:null,cont:n>0};
+  }
+  // キューから削除
+  unassignedReservations.splice(idx,1);
+  _manualAssignIdx=null;
+  document.getElementById('manual-assign-modal').classList.remove('open');
+  renderUnassignedPanel();
+  renderReg();saveToLS();autoSave();
+  showToast('✓ '+u.name+'様を名簿へ追加しました');
 }
 
 // ============================================================
@@ -5746,6 +5971,7 @@ function renderStaffNotes(){
           <!-- 詳細（小さめ・改行保持） -->
           ${(n.detail)?`<div style="font-size:12px;color:${n.done?'var(--light)':'var(--muted)'};line-height:1.65;white-space:pre-wrap;">${n.detail}</div>`:''}
         </div>
+        <button onclick="editSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--ocean);">✏</button>
         <button onclick="deleteSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--muted);">✕</button>
       </div>
     </div>`;
@@ -5769,6 +5995,42 @@ function addStaffNote(){
 }
 function toggleSN(id){const n=staffNotes.find(x=>x.id===id);if(n)n.done=!n.done;renderStaffNotes();renderRankAPanel();saveToLS();autoSave();}
 function deleteSN(id){if(!confirm('このTODOを削除しますか？'))return;staffNotes=staffNotes.filter(x=>x.id!==id);renderStaffNotes();renderRankAPanel();saveToLS();autoSave();}
+
+// ── TODO編集 ─────────────────────────────────────────────
+let _snEditId=null;
+function editSN(id){
+  const n=staffNotes.find(x=>x.id===id);
+  if(!n)return;
+  _snEditId=id;
+  document.getElementById('sn-edit-type').value=n.type||'指示';
+  document.getElementById('sn-edit-rank').value=n.rank||'C';
+  document.getElementById('sn-edit-title').value=n.title||n.text||'';
+  document.getElementById('sn-edit-detail').value=n.detail||'';
+  document.getElementById('sn-edit-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('sn-edit-title').focus(),80);
+}
+function saveSN(){
+  const n=staffNotes.find(x=>x.id===_snEditId);
+  if(!n)return;
+  n.type=document.getElementById('sn-edit-type').value;
+  n.rank=document.getElementById('sn-edit-rank').value;
+  const t=document.getElementById('sn-edit-title').value.trim();
+  if(t)n.title=t;
+  n.detail=document.getElementById('sn-edit-detail').value.trim();
+  document.getElementById('sn-edit-modal').classList.remove('open');
+  _snEditId=null;
+  renderStaffNotes();renderRankAPanel();saveToLS();autoSave();
+  showToast('✏ TODOを更新しました');
+}
+function deleteSNFromEdit(){
+  if(_snEditId==null)return;
+  if(!confirm('このTODOを削除しますか？'))return;
+  staffNotes=staffNotes.filter(x=>x.id!==_snEditId);
+  document.getElementById('sn-edit-modal').classList.remove('open');
+  _snEditId=null;
+  renderStaffNotes();renderRankAPanel();saveToLS();autoSave();
+  showToast('🗑 TODOを削除しました');
+}
 // ドラッグ並び替え
 function snDragStart(e,id){snDragId=id;e.dataTransfer.effectAllowed='move';}
 function snDrop(e,targetId){
@@ -5796,7 +6058,7 @@ let isSyncing      = false;  // 二重リクエスト防止
 function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
-    occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,
+    occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -5956,6 +6218,7 @@ function applyServerData(data) {
     });
   }
   if (data.surfList)   { surfList   = data.surfList;    }
+  if (data.unassignedReservations) { unassignedReservations = data.unassignedReservations; }
   if (data.staffNotes) {
     staffNotes = data.staffNotes;
     nextSnId = staffNotes.reduce((m,x)=>Math.max(m,(x.id||0)+1), 0);
@@ -6479,6 +6742,7 @@ renderFilterUI();
 _updateMonthDisplay();
 renderReg();
 renderRankAPanel();
+if(typeof renderUnassignedPanel==='function')renderUnassignedPanel();
 if(rankAPanelHidden){
   const panel=document.getElementById('rank-a-panel');
   const reopen=document.getElementById('rank-a-reopen');
