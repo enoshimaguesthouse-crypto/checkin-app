@@ -2797,64 +2797,14 @@ function openAutoAssignModal(){
   document.getElementById('auto-assign-modal').classList.add('open');
 }
 
-async function saveAutoAssignPriority(){
+function saveAutoAssignPriority(){
   document.querySelectorAll('#auto-assign-body select[data-room-id]').forEach(sel=>{
     roomPriorityMaster[Number(sel.dataset.roomId)]=Number(sel.value);
   });
   saveRoomPriorityLS();
   closeM('auto-assign-modal');
-  await saveRoomPriorityToCloud();
-}
-// 自動部屋割り設定（roomPriorityMaster）をGoogle Drive（GAS経由）へ即時保存
-// file:// から開いている場合はCORSプリフライトでブロックされるため、
-// 部屋設定（saveRoomSettingsToCloud）と同じ no-cors + text/plain 方式を使用。
-// no-corsはレスポンスを読めないため、保存後に検証GETを行い実際に反映されたか確認する。
-async function saveRoomPriorityToCloud(){
-  if(!GAS_URL){ showToast('⚠ GAS URLが設定されていません'); return; }
-  try{
-    // 1) 最新データを取得（ベースとして使用。これが古いと他の項目を巻き戻す危険があるため必須）
-    let data={};
-    try{
-      const res=await fetch(GAS_URL+'?t='+Date.now());
-      data=await res.json();
-    }catch(getErr){
-      console.warn('最新データ取得に失敗、ローカルデータで保存:',getErr);
-      data=collectAllData();
-    }
-    // 2) roomPriorityMaster のみ差し替え（他の項目は最新のまま保持）
-    data.roomPriorityMaster=roomPriorityMaster;
-    // 3) no-cors + text/plain でPOST（プリフライト回避、file://でも通る）
-    await fetch(GAS_URL,{
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify(data)
-    });
-    // 4) 保存直後に検証GET：実際にDriveへ反映されたかを確認する
-    //    GAS側の書き込み完了を待つため少し遅延を入れる
-    await new Promise(r=>setTimeout(r,1200));
-    try{
-      const verifyRes=await fetch(GAS_URL+'?t='+Date.now());
-      const verifyJson=await verifyRes.json();
-      const serverPri=verifyJson.roomPriorityMaster||{};
-      const localKeys=Object.keys(roomPriorityMaster);
-      const allMatch=localKeys.every(k=>String(serverPri[k])===String(roomPriorityMaster[k]));
-      if(allMatch){
-        if(typeof updateSyncStatus==='function')updateSyncStatus('ok','自動部屋割り設定を保存しました');
-        showToast('🔀 自動部屋割り優先順位をクラウドに保存しました（確認済み）');
-      } else {
-        console.error('保存後の検証に失敗：サーバー側に反映されていません', {local:roomPriorityMaster, server:serverPri});
-        if(typeof updateSyncStatus==='function')updateSyncStatus('error','保存の反映確認に失敗');
-        showToast('⚠ 保存はしましたが、サーバーへの反映を確認できませんでした。GAS側の設定をご確認ください。',5000);
-      }
-    }catch(verifyErr){
-      console.warn('保存後の検証GETに失敗:',verifyErr);
-      showToast('☁ 保存処理を送信しました（反映確認はできませんでした）');
-    }
-  }catch(e){
-    console.error('自動部屋割り設定のクラウド保存に失敗:',e);
-    showToast('⚠ クラウド保存に失敗しました（ローカルには保存済み）');
-  }
+  cloudSave(); // TODO保存と同じ共通クラウド保存経路を使用
+  showToast('🔀 自動部屋割り優先順位を保存しました');
 }
 
 // ── スクロール制御フラグ ──────────────────────────────
@@ -5791,29 +5741,8 @@ async function saveRoomSettingsToCloud(){
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify(data)
     });
-    // 4) 保存直後に検証GET：実際にDriveへ反映されたかを確認する（no-corsはレスポンスが読めないため）
-    await new Promise(r=>setTimeout(r,1200));
-    try{
-      const verifyRes=await fetch(GAS_URL+'?t='+Date.now());
-      const verifyJson=await verifyRes.json();
-      const serverRooms=Array.isArray(verifyJson.rooms)?verifyJson.rooms:[];
-      const localRoomCount=rooms.length;
-      const serverRoomCount=serverRooms.length;
-      // 簡易チェック：部屋数が一致し、roomSettingsのキー数も一致するか
-      const serverSettingsKeys=verifyJson.roomSettings?Object.keys(verifyJson.roomSettings).length:0;
-      const localSettingsKeys=Object.keys(roomSettings).length;
-      if(serverRoomCount===localRoomCount && serverSettingsKeys===localSettingsKeys){
-        if(typeof updateSyncStatus==='function')updateSyncStatus('ok','部屋設定を保存しました');
-        showToast('☁ 部屋設定をクラウドに保存しました（確認済み）');
-      } else {
-        console.error('保存後の検証に失敗：サーバー側に反映されていません', {localRoomCount,serverRoomCount,localSettingsKeys,serverSettingsKeys});
-        if(typeof updateSyncStatus==='function')updateSyncStatus('error','保存の反映確認に失敗');
-        showToast('⚠ 保存はしましたが、サーバーへの反映を確認できませんでした。GAS側の設定をご確認ください。',5000);
-      }
-    }catch(verifyErr){
-      console.warn('保存後の検証GETに失敗:',verifyErr);
-      showToast('☁ 保存処理を送信しました（反映確認はできませんでした）');
-    }
+    if(typeof updateSyncStatus==='function')updateSyncStatus('ok','部屋設定を保存しました');
+    showToast('☁ 部屋設定をクラウドに保存しました');
   }catch(e){
     console.warn('部屋設定のクラウド保存に失敗（localStorageには保存済み）:',e);
     showToast('⚠ クラウド保存に失敗（ローカルには保存済み）');
@@ -5989,10 +5918,10 @@ function saveRoom(){
     s.languages[l]={roomName:(_rmLangBuffer[l]?.roomName||'').trim(),guideText:(_rmLangBuffer[l]?.guideText||'').trim()};
   });
   s.media=JSON.parse(JSON.stringify(_rmMediaBuffer));
-  closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();saveRoomSettingsToCloud();
+  closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();
   showToast('🚪 部屋情報を保存しました');
 }
-function deleteRoom(){if(editRoomId==null)return;rooms=rooms.filter(r=>r.id!==editRoomId);delete roomSettings[editRoomId];closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();saveRoomSettingsToCloud();}
+function deleteRoom(){if(editRoomId==null)return;rooms=rooms.filter(r=>r.id!==editRoomId);delete roomSettings[editRoomId];closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();}
 
 // ============================================================
 // TODO（スタッフノート）
@@ -6284,54 +6213,6 @@ function playCheckInSound(){
   }
 }
 
-// 設定系データ（部屋情報・部屋設定・自動部屋割り優先順位）だけをサーバーから反映する。
-// no-cors保存でupdatedAtが更新されず通常の差分判定をすり抜けるケースの保険として、
-// ポーリングのたびに呼ばれる。変化があった場合のみUIを再描画する（無駄な再描画を防ぐ）。
-function applyRoomConfigOnly(data){
-  if(!data)return;
-  let changed=false;
-  // rooms
-  if(data.rooms && Array.isArray(data.rooms) && data.rooms.length>0){
-    const incoming=data.rooms.map(r=>({...r,no:String(r.no??'')}));
-    if(JSON.stringify(incoming)!==JSON.stringify(rooms)){
-      rooms=incoming;
-      nextRoomId=Math.max(...rooms.map(r=>r.id||0))+1;
-      changed=true;
-    }
-  }
-  // roomSettings
-  if(data.roomSettings && typeof data.roomSettings==='object'){
-    if(JSON.stringify(data.roomSettings)!==JSON.stringify(roomSettings)){
-      roomSettings=data.roomSettings;
-      saveRoomSettingsLS();
-      changed=true;
-    }
-  }
-  // roomPriorityMaster
-  if(data.roomPriorityMaster && typeof data.roomPriorityMaster==='object'){
-    const merged={};
-    Object.entries(data.roomPriorityMaster).forEach(([id,pri])=>{ merged[Number(id)]=pri; });
-    if(JSON.stringify(merged)!==JSON.stringify(roomPriorityMaster)){
-      roomPriorityMaster=merged;
-      saveRoomPriorityLS();
-      changed=true;
-    }
-  }
-  if(changed){
-    // 編集モーダルが開いている最中の再描画は編集内容を巻き戻すリスクがあるため見送る
-    // （次回ポーリング時に再判定されるので、モーダルを閉じれば反映される）
-    const modalOpen=document.querySelector('.mbg.open');
-    if(modalOpen){
-      console.log('[設定同期] モーダル表示中のため再描画を保留しました');
-      return;
-    }
-    // 表示中の画面に応じて再描画
-    renderReg();
-    if(document.getElementById('page-rooms')?.classList.contains('active') && typeof renderRooms==='function')renderRooms();
-    showToast('🔄 部屋情報・設定を最新に更新しました',2500);
-  }
-}
-
 function applyServerData(data) {
   if (data.guestData)  {
     // ── チェックイン完了の検知（予約済→チェックイン済への変化）──
@@ -6349,11 +6230,10 @@ function applyServerData(data) {
   if (data.cancelList) { cancelList = data.cancelList;  }
   if (data.roomSettings) { roomSettings = data.roomSettings; saveRoomSettingsLS(); }
   if (data.roomPriorityMaster && typeof data.roomPriorityMaster==='object') {
-    // Google Drive（GAS）側を常にマスターとして採用し、localStorageへ反映する
-    // （旧ロジック「ローカル優先」だと他端末の更新が反映されず同期不全の原因になっていた）
-    const merged={};
-    Object.entries(data.roomPriorityMaster).forEach(([id,pri])=>{ merged[Number(id)]=pri; });
-    roomPriorityMaster=merged;
+    // TODO(staffNotes)や部屋設定と同じく、クラウド(cloudData)側の値で完全に上書きする
+    const m={};
+    Object.entries(data.roomPriorityMaster).forEach(([id,pri])=>{ m[Number(id)]=pri; });
+    roomPriorityMaster=m;
     saveRoomPriorityLS();
   }
   if (data.rooms && Array.isArray(data.rooms) && data.rooms.length > 0) {
@@ -6425,16 +6305,16 @@ function applyServerData(data) {
   if(document.getElementById('page-parking')?.classList.contains('active'))renderParking();
   if(document.getElementById('page-sales')?.classList.contains('active'))  renderSales();
   if(document.getElementById('page-occupancy')?.classList.contains('active'))renderOcc();
+  if(document.getElementById('page-rooms')?.classList.contains('active')&&typeof renderRooms==='function')renderRooms();
   updateSyncStatus('ok', '同期済み ' + fmtTime(cloudUpdatedAt));
 }
 
 // ── クラウド保存 ──────────────────────────────────────────
 async function cloudSave() {
-  if (!GAS_URL) { showToast('⚠ GAS URLが設定されていません'); return false; }
-  if (isSyncing) { pendingSave=true; showToast('⏳ 他の保存処理完了後に自動で再試行します'); return false; }
+  if (!GAS_URL) { showToast('⚠ GAS URLが設定されていません'); return; }
+  if (isSyncing) return;
   isSyncing = true;
   updateSyncStatus('saving', '保存中...');
-  let ok=false;
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
@@ -6449,24 +6329,20 @@ async function cloudSave() {
         updateSyncStatus('warn', '未保存（競合）');
         showToast('⚠ 競合中。保存されていません。');
       }
-      ok=false;
     } else if (json.status === 'ok') {
       cloudUpdatedAt = json.updatedAt;
       updateSyncStatus('ok', '保存済み ' + fmtTime(json.updatedAt));
       showToast('☁ クラウドに保存しました');
-      ok=true;
     } else {
       throw new Error(json.error || '不明なエラー');
     }
   } catch(e) {
     updateSyncStatus('error', '保存失敗');
     showToast('❌ 保存失敗: ' + e.message);
-    ok=false;
   } finally {
     isSyncing = false;
     if(pendingSave){pendingSave=false;setTimeout(()=>cloudSave(),500);}
   }
-  return ok;
 }
 
 // ── クラウド読込 ──────────────────────────────────────────
@@ -6485,9 +6361,6 @@ async function cloudLoad(silent=false) {
       if (!silent) showToast('🔄 最新データを読み込みました');
       else         showToast('🔄 自動更新しました', 2000);
     } else {
-      // updatedAtが同じでも、設定系データ（部屋情報・自動部屋割り設定）は
-      // no-cors保存でupdatedAtが更新されないケースに備えて毎回反映する
-      applyRoomConfigOnly(json);
       if (!silent) showToast('✓ すでに最新です');
       updateSyncStatus('ok', '同期済み ' + fmtTime(cloudUpdatedAt));
     }
