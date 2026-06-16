@@ -806,7 +806,7 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   <div class="lg">
     <div class="li"><div class="lsq" style="background:#eef4fc;border-top:2px solid #185FA5;"></div>予約済み</div>
     <div class="li"><div class="lsq" style="background:#fce7f3;border-top:2px solid #d4537e;"></div>チェックイン済み</div>
-    <div class="li" style="font-size:10px;color:#aaa;">クリック: 編集 ／ 右クリック・長押し: チェックイン切替 ／ 空きセルダブルクリック: 追加 ／ ドラッグ: 移動</div>
+    <div class="li" style="font-size:10px;color:#aaa;">クリック: 編集 ／ 右クリック: チェックイン切替 ／ 空きセルダブルクリック: 追加 ／ ドラッグ: 移動</div>
   </div>
   </div><!-- /mobile-stats-area -->
   <div style="display:flex;gap:12px;align-items:flex-start;">
@@ -2797,14 +2797,40 @@ function openAutoAssignModal(){
   document.getElementById('auto-assign-modal').classList.add('open');
 }
 
-function saveAutoAssignPriority(){
+async function saveAutoAssignPriority(){
   document.querySelectorAll('#auto-assign-body select[data-room-id]').forEach(sel=>{
     roomPriorityMaster[Number(sel.dataset.roomId)]=Number(sel.value);
   });
   saveRoomPriorityLS();
-  autoSave(); // GASにも即時保存
   closeM('auto-assign-modal');
+  await saveRoomPriorityToCloud(); // 保存ボタン押下時に即時Driveへ反映（デバウンス待ちしない）
   showToast('🔀 自動部屋割り優先順位を保存しました');
+}
+// 自動部屋割り設定（roomPriorityMaster）をGoogle Drive（GAS経由）へ即時保存
+// 既存のsaveRoomSettingsToCloudと同じ「GET→該当セクションのみ差し替え→POST」方式
+async function saveRoomPriorityToCloud(){
+  if(!GAS_URL) return;
+  try{
+    let data={};
+    try{
+      const res=await fetch(GAS_URL+'?t='+Date.now());
+      data=await res.json();
+    }catch(getErr){
+      console.warn('最新データ取得に失敗、ローカルデータで保存:',getErr);
+      data=collectAllData();
+    }
+    data.roomPriorityMaster=roomPriorityMaster;
+    await fetch(GAS_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(data)
+    });
+    if(typeof updateSyncStatus==='function')updateSyncStatus('ok','自動部屋割り設定を保存しました');
+  }catch(e){
+    console.error('自動部屋割り設定のクラウド保存に失敗:',e);
+    showToast('⚠ クラウド保存に失敗しました（ローカルには保存済み）');
+  }
 }
 
 // ── スクロール制御フラグ ──────────────────────────────
@@ -3019,12 +3045,15 @@ function onFilterChange(key,checked){
   roomFilter[key]=checked;
   saveToLS();
   renderReg();
+  // 稼働率ページが表示中なら、分母（対象部屋の定員合計）も即時再計算して反映
+  if(document.getElementById('page-occupancy')?.classList.contains('active'))renderOcc();
 }
 function setAllRoomFilter(val){
   FILTER_GROUPS.forEach(g=>roomFilter[g.key]=val);
   saveToLS();
   renderFilterUI();
   renderReg();
+  if(document.getElementById('page-occupancy')?.classList.contains('active'))renderOcc();
 }
 // フィルタ済みのroom一覧を返す
 function filteredRooms(){
@@ -3078,7 +3107,10 @@ function renderReg(){
     // 別の charterAnchor が来たら別予約なので止める
     let nights=1;
     while(true){
-      const next=guestData[gk(month,gd.roomId,startDay+nights)];
+      const {m:_nm,d:_nd}=addDays(month,startDay,nights);
+      // 月跨ぎした場合は当月内のbookingには含めない（当月分のみ登録）
+      if(_nm!==month)break;
+      const next=guestData[gk(_nm,gd.roomId,_nd)];
       if(!next||!next.charter)break;       // charter でない → 終了
       if(next.charterAnchor)break;         // 次のアンカー = 別予約の開始 → 終了
       if(!next.cont)break;                 // cont でない = 別予約の先頭 → 終了
@@ -3142,6 +3174,7 @@ function renderReg(){
         +`</td>`;
 
       let rS=0,rM=0,rF=0,skip=0;
+      const _drawnDays=new Set(); // 描画済み（colspanで占有された日を含む）実日付の記録
       for(let d=1;d<=days;d++){
         if(d<skip)continue;
 
@@ -3171,6 +3204,14 @@ function renderReg(){
             delete guestData[gk(month,room.id,d)];
           }
         }
+        // 孤立した貸切cont（charter:true, anchor:false で charterDayMapに当該日のbookingが無い）
+        // → アンカーが当月に存在しない貸切後続セル。空きセルとして扱う（欠落防止）
+        if(_g&&_g.cont&&_g.charter&&!_g.charterAnchor){
+          const _hasBooking=charterKey&&charterDayMap[charterKey]&&charterDayMap[charterKey].has(d);
+          if(!_hasBooking){
+            delete guestData[gk(month,room.id,d)]; // 孤立貸切cont → 空きセル化
+          }
+        }
 
         // ── 貸切日の処理（charterDayMapから日付ごとの正しい予約データを取得）──
         if(charterKey&&charterDayMap[charterKey]&&charterDayMap[charterKey].has(d)){
@@ -3179,8 +3220,9 @@ function renderReg(){
 
           if(ri===0&&isAnchorDay){
             // グループ最初の部屋 × 予約開始日：rowspan でグループ全体をまとめる
-            const charterSpan=booking.nights;
+            const charterSpan=Math.min(booking.nights, days-d+1); // 月末を超えないようクランプ
             skip=d+charterSpan;
+            for(let _x=0;_x<charterSpan;_x++)_drawnDays.add(d+_x); // 占有日を記録
             const cMeta=booking.meta;
             // 売上：同一貸切予約の初回グループのみ加算（三重計上防止）
             const charterSalesKey=`${charterKey}:${booking.startDay}`;
@@ -3206,7 +3248,7 @@ function renderReg(){
                 : `<span class="c-price">¥${cMeta.price.toLocaleString()}</span>`
               : '';
             const timeChipC=cMeta.arrivalTime?`<span class="c-time">${cMeta.arrivalTime}</span>`:'';
-            const totalNightsC=charterSpan;
+            const totalNightsC=booking.nights;
             const nightsBadgeC=totalNightsC>1?`<span class="bdg c-nights">${totalNightsC}泊</span>`:'';
             const sexBadgeC=cMeta.sex?`<span class="bdg ${cMeta.sex==='男'?'bm':cMeta.sex==='女'?'bf':''}">${cMeta.sex}</span>`:'';
             const catLabelC=cg==='ANNEX'?'ANNEX🔒':'本館🔒';
@@ -3246,10 +3288,13 @@ function renderReg(){
               +`</div></td>`;
           } else if(ri===0&&!isAnchorDay){
             // 最初の部屋・後続日（rowspan結合済みのためスキップ）
-            skip=booking.startDay+booking.nights;
+            // booking.nightsは月跨ぎ絶対値の場合があるため当月内にクランプ
+            skip=d+Math.min(booking.startDay+booking.nights-d, days-d+1);
+            for(let _x=d;_x<skip;_x++)_drawnDays.add(_x);
           } else {
             // 2行目以降（rowspan結合済みのためスキップ）
-            skip=booking.startDay+booking.nights;
+            skip=d+Math.min(booking.startDay+booking.nights-d, days-d+1);
+            for(let _x=d;_x<skip;_x++)_drawnDays.add(_x);
           }
           continue;
         }
@@ -3263,8 +3308,9 @@ function renderReg(){
           const spanInMonth=findN(room.id,d,month); // colspan用（月内のみ）
           const allKeys=findAllKeys(room.id,month,d); // 全泊（月跨ぎ含む）
           const totalNights=allKeys.length;
-          const span=spanInMonth;
+          const span=Math.min(spanInMonth, days-d+1); // 月末を超えないようクランプ
           skip=d+span;
+          for(let _x=0;_x<span;_x++)_drawnDays.add(d+_x); // 占有日を記録
           const cin=isCheckedIn(g.status),scls=cin?'ci':'rv',ncls=cin?'gn ci':'gn';
           const isCash=g.pay==='現金';
           const isStripe=g.pay==='Stripe決済';
@@ -3332,13 +3378,7 @@ function renderReg(){
             +`style="${planStyle}" `
             +`ondragstart="onDS(event,'${k}')" `
             +`onclick="event.stopPropagation();cellClick(event,'${k}')" `
-            +`oncontextmenu="event.preventDefault();toggleCI('${k}')" `
-            +`onmousedown="startPress(event,'${k}')" `
-            +`onmouseup="endPress(event)" `
-            +`onmouseleave="endPress(event)" `
-            +`ontouchstart="startPress(event,'${k}')" `
-            +`ontouchend="endPress(event)" `
-            +`ontouchcancel="endPress(event)">`;
+            +`oncontextmenu="event.preventDefault();toggleCI('${k}')">`;
 
           // ── 上段：アイコン + 氏名 + 人数 + 支払 + 料金（1行）──
           const payLabel=isCash?'💴現金':isStripe?'Stripe':isBank?'振込':'事前';
@@ -3379,6 +3419,11 @@ function renderReg(){
 
           row+=`</div></td>`;
 
+        } else if(g&&g.cont&&!g.charter){
+          // 通常連泊の後続セル → アンカーのcolspanで既に描画済み → tdを出さない
+          // （この分岐が無いとどのifにも入らずtd欠落で列がズレる：過去の不具合の根本原因）
+          continue;
+
         } else if(!g||(g&&g.charter&&!g.charterAnchor)){
           // 空きセル（または貸切のcont行: rowspanで既に描画済みなのでスキップ）
           if(g&&g.charter)continue; // 貸切cont行はスキップ
@@ -3390,7 +3435,21 @@ function renderReg(){
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
           row+=`<div class="ec" ondblclick="event.stopPropagation();openAddAt(${room.id},${d})">—</div></td>`;
+          _drawnDays.add(d);
         }
+      }
+      // ── 堅牢化：未描画の日を実日付で補填（土日色も実日付で正確に）──
+      for(let d=1; d<=days; d++){
+        if(_drawnDays.has(d))continue; // 既に描画済み（colspan占有含む）
+        const _dw=gDow(year,month,d),_hl=isHoliday(year,month,d);
+        const _pbg=_dw===0||_hl?'rgba(255,240,240,.45)':_dw===6?'rgba(240,247,255,.45)':'';
+        const _pToday=(year===_ty&&month===_tm&&d===_td);
+        row+=`<td style="padding:0;${_pToday?'background:#FEF3CD;':_pbg?'background:'+_pbg:''};max-height:62px;" `
+          +`ondragover="event.preventDefault();this.classList.add('dt')" `
+          +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
+          +`ondrop="onDrop(event,${room.id},${d})">`
+          +`<div class="ec" ondblclick="event.stopPropagation();openAddAt(${room.id},${d})">—</div></td>`;
+        _drawnDays.add(d);
       }
       // フィルタONの部屋のみ売上・男女集計に加算
       if(roomFilter[grp.name]!==false){tS+=rS;tM+=rM;tF+=rF;}
@@ -4804,11 +4863,11 @@ function clearOccEdit(){
 }
 
 function getOccData(year,month){
-  // ③ 集計対象フィルタ適用
+  // ③ 集計対象フィルタ適用（名簿側と同一の「室数ベース」に統一：部屋数×日数を100%とする）
   const targetRooms=rooms.filter(r=>roomFilter[r.group]!==false);
-  const totalCap=targetRooms.reduce((s,r)=>s+r.cap,0);
+  const totalRoomCount=targetRooms.length;
   const days=gDays(year,month);
-  const maxCumul=totalCap*days; // 例: 30人×30日=900 が100%
+  const maxCumul=totalRoomCount*days; // 例: 30室×30日=900セルが100%（名簿側のtotalCellsと同一定義）
 
   // 実データあり
   if(occCumul[year]&&occCumul[year][month]){
@@ -4861,7 +4920,7 @@ function renderOcc(){
     const cur=getOccData(year,mi+1);
     const hasData=!!cur;
     const curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
-    const pct=cur&&curLast?Math.round(curLast/cur.max*100):null;
+    const pct=cur&&curLast?Math.round(curLast/cur.max*1000)/10:null;
     const isActive=mi+1===defaultMonth;
     const pctColor=pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc';
     return `<button id="occ-tab-${mi+1}" onclick="selectOccMonth(${mi+1})"
@@ -4896,10 +4955,15 @@ function selectOccMonth(month,year,cmpYear){
   const days=gDays(year,month);
   const curMax=cur?cur.max:null;
   const cmpMax=cmp?cmp.max:null;
-  const curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
-  const pct=curMax&&curLast?Math.round(curLast/curMax*100):null;
+  let curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
+  // 集計対象部屋フィルタのリアルタイム反映：
+  // 名簿（renderReg）が同じ年月を最後に描画していれば、その時点のフィルター後usedCellsで上書きする
+  if(window._lastRenderRegYear===year && window._lastRenderRegMonth===month && window._lastUsedCells!=null){
+    curLast=window._lastUsedCells;
+  }
+  const pct=curMax&&curLast!=null?Math.round(curLast/curMax*1000)/10:null;
   const cmpLast=cmp?cmp.data.filter(v=>v!=null).slice(-1)[0]:null;
-  const cmpPct=cmpMax&&cmpLast?Math.round(cmpLast/cmpMax*100):null;
+  const cmpPct=cmpMax&&cmpLast?Math.round(cmpLast/cmpMax*1000)/10:null;
   const dataTag=cur&&cur.isReal?'<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:6px;">実データ</span>':'<span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:1px 5px;border-radius:3px;margin-left:6px;">推計</span>';
 
   document.getElementById('occ-month-title').innerHTML=`${year}年 ${monthLabel} ${cur?dataTag:''}`;
@@ -6192,10 +6256,11 @@ function applyServerData(data) {
   if (data.cancelList) { cancelList = data.cancelList;  }
   if (data.roomSettings) { roomSettings = data.roomSettings; saveRoomSettingsLS(); }
   if (data.roomPriorityMaster && typeof data.roomPriorityMaster==='object') {
-    // GASの値とlocalStorageをマージ（localStorageを優先）
-    Object.entries(data.roomPriorityMaster).forEach(([id,pri])=>{
-      if(roomPriorityMaster[id]===undefined) roomPriorityMaster[Number(id)]=pri;
-    });
+    // Google Drive（GAS）側を常にマスターとして採用し、localStorageへ反映する
+    // （旧ロジック「ローカル優先」だと他端末の更新が反映されず同期不全の原因になっていた）
+    const merged={};
+    Object.entries(data.roomPriorityMaster).forEach(([id,pri])=>{ merged[Number(id)]=pri; });
+    roomPriorityMaster=merged;
     saveRoomPriorityLS();
   }
   if (data.rooms && Array.isArray(data.rooms) && data.rooms.length > 0) {
