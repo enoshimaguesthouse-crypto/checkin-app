@@ -4308,6 +4308,42 @@ function importAirhostCSV(text){
   showToast(msg);
   renderReg();autoSave();
 }
+// ── CSV取込：予約ID重複・変更検知ヘルパー ──────────────────
+function findExistingReservationInfo(resId){
+  if(!resId)return null;
+  let anchorKey=null,anchorG=null;
+  for(const k of Object.keys(guestData)){
+    const g=guestData[k];
+    if(g&&!g.cont&&String(g.reservationId)===String(resId)){anchorKey=k;anchorG=g;break;}
+  }
+  if(!anchorKey)return null;
+  const parts=anchorKey.split(':');
+  const month=parseInt(parts[0]),roomId=parseInt(parts[1]),day=parseInt(parts[2]);
+  const nights=Object.keys(guestData).filter(k=>{
+    const g=guestData[k];return g&&String(g.reservationId)===String(resId);
+  }).length;
+  return {key:anchorKey,data:anchorG,month,roomId,day,nights};
+}
+function detectReservationChanges(ex,incoming){
+  const changes=[];
+  if(ex.month!==incoming.checkinMonth || ex.day!==incoming.checkinDay) changes.push('\u65e5\u7a0b\u5909\u66f4');
+  else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights) changes.push('\u6cca\u6570\u5909\u66f4');
+  if(ex.data.guests!=null && incoming.guests!=null && Number(ex.data.guests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
+  if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) changes.push('\u6599\u91d1\u5909\u66f4');
+  if((ex.data.note||'')!==(incoming.note||'')) changes.push('\u5099\u8003\u5909\u66f4');
+  if((ex.data.phone||'')!==(incoming.phone||'')) changes.push('\u96fb\u8a71\u5909\u66f4');
+  if((ex.data.email||'')!==(incoming.email||'')) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
+  if((ex.data.address||'')!==(incoming.address||'')) changes.push('\u4f4f\u6240\u5909\u66f4');
+  return changes;
+}
+function clearReservationCells(resId){
+  if(!resId)return;
+  Object.keys(guestData).forEach(k=>{
+    const g=guestData[k];
+    if(g&&String(g.reservationId)===String(resId))delete guestData[k];
+  });
+}
+
 function importCSVText(text){
   // クォート内改行を考慮したレコード分割
   const records=splitCSVRecords(text);
@@ -4318,7 +4354,9 @@ function importCSVText(text){
     const v=cols[idx[key]];
     return (v===undefined||v===null||v==='NaN')?'':(v+'').trim();
   };
-  let imported=0,cancelled=0,skipped=0,parkAdded=0,surfAdded=0,charterCount=0,unassignedCount=0;
+  let imported=0,cancelled=0,skipped=0,parkAdded=0,surfAdded=0,charterCount=0,unassignedCount=0,updatedCount=0;
+  const updatedList=[]; // 変更反映された予約 {name,reservationId,changes:[]}
+  const dupSkipList=[]; // 完全重複でスキップした予約 {name,reservationId}
   const monthCounts={};
   // 貸切の重複予約番号を管理（同一予約番号は1回だけ取り込む）
   const processedCharter=new Set();
@@ -4328,6 +4366,15 @@ function importCSVText(text){
       .filter(g=>g&&g.reservationId&&!g.cont)
       .map(g=>[String(g.reservationId),true])
   );
+  // 名簿上に既に存在する予約IDが未割当エラーキューにも残っていれば、
+  // 古いエラー表示の残骸として一括削除する（過去の不具合・再取込で解消済みのケース）
+  if(existingIdMap.size>0 && unassignedReservations.length>0){
+    const beforeLen=unassignedReservations.length;
+    unassignedReservations=unassignedReservations.filter(u=>!(u.reservationId&&existingIdMap.has(String(u.reservationId))));
+    if(unassignedReservations.length<beforeLen){
+      console.log(`[未割当キュー清掃] 名簿に既存の予約ID ${beforeLen-unassignedReservations.length}件を未割当エラーから除去しました`);
+    }
+  }
 
   for(let li=1;li<records.length;li++){
     const cols=parseCSVLine(records[li]);if(cols.length<5)continue;
@@ -4457,6 +4504,74 @@ function importCSVText(text){
     // 貸切の区分は専用値
     if(isCharter)cat=charterType;
 
+    // ─── 連絡先・住所・予約ID（部屋割当より前に必要なため早期定義） ──────
+    const addr1=get(cols,'住所1')||'';
+    const natGuessed=natFromAddress(addr1);
+    const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
+    const phone=String(get(cols,'電話番号')||'').trim();
+    let address=String(addr1).trim();
+    if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
+      const biko2addr=String(get(cols,'備考2')||'').trim();
+      if(biko2addr){
+        address=biko2addr.replace(/^\d+[:：]\s*/,'').trim();
+      }
+    }
+    const _emailRe=/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
+    let email=String(
+      get(cols,'メールアドレス')||get(cols,'メール')||
+      get(cols,'Email')||get(cols,'E-mail')||get(cols,'email')||get(cols,'EMAIL')||''
+    ).trim();
+    if(!email){
+      const biko2=String(get(cols,'備考2')||get(cols,'メモ2')||'');
+      const m2=biko2.match(_emailRe);
+      if(m2) email=m2[0];
+    }
+    const guestName=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
+    if(!guestName){skipped++;continue;}
+
+    // ─── 予約ID 3分岐判定（部屋割当の前に実施）─────────────────
+    // ★重要：自分自身の既存セルが「空室なし」原因にならないよう、
+    //   部屋を検索する前に既存予約の重複・変更を判定する
+    if(!isCharter && reservationId){
+      const existing=findExistingReservationInfo(reservationId);
+      if(existing){
+        // 名簿上に既に存在する＝以前の取込エラーは解消済みのはず。
+        // 残骸として未割当キューに残っていれば削除する（古いエラー表示を防ぐ）
+        const staleIdx=unassignedReservations.findIndex(u=>u.reservationId&&String(u.reservationId)===String(reservationId));
+        if(staleIdx>=0)unassignedReservations.splice(staleIdx,1);
+        const changes=detectReservationChanges(existing,{
+          checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
+          price,note,phone,email,address
+        });
+        if(changes.length===0){
+          // パターンB：完全重複 → スキップ（部屋検索すら不要）
+          dupSkipList.push({name:guestName,reservationId});
+          skipped++;continue;
+        }
+        // パターンC：変更あり → 既存セルを先に削除してから後続の部屋割当へ進む
+        // （削除しておくことで、自分の古いセルが空室判定の邪魔にならない）
+        clearReservationCells(reservationId);
+        updatedCount++;
+        updatedList.push({name:guestName,reservationId,changes,status:'反映'});
+      } else {
+        // 既存予約IDなし→新規。ただし手入力等で予約IDなしの同一予約が
+        // カレンダー上にあれば重複スキップ（氏名＋チェックイン日で判定）
+        const sameByNameDate=Object.values(guestData).some(d=>
+          d&&!d.cont&&d.name===guestName&&d.day===cd&&!d.reservationId
+        );
+        if(sameByNameDate){
+          dupSkipList.push({name:guestName,reservationId});
+          skipped++;continue;
+        }
+      }
+    } else if(!isCharter && !reservationId && yoyakuNo){
+      // 予約IDなし：氏名+日付で重複チェック（reservationIdなしの既存のみ）
+      const alreadyExists=Object.values(guestData).some(d=>
+        d&&d.name===guestName&&d.day===cd&&!d.cont&&!d.reservationId
+      );
+      if(alreadyExists){skipped++;continue;}
+    }
+
     // ─── 部屋割当 ────────────────────────────────────────
     let rid=0;
     let charterGroupRooms=[];
@@ -4476,14 +4591,12 @@ function importCSVText(text){
 
     // 自動割当に失敗（空室なし）→ 未割当キューへ退避（既存予約を上書きしない）
     if(rid===null){
-      const guestNameEarly=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
-      if(guestNameEarly){
-        const resId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
+      if(guestName){
         // 既に未割当キューにある同一予約は重複追加しない
-        if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===resId&&resId)){
+        if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===reservationId&&reservationId)){
           unassignedReservations.push({
-            name:guestNameEarly,
-            reservationId:resId,
+            name:guestName,
+            reservationId,
             yoyakuNo:yoyakuNo||'',
             checkinMonth:cm,checkinDay:cd,nights,
             guests:guestCount,
@@ -4492,6 +4605,11 @@ function importCSVText(text){
             reason:_judgeAssignError(effectiveType,cm,cd,nights,guestCount),
             addedAt:new Date().toISOString(),
           });
+          if(updatedList.length && updatedList[updatedList.length-1].reservationId===reservationId){
+            // 変更反映からの競合（日程変更で空室がなくなったケース）は理由を上書き
+            unassignedReservations[unassignedReservations.length-1].reason='日程変更による部屋競合';
+            updatedList[updatedList.length-1].status='競合エラー';
+          }
         }
       }
       unassignedCount++;
@@ -4499,35 +4617,6 @@ function importCSVText(text){
     }
 
     // ─── guestData への書き込み ───────────────────────────
-    const addr1=get(cols,'住所1')||'';
-    const natGuessed=natFromAddress(addr1);
-    const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
-    // 連絡先・住所を独立フィールドへ
-    const phone=String(get(cols,'電話番号')||'').trim();
-    // 住所：TY始まりの予約は住所1が空の場合に備考2から抽出
-    let address=String(addr1).trim();
-    if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
-      const biko2addr=String(get(cols,'備考2')||'').trim();
-      if(biko2addr){
-        // 先頭の「数字+コロン（全角半角）+スペース」を除去
-        address=biko2addr.replace(/^\d+[:：]\s*/,'').trim();
-      }
-    }
-    // メールアドレス：複数列名に対応 + 一休.com備考2からの正規表現抽出
-    const _emailRe=/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
-    let email=String(
-      get(cols,'メールアドレス')||get(cols,'メール')||
-      get(cols,'Email')||get(cols,'E-mail')||get(cols,'email')||get(cols,'EMAIL')||''
-    ).trim();
-    if(!email){
-      // 一休.com：備考2(W列相当)にメールが埋め込まれるケース
-      const biko2=String(get(cols,'備考2')||get(cols,'メモ2')||'');
-      const m2=biko2.match(_emailRe);
-      if(m2) email=m2[0];
-    }
-    const guestName=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
-    // ゲスト名が空欄の行はスキップ（仮データ・無効行）
-    if(!guestName){skipped++;continue;}
     const gBase={
       name:guestName,
       site,pay:payMethod,price,nat:natGuessed,sex,cat,note,
@@ -4555,17 +4644,9 @@ function importCSVText(text){
       });
       charterCount++;
     } else {
-      // 通常予約：予約IDで重複チェック（Mapで高速化）
-      if(reservationId){
-        if(existingIdMap.has(String(reservationId))){skipped++;continue;}
-        existingIdMap.set(String(reservationId),true); // 今回取込分を登録
-      } else if(yoyakuNo){
-        // reservationIdなし：氏名+日付で重複チェック（ただしreservationIdなしの既存のみ）
-        const alreadyExists=Object.values(guestData).some(d=>
-          d&&d.name===gBase.name&&d.day===cd&&!d.cont&&!d.reservationId
-        );
-        if(alreadyExists){skipped++;continue;}
-      }
+      // 通常予約：3分岐判定（重複スキップ・変更検知）は部屋割当より前で完了済み。
+      // ここでは既存IDの記録のみ行う（次の行との重複防止のため）。
+      if(reservationId)existingIdMap.set(String(reservationId),true);
       // ドミトリーかつ大人2名以上 → 人数分のベッドに展開
       const isDorm=/ドミトリー/.test(typeName);
       const expandCount=(isDorm&&guestCount>=2)?guestCount:1;
@@ -4644,11 +4725,25 @@ function importCSVText(text){
   const monthSummary=Object.entries(monthCounts).sort((a,b)=>a[0]-b[0]).map(([m,c])=>`${m}月:${c}件`).join('、');
   document.getElementById('import-result').innerHTML=`<div class="import-result">
     ✓ 取込完了：<strong>${imported}件</strong>（${monthSummary}）、<strong>${cancelled}件</strong>キャンセル除外
+    ${updatedCount>0?`<br>🔄 変更反映：<strong>${updatedCount}件</strong>`:''}
+    ${dupSkipList.length>0?`<br>ℹ 重複スキップ：<strong>${dupSkipList.length}件</strong>`:''}
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
     ${charterCount>0?`<br>🔒 貸切予約 <strong>${charterCount}件</strong>検出`:''}
     ${unassignedCount>0?`<br><span style="color:#c0392b;font-weight:700;">⚠ 割当エラー：${unassignedCount}件（名簿へ未反映・下記から手動割当してください）</span>`:''}
-  </div>${skipped>0?`<div class="import-warn">※ 重複・2泊目以降（${skipped}行）はスキップ</div>`:''}`;
+  </div>${skipped>0?`<div class="import-warn">※ 2泊目以降（${skipped}行）はスキップ</div>`:''}
+  ${updatedList.length>0?`<div class="import-changes" style="background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#7a5800;">🔄 予約内容の変更（${updatedList.length}件）</div>
+    ${updatedList.map(u=>`<div style="padding:3px 0;border-bottom:1px dashed #eee;">
+      <strong>${u.name}</strong> <span style="color:#888;">#${u.reservationId||''}</span>
+      <span style="margin-left:8px;color:#7a5800;">${u.changes.join('・')}</span>
+      ${u.status==='競合エラー'?'<span style="color:#c0392b;font-weight:700;margin-left:8px;">⚠ 競合（手動割当が必要）</span>':''}
+    </div>`).join('')}
+  </div>`:''}
+  ${dupSkipList.length>0?`<div class="import-dups" style="background:#f0f4f8;border-left:4px solid #90a4ae;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#546e7a;">ℹ 重複スキップ（${dupSkipList.length}件・変更なしのため未処理）</div>
+    <div style="color:#546e7a;font-size:11px;">${dupSkipList.map(d=>`${d.name} <span style="color:#999;">#${d.reservationId||''}</span>`).join(' / ')}</div>
+  </div>`:''}`;
   renderUnassignedPanel();
   renderReg();autoSave();
 }
