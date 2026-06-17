@@ -6408,6 +6408,36 @@ function applyServerData(data) {
 async function cloudSave() {
   if (!GAS_URL) { showToast('⚠ GAS URLが設定されていません'); return; }
   if (isSyncing) return;
+
+  // ╔════════════════════════════════════════════════════╗
+  // ║ 【重要】空データ保存防止：guestDataが空のクラウド保存は禁止 ║
+  // ╚════════════════════════════════════════════════════╝
+  // 起動直後（cloudLoad前）や初期化失敗時にguestDataが空のまま保存されると、
+  // クラウド上の予約データを全消去してしまう重大事故になる。
+  // 通常運用では予約が0件になることはあり得ないため、空ならブロックする。
+  const guestCount = guestData ? Object.keys(guestData).length : 0;
+  if (guestCount === 0) {
+    console.error('[安全装置] guestData が空のためクラウド保存を中止しました。意図しないデータ消去を防止します。', {
+      guestData, cancelListLen: (cancelList||[]).length, staffNotesLen: (staffNotes||[]).length
+    });
+    updateSyncStatus('warn', '保存スキップ（予約データ未読込）');
+    showToast('⚠ 予約データが0件のため、クラウド保存をスキップしました（安全装置）', 5000);
+    return;
+  }
+  // さらに念のため：直前にクラウドから読み込んだ件数より極端に減っていれば確認を求める
+  if (typeof cloudUpdatedAt !== 'undefined' && cloudUpdatedAt && window._lastLoadedGuestCount != null) {
+    const prevCount = window._lastLoadedGuestCount;
+    // 50%以上減っているなら異常の可能性
+    if (prevCount >= 10 && guestCount < prevCount * 0.5) {
+      const ok = confirm(`⚠ 予約データが大幅に減少しています（${prevCount}件 → ${guestCount}件）。\nこのままクラウドに保存しますか？\n\n意図しない削除の場合は「キャンセル」してください。`);
+      if (!ok) {
+        updateSyncStatus('warn', '保存中止（ユーザー判断）');
+        showToast('⚠ クラウド保存を中止しました');
+        return;
+      }
+    }
+  }
+
   isSyncing = true;
   updateSyncStatus('saving', '保存中...');
   try {
@@ -6453,9 +6483,15 @@ async function cloudLoad(silent=false) {
     // サーバーが新しい場合のみ反映
     if (!cloudUpdatedAt || json.updatedAt !== cloudUpdatedAt) {
       applyServerData(json);
+      // クラウドから読み込んだ予約件数を基準値として記録（cloudSaveの異常検知用）
+      window._lastLoadedGuestCount = guestData ? Object.keys(guestData).length : 0;
       if (!silent) showToast('🔄 最新データを読み込みました');
       else         showToast('🔄 自動更新しました', 2000);
     } else {
+      // updatedAt変化なしでも基準値が未設定なら初期化
+      if(window._lastLoadedGuestCount==null){
+        window._lastLoadedGuestCount = guestData ? Object.keys(guestData).length : 0;
+      }
       if (!silent) showToast('✓ すでに最新です');
       updateSyncStatus('ok', '同期済み ' + fmtTime(cloudUpdatedAt));
     }
