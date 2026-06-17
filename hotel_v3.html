@@ -724,10 +724,10 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
       <div style="display:flex;align-items:center;gap:4px;">
-        <button class="btn" onclick="stepMonth(-1)" style="padding:5px 10px;font-size:15px;line-height:1;" title="前の月">◀</button>
+        <button class="btn" onclick="stepMonth(-1)" title="前の月">◀</button>
         <span id="month-display" style="font-size:13px;font-weight:600;min-width:88px;text-align:center;color:var(--text);cursor:default;">2026年 6月</span>
-        <button class="btn" onclick="stepMonth(1)" style="padding:5px 10px;font-size:15px;line-height:1;" title="次の月">▶</button>
-        <button class="btn" onclick="goToday()" style="font-size:11px;padding:4px 9px;margin-left:2px;" title="今日の日付へ">今日</button>
+        <button class="btn" onclick="stepMonth(1)" title="次の月">▶</button>
+        <button class="btn" onclick="goToday()" title="今日の日付へ">今日</button>
       </div>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
@@ -739,7 +739,7 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
       <button class="btn btn-blue" onclick="openAdd()">＋ 予約追加</button>
       <button class="btn" style="background:var(--sunset-lt);color:#7d4c00;border-color:var(--sunset);" onclick="openCharterNew()">＋ 🔒 貸切追加</button>
       <button class="btn" id="mobile-stats-toggle-btn" onclick="toggleMobileStats()" title="集計・ダッシュボードの表示/非表示">
-        <span id="mobile-stats-icon">▼</span> <span id="mobile-stats-label">集計・ダッシュボードを表示</span>
+        <span id="mobile-stats-icon">▼</span> <span id="mobile-stats-label">集計</span>
       </button>
       <button class="btn btn-red" id="bulk-delete-btn" style="display:none;" onclick="bulkDelete()">🗑 一括削除 <span id="bulk-count"></span></button>
       <button class="btn" onclick="exportCSV()">CSV出力</button>
@@ -2721,10 +2721,8 @@ function toggleSB(){sbOpen=!sbOpen;document.getElementById('sb').classList.toggl
 function toggleMobileStats(){
   const area=document.getElementById('mobile-stats-area');
   const icon=document.getElementById('mobile-stats-icon');
-  const label=document.getElementById('mobile-stats-label');
   const open=area.classList.toggle('open');
   icon.textContent=open?'▲':'▼';
-  label.textContent=open?'集計・ダッシュボードを隠す':'集計・ダッシュボードを表示';
 }
 // ── 自動部屋割り優先順位マスター ──
 // { roomId: priority(number) }  初期値は全1
