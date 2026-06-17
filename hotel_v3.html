@@ -738,31 +738,16 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
       </select>
       <button class="btn btn-blue" onclick="openAdd()">＋ 予約追加</button>
       <button class="btn" style="background:var(--sunset-lt);color:#7d4c00;border-color:var(--sunset);" onclick="openCharterNew()">＋ 🔒 貸切追加</button>
+      <button class="btn" id="mobile-stats-toggle-btn" onclick="toggleMobileStats()" title="集計・ダッシュボードの表示/非表示">
+        <span id="mobile-stats-icon">▼</span> <span id="mobile-stats-label">集計・ダッシュボードを表示</span>
+      </button>
       <button class="btn btn-red" id="bulk-delete-btn" style="display:none;" onclick="bulkDelete()">🗑 一括削除 <span id="bulk-count"></span></button>
-      <div style="position:relative;display:inline-block;">
-        <button class="btn" onclick="toggleFilterPanel(event)">集計対象 ▾</button>
-        <div id="filter-panel" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:50;background:var(--white);border:1.5px solid var(--sand-border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:12px 16px;min-width:300px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;">集計対象部屋</span>
-            <div style="display:flex;gap:5px;">
-              <button class="btn btn-xs" onclick="setAllRoomFilter(true)">全選択</button>
-              <button class="btn btn-xs" onclick="setAllRoomFilter(false)">全解除</button>
-            </div>
-          </div>
-          <div id="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;"></div>
-        </div>
-      </div>
       <button class="btn" onclick="exportCSV()">CSV出力</button>
       <button class="btn" id="undo-btn" onclick="undoHistory()" title="元に戻す (Ctrl+Z)" style="opacity:.4;" disabled>↶</button>
       <button class="btn" id="redo-btn" onclick="redoHistory()" title="やり直す (Ctrl+Y)" style="opacity:.4;" disabled>↷</button>
     </div>
   </div>
-  <!-- PC・スマホ共通の折りたたみトグル -->
-  <div id="mobile-stats-toggle" style="margin-bottom:6px;">
-    <button onclick="toggleMobileStats()" style="width:100%;padding:5px;font-size:11px;background:var(--sand);border:1px solid var(--sand-border);border-radius:var(--radius-sm);cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;">
-      <span id="mobile-stats-icon">▼</span><span id="mobile-stats-label">集計・ダッシュボードを表示</span>
-    </button>
-  </div>
+  <!-- 集計・ダッシュボードトグルはヘッダーに移動済み -->
   <div id="mobile-stats-area">
   <div id="reg-stats-row" style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
     <div class="sc" style="flex:1;min-width:0;">
@@ -797,6 +782,19 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
       </div>
       <div style="margin-top:5px;height:5px;background:#f0ede6;border-radius:99px;overflow:hidden;">
         <div id="s-progress-bar" style="height:100%;border-radius:99px;background:#185FA5;transition:width .3s;width:0%;"></div>
+      </div>
+    </div>
+    <div style="position:relative;display:flex;align-items:stretch;flex-shrink:0;">
+      <button class="btn" onclick="toggleFilterPanel(event)" style="height:100%;white-space:nowrap;">集計対象 ▾</button>
+      <div id="filter-panel" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:50;background:var(--white);border:1.5px solid var(--sand-border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:12px 16px;min-width:300px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;">集計対象部屋</span>
+          <div style="display:flex;gap:5px;">
+            <button class="btn btn-xs" onclick="setAllRoomFilter(true)">全選択</button>
+            <button class="btn btn-xs" onclick="setAllRoomFilter(false)">全解除</button>
+          </div>
+        </div>
+        <div id="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;"></div>
       </div>
     </div>
   </div>
@@ -6192,6 +6190,7 @@ function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
+    budgets,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -6336,6 +6335,15 @@ function applyServerData(data) {
     // no を文字列として正規化（旧データの数値対応）
     rooms.forEach(r=>{ r.no = String(r.no ?? ''); });
     nextRoomId = Math.max(...rooms.map(r=>r.id||0)) + 1;
+  }
+  if (data.budgets && typeof data.budgets==='object'){
+    // 月別予算：クラウドの値で完全に上書き（キーを数値に正規化）
+    const b={};
+    for(let m=1;m<=12;m++){
+      const v=data.budgets[m]??data.budgets[String(m)];
+      if(v!=null) b[m]=Number(v)||0;
+    }
+    if(Object.keys(b).length>0)budgets=b;
   }
   if (data.parkData){
     parkData=data.parkData;
@@ -6601,7 +6609,8 @@ function saveToLS(){
       localStorage.setItem('hotel_snTypes',JSON.stringify(snTypes));
       localStorage.setItem('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
       localStorage.setItem('hotel_roomFilter',JSON.stringify(roomFilter));
-      localStorage.setItem('hotel_rooms',JSON.stringify(rooms));}
+      localStorage.setItem('hotel_rooms',JSON.stringify(rooms));
+      localStorage.setItem('hotel_budgets',JSON.stringify(budgets));}
   catch(e){}
 }
 function loadFromLS(){
@@ -6611,6 +6620,10 @@ function loadFromLS(){
     const t=localStorage.getItem('hotel_snTypes');if(t)snTypes=JSON.parse(t);
     rankAPanelHidden=localStorage.getItem('hotel_rankAPanelHidden')==='1';
     const rf=localStorage.getItem('hotel_roomFilter');if(rf){const parsed=JSON.parse(rf);FILTER_GROUPS.forEach(g=>{if(parsed[g.key]!==undefined)roomFilter[g.key]=parsed[g.key];});}
+    const bg=localStorage.getItem('hotel_budgets');if(bg){
+      const parsed=JSON.parse(bg);
+      for(let m=1;m<=12;m++){if(parsed[m]!=null)budgets[m]=Number(parsed[m])||0;}
+    }
   }catch(e){}
 }
 function openSNTypeEdit(){
@@ -6892,6 +6905,9 @@ function saveBudget(){
   }
   closeM('budget-modal');
   renderReg();
+  saveToLS();
+  cloudSave(); // TODO・部屋設定と同じ共通クラウド保存経路を使用
+  showToast('💰 月別予算を保存しました');
 }
 
 // ============================================================
