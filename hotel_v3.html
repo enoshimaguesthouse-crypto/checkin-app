@@ -6522,9 +6522,9 @@ function renderRankAPanel(){
   }
   el.innerHTML=items.map(n=>{
     const ts=getSNTypeStyle(n.type);
-    return `<div class="rank-a-card${n.done?' done':''}">
+    return `<div class="rank-a-card${n.done?' done':''}" onclick="editSN(${n.id})" style="cursor:pointer;">
       <div style="display:flex;align-items:flex-start;gap:7px;">
-        <div onclick="toggleSN(${n.id});renderRankAPanel();"
+        <div onclick="event.stopPropagation();toggleSN(${n.id});renderRankAPanel();"
           style="width:18px;height:18px;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:2px;
           border:2px solid ${n.done?'var(--seaglass)':'#E24B4A'};
           background:${n.done?'var(--seaglass)':'var(--white)'};
