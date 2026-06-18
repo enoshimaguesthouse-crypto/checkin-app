@@ -69,8 +69,8 @@ body{
 #reg-scroll{
   overflow-x:auto;
   overflow-y:auto;
-  max-height:calc(100vh - 220px);         /* フォールバック */
-  max-height:calc(100dvh - 180px);        /* Android Chrome 対応 */
+  max-height:calc(100vh - 80px);          /* フォールバック */
+  max-height:calc(100dvh - 60px);         /* Android Chrome 対応 */
   -webkit-overflow-scrolling:touch;
 }
 .tw{
@@ -6651,7 +6651,7 @@ function saveSNType(){
     const bg=border+'22';
     return{label,icon,color:border,bg,border};
   }).filter(t=>t.label);
-  closeM('sn-type-modal');renderStaffNotes();
+  closeM('sn-type-modal');renderStaffNotes();saveToLS();autoSave();
 }
 // スタッフ名編集
 function openSNStaffEdit(){
@@ -6669,7 +6669,7 @@ function saveSNStaff(){
     const el=document.getElementById(`sn-staff-${i}`);
     return el?el.value.trim()||`スタッフ${i+1}`:`スタッフ${i+1}`;
   }).filter(Boolean);
-  closeM('sn-staff-modal');renderStaffNotes();
+  closeM('sn-staff-modal');renderStaffNotes();saveToLS();autoSave();
 }
 // 旧TODO互換
 function renderTodos(){renderStaffNotes();}
