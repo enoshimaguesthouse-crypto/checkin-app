@@ -4173,7 +4173,10 @@ function renderReg(){
       if(isCurrentMonth){
         const todayTh=document.getElementById('th-today');
         if(todayTh){
-          const target=todayTh.offsetLeft-(scEl.offsetWidth/2)+(todayTh.offsetWidth/2);
+          // モバイルは今日列を左端に揃える、PCは中央寄せ
+          const target=isMob
+            ? todayTh.offsetLeft-C1-C2
+            : todayTh.offsetLeft-(scEl.offsetWidth/2)+(todayTh.offsetWidth/2);
           scEl.scrollLeft=Math.max(0,target);
         }
       } else {
