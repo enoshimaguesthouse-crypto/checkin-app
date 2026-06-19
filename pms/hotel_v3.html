@@ -2365,6 +2365,7 @@ function getCellIcons(g){
 let selectedKeys=new Set();
 
 function cellClick(e,k){
+  if(currentRole==='reception')return;
   if(e.ctrlKey||e.metaKey){
     // Ctrl+クリック：複数選択トグル
     if(selectedKeys.has(k)){
@@ -4187,6 +4188,7 @@ function renderReg(){
 // チェックイン状態トグル（右クリック / 長押し）
 let pressTimer=null;
 function toggleCI(k){
+  if(currentRole==='reception')return;
   const g=guestData[k];if(!g)return;
   const month=parseInt(document.getElementById('sel-month').value);
   const newStatus=isCheckedIn(g.status)?'reserved':'checked_in';
