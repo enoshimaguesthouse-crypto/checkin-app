@@ -1842,11 +1842,11 @@ function natFlag(nat){
 // autoAction: 'park'=駐車場, 'surf'=サーフィン, null=なし
 const PLAN_RULES=[
   {keyword:'えのすぱ', icon:'♨',  noteTag:'えのすぱ',           checkboxId:'f-enospa', autoAction:null, cellBorder:'#9370DB', cellBg:'#f5f0ff'},
-  {keyword:'えのすい', icon:'🐬', noteTag:'えのすい',           checkboxId:'f-enosui', autoAction:null, cellBorder:'#2196F3', cellBg:'#EBF5FF'},
+  {keyword:'えのすい', icon:'🐬', noteTag:'えのすい',           checkboxId:'f-enosui', autoAction:null, cellBorder:'#7B1FA2', cellBg:'#F3E5F5'},
   {keyword:'和食',     icon:'🍙', noteTag:'和食',               checkboxId:'f-wshoku', autoAction:null, cellBorder:'#FF8F00', cellBg:'#FFF8E1'},
   {keyword:'洋食',     icon:'🍳', noteTag:'洋食',               checkboxId:'f-yshoku', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF'},
   {keyword:'レイトチェックアウト', icon:'🌙', noteTag:'レイトチェックアウト', checkboxId:'f-late',   autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6'},
-  {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#00BCD4', cellBg:'#E0F7FA'},
+  {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#E65100', cellBg:'#FFF3E0'},
 ];
 
 // 月別・合計宿泊者数（各月のXX日時点の累計宿泊者数）— 実データ投入
@@ -4497,6 +4497,25 @@ function importCSVText(text){
     if(isCharter&&yoyakuNo&&processedCharter.has(yoyakuNo)){skipped++;continue;}
     if(isCharter&&yoyakuNo)processedCharter.add(yoyakuNo);
 
+    // ─── 貸切変更検知（人数・金額・泊数の変更を反映）──────────────
+    if(isCharter&&reservationId){
+      const exCharter=findExistingReservationInfo(reservationId);
+      if(exCharter){
+        const changes=detectReservationChanges(exCharter,{
+          checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
+          price,note:'',phone:'',email:'',address:''
+        });
+        if(changes.length===0){
+          dupSkipList.push({name:guestName,reservationId});
+          skipped++;continue;
+        }
+        // 変更あり → 既存貸切セルを全削除して再書き込みへ
+        clearReservationCells(reservationId);
+        updatedCount++;
+        updatedList.push({name:guestName,reservationId,changes,status:'反映'});
+      }
+    }
+
     // 貸切の区分は専用値
     if(isCharter)cat=charterType;
 
@@ -6188,7 +6207,7 @@ function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
-    budgets,
+    budgets,staffNames,snTypes,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -6361,6 +6380,12 @@ function applyServerData(data) {
   if (data.staffNotes) {
     staffNotes = data.staffNotes;
     nextSnId = staffNotes.reduce((m,x)=>Math.max(m,(x.id||0)+1), 0);
+  }
+  if (data.staffNames && Array.isArray(data.staffNames) && data.staffNames.length > 0) {
+    staffNames = data.staffNames;
+  }
+  if (data.snTypes && Array.isArray(data.snTypes) && data.snTypes.length > 0) {
+    snTypes = data.snTypes;
   }
   if (data.cleaningData){ Object.assign(cleaningData, data.cleaningData); }
   if (data.salesData){
@@ -6562,23 +6587,31 @@ function renderRankAPanel(){
     el.innerHTML=`<div style="font-size:11px;color:var(--muted);padding:8px 4px;text-align:center;">Aランクはありません</div>`;
     return;
   }
+  const RS={A:{bg:'#FCEBEB',color:'#A32D2D',border:'#E24B4A'},B:{bg:'#FAEEDA',color:'#854F0B',border:'#EF9F27'},C:{bg:'#F1EFE8',color:'#5F5E5A',border:'#B4B2A9'}};
   el.innerHTML=items.map(n=>{
     const ts=getSNTypeStyle(n.type);
-    return `<div class="rank-a-card${n.done?' done':''}" onclick="editSN(${n.id})" style="cursor:pointer;">
-      <div style="display:flex;align-items:flex-start;gap:7px;">
+    const rs=RS[n.rank||'C'];
+    const borderColor=n.done?'#B4B2A9':ts.border;
+    return `<div style="background:var(--white);border:1.5px solid ${borderColor}44;border-left:4px solid ${borderColor};border-radius:var(--radius-sm);padding:8px 9px;margin-bottom:7px;opacity:${n.done?0.55:1};cursor:pointer;"
+      onclick="editSN(${n.id})">
+      <div style="display:flex;align-items:flex-start;gap:6px;">
         <div onclick="event.stopPropagation();toggleSN(${n.id});renderRankAPanel();"
-          style="width:18px;height:18px;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:2px;
-          border:2px solid ${n.done?'var(--seaglass)':'#E24B4A'};
+          style="width:16px;height:16px;border-radius:4px;flex-shrink:0;margin-top:2px;cursor:pointer;
+          border:2px solid ${n.done?'var(--seaglass)':'var(--sand-border)'};
           background:${n.done?'var(--seaglass)':'var(--white)'};
           display:flex;align-items:center;justify-content:center;">
-          ${n.done?'<span style="color:#fff;font-size:11px;line-height:1;">✓</span>':''}
+          ${n.done?'<span style="color:#fff;font-size:9px;line-height:1;">✓</span>':''}
         </div>
         <div style="flex:1;min-width:0;">
-          <div class="rank-a-title${n.done?' done':''}">${n.title||n.text||''}</div>
-          ${n.detail?`<div class="rank-a-detail">${n.detail}</div>`:''}
-          <div class="rank-a-foot">
-            <span class="rank-a-type" style="${ts.badge}">${ts.label}</span>
-            <span style="font-size:10px;color:var(--light);margin-left:auto;">${n.author}</span>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;background:${rs.bg};color:${rs.color};">Rank ${n.rank||'C'}</span>
+            <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;${ts.badge}">${ts.label}</span>
+          </div>
+          <div style="font-size:12px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:${n.detail?'3px':'0'};">${n.title||n.text||''}</div>
+          ${n.detail?`<div style="font-size:10.5px;color:var(--muted);line-height:1.5;white-space:pre-wrap;">${n.detail}</div>`:''}
+          <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+            <span style="font-size:10px;font-weight:600;color:var(--ink);">${n.author}</span>
+            <span style="font-size:10px;color:var(--muted);">${n.created}</span>
           </div>
         </div>
       </div>
