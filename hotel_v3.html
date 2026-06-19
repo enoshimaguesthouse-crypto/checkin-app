@@ -1235,8 +1235,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     <button class="park-nav-btn" onclick="parkPrev()">&#8249;</button>
     <span id="park-month-label" style="font-size:14px;font-weight:600;min-width:100px;text-align:center;"></span>
     <button class="park-nav-btn" onclick="parkNext()">&#8250;</button>
-    <span style="font-size:12px;color:#666;margin-left:12px;">今月合計：<strong id="park-total">¥0</strong></span>
   </div>
+  <div id="park-summary" style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;"></div>
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
     <div class="park-day-header" style="color:#c0392b;">日</div>
     <div class="park-day-header">月</div><div class="park-day-header">火</div>
@@ -5886,7 +5886,28 @@ function renderParking(){
   const trail=(7-(firstDay+days)%7)%7;
   for(let i=0;i<trail;i++)html+=`<div class="park-cell other-month"></div>`;
   document.getElementById('park-grid').innerHTML=html;
-  document.getElementById('park-total').textContent='¥'+monthTotal.toLocaleString();
+  // サマリーチップ
+  let manualTotal=0,manualCnt=0,autoCnt=0,autoTotal=0;
+  Object.values(parkData).forEach(entries=>(entries||[]).forEach(e=>{
+    if(e.type==='surf-auto')return;
+    const ym=Object.keys(parkData).find(k=>parkData[k]===entries)||'';
+    // 当月分のみ集計（park-gridで使ったmonthTotalと同じ範囲）
+  }));
+  // 当月分のみ再集計
+  manualTotal=0;manualCnt=0;autoCnt=0;autoTotal=0;
+  for(let d=1;d<=days;d++){
+    const dk=dateKey(y,m,d);
+    (parkData[dk]||[]).filter(e=>e.type!=='surf-auto').forEach(e=>{
+      if(e.type==='park-auto'){autoCnt++;autoTotal+=(e.price||0);}
+      else{manualCnt++;manualTotal+=(e.price||0);}
+    });
+  }
+  const totalCnt=manualCnt+autoCnt;
+  document.getElementById('park-summary').innerHTML=
+    `<div class="rs-summary-chip" style="background:#eef2ff;color:#3730a3;"><span style="font-size:10px;">今月売上</span><span style="font-size:16px;">¥${monthTotal.toLocaleString()}</span></div>`
+   +`<div class="rs-summary-chip" style="background:#f0fdf4;color:#166534;"><span style="font-size:10px;">利用件数</span><span style="font-size:16px;">${totalCnt}件</span></div>`
+   +(manualCnt?`<div class="rs-summary-chip" style="background:#fef9c3;color:#854d0e;"><span style="font-size:10px;">手動追加</span><span style="font-size:14px;">${manualCnt}件 ¥${manualTotal.toLocaleString()}</span></div>`:'')
+   +(autoCnt?`<div class="rs-summary-chip" style="background:#d1fae5;color:#065f46;"><span style="font-size:10px;">🚙 宿泊者（自動）</span><span style="font-size:14px;">${autoCnt}件 ¥${autoTotal.toLocaleString()}</span></div>`:'');
 }
 
 // ============================================================
