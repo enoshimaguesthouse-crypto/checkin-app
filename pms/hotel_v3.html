@@ -648,6 +648,51 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
 #main-table thead th:not(.st):not(.st2){ z-index:20; }
 #main-table tbody .st { z-index:11; }
 #main-table tbody .st2{ z-index:11; }
+/* ── 重点清掃項目 ── */
+.pc-section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:14px 18px;background:linear-gradient(135deg,#fff7e6 0%,#fff 100%);border-left:4px solid #f4b860;border-radius:10px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-section-title{font-size:15px;font-weight:700;color:#7a4f00;}
+.pc-section-stats{margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
+.pc-section-stats strong{color:var(--ink);font-size:13px;font-weight:700;margin-left:3px;}
+.pc-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.pc-btn-add{background:#5fa8a2;color:#fff;border-color:#5fa8a2;font-weight:600;}
+.pc-btn-add:hover{background:#85b7b3;}
+.pc-month-summary{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-month-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.pc-month-title{font-size:13px;font-weight:700;}
+.pc-month-pills{display:flex;flex-wrap:wrap;gap:7px;}
+.pc-month-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:var(--paper);border:1px solid var(--sand-border);border-radius:99px;font-size:11px;}
+.pc-month-pill strong{color:#5fa8a2;font-size:12px;font-weight:700;}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;}
+.pc-cat-card{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-cat-head{display:flex;align-items:center;gap:8px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--sand-border);}
+.pc-cat-icon{font-size:18px;}
+.pc-cat-name{font-size:13px;font-weight:700;}
+.pc-cat-count{margin-left:auto;font-size:11px;color:var(--muted);background:var(--sand);padding:2px 8px;border-radius:99px;}
+.pc-cat-scheduled{font-size:10px;color:#7a4f00;background:#fff3d6;padding:2px 8px;border-radius:99px;font-weight:700;}
+.pc-task{display:flex;align-items:flex-start;gap:8px;padding:9px 6px;border-radius:6px;transition:background .15s;border-left:3px solid transparent;cursor:grab;}
+.pc-task:hover{background:var(--paper);}
+.pc-task.alert{border-left-color:#e67e6a;background:#fff5f2;}
+.pc-task.recent{border-left-color:#5fa8a2;}
+.pc-task.scheduled{background:#fffbf0;}
+.pc-task.scheduled.alert{background:#fff0eb;}
+.pc-task.pc-drop-over{background:#e8f4f3;box-shadow:inset 0 0 0 2px #5fa8a2;}
+.pc-drag{color:#bbb;font-size:13px;line-height:1.4;cursor:grab;user-select:none;flex-shrink:0;margin-top:1px;}
+.pc-check{width:18px;height:18px;border:2px solid #5fa8a2;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;background:#fff;transition:.15s;}
+.pc-check.done{background:#5fa8a2;}
+.pc-check.done::after{content:'✓';color:#fff;font-size:11px;font-weight:bold;}
+.pc-body{flex:1;min-width:0;cursor:pointer;}
+.pc-title{font-size:13px;font-weight:600;line-height:1.4;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.pc-place{font-size:10px;color:var(--muted);margin-top:1px;}
+.pc-meta{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10px;color:var(--muted);flex-wrap:wrap;}
+.pc-freq{background:#eef5f4;color:#3b6c69;padding:1px 7px;border-radius:99px;font-weight:600;}
+.pc-last{display:flex;align-items:center;gap:2px;}
+.pc-count{background:var(--sand);padding:1px 7px;border-radius:99px;font-weight:600;color:var(--ink);}
+.pc-alert-tag{background:#e67e6a;color:#fff;padding:2px 8px;border-radius:99px;font-weight:700;}
+.pc-scheduled-tag{font-size:10px;color:#7a4f00;background:#fff3d6;padding:1px 7px;border-radius:99px;font-weight:700;}
+.pc-actions{opacity:0;transition:opacity .15s;display:flex;gap:3px;flex-shrink:0;}
+.pc-task:hover .pc-actions{opacity:1;}
+.pc-icon-btn{width:22px;height:22px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.pc-icon-btn:hover{background:var(--sand);color:var(--ink);}
 /* ── 清掃管理 ── */
 .cl-card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:14px 16px;border-left:4px solid #ccc;position:relative;}
 .cl-card.waiting  {border-left-color:#4da3c7;}
@@ -700,7 +745,17 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   <button class="nitem" onclick="showP('occupancy',this)"><span class="nico">&#128200;</span><span class="nlbl">稼働率</span></button>
   <button class="nitem" onclick="showP('sales',this)"><span class="nico">&#128181;</span><span class="nlbl">売上高</span></button>
   <button class="nitem" onclick="showP('cancel',this)"><span class="nico">&#10060;</span><span class="nlbl">キャンセル</span></button>
-  <button class="nitem" onclick="showP('cleaning',this)"><span class="nico">🧹</span><span class="nlbl">清掃管理</span></button>
+  <!-- 清掃管理 折りたたみ -->
+  <div id="sidebar-cleaning-group">
+    <button class="nitem" onclick="toggleCleaningMenu(this)" id="cleaning-menu-btn" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:8px;"><span class="nico">🧹</span><span class="nlbl">清掃管理</span></span>
+      <span class="nlbl cleaning-chevron" style="font-size:10px;transition:transform .2s;">▾</span>
+    </button>
+    <div id="cleaning-submenu" style="display:none;">
+      <button class="nitem" id="nitem-cleaning" onclick="showP('cleaning',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">📋</span><span class="nlbl">清掃予定表</span></button>
+      <button class="nitem" id="nitem-cleaning-focus" onclick="showP('cleaning-focus',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">⭐</span><span class="nlbl">重点清掃項目</span></button>
+    </div>
+  </div>
   <div class="sb-div"></div>
   <!-- 物件管理 折りたたみ -->
   <div id="sidebar-property-group">
@@ -1237,11 +1292,19 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
 </div>
 
 <!-- TODO -->
+<!-- 重点清掃項目 -->
+<div id="page-cleaning-focus" class="page">
+  <div class="topbar">
+    <div><div class="ttl">⭐ 重点清掃項目</div><div class="sub">定期的に確認が必要な清掃項目を管理します</div></div>
+  </div>
+  <div id="priority-cleaning-area" style="padding-bottom:60px;"></div>
+</div>
+
 <!-- 清掃管理 -->
 <div id="page-cleaning" class="page">
   <div class="topbar">
     <div>
-      <div class="ttl">🧹 清掃管理</div>
+      <div class="ttl">🧹 清掃予定表</div>
       <div class="sub" id="cleaning-date-label"></div>
     </div>
     <div class="ctr" style="gap:8px;flex-wrap:wrap;">
@@ -1265,7 +1328,9 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   <!-- 進捗サマリー -->
   <div id="cleaning-summary" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;"></div>
   <!-- カードエリア -->
-  <div id="cleaning-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding-bottom:40px;height:auto;overflow:visible;"></div>
+  <div id="cleaning-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding-bottom:0;height:auto;overflow:visible;"></div>
+  <!-- 今月の重点清掃（未実施のみ）プレビュー -->
+  <div id="priority-cleaning-preview" style="margin-top:24px;padding-bottom:60px;"></div>
 </div>
 
 <!-- 自動部屋割り設定モーダル -->
@@ -1344,6 +1409,34 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   <p style="font-size:13px;color:#aaa;">この機能は今後実装予定です。</p>
   <button class="btn btn-blue" style="margin-top:20px;" onclick="closeM('property-stub-modal')">閉じる</button>
 </div>
+</div>
+
+<!-- 重点清掃項目 編集モーダル -->
+<div class="mbg" id="pc-edit-modal" onclick="if(event.target===this)document.getElementById('pc-edit-modal').classList.remove('open')">
+  <div class="mbox" style="max-width:520px;padding:0;border-radius:8px;overflow:hidden;border-top:5px solid #5fa8a2;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:#e8f4f3;padding:14px 22px;font-size:14px;font-weight:700;color:#1e5a55;" id="pc-edit-title">⭐ 重点清掃項目を編集</div>
+    <div style="padding:18px 22px;">
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px;">カテゴリ</label>
+      <select id="pc-edit-category" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;background:transparent;outline:none;"></select>
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:4px;">項目名</label>
+      <input id="pc-edit-name" placeholder="例：エアコンフィルター清掃" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;outline:none;">
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:4px;">場所</label>
+      <input id="pc-edit-place" placeholder="例：全館" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;outline:none;">
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:4px;">頻度</label>
+      <select id="pc-edit-frequency" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;background:transparent;outline:none;"></select>
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:6px;">実施予定月（複数選択可）</label>
+      <div id="pc-edit-months" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+      <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:4px;">アラート閾値（日数・空欄でグローバル設定を使用）</label>
+      <input id="pc-edit-alert" type="number" min="1" placeholder="30" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <div style="padding:12px 22px;background:#f5f2ec;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--sand-border);">
+      <button class="btn" id="pc-edit-delete" onclick="deletePriorityCleaningFromEdit()" style="color:#c0392b;background:transparent;border-color:transparent;font-weight:600;">🗑 削除</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="document.getElementById('pc-edit-modal').classList.remove('open')">キャンセル</button>
+        <button class="btn btn-blue" style="background:#5fa8a2;border-color:#5fa8a2;" onclick="savePriorityCleaningEdit()">保存</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 清掃メモ編集モーダル -->
@@ -2279,6 +2372,45 @@ function updateHistoryButtons(){
 // 清掃管理
 // ============================================================
 let cleaningData={};      // {roomId: {status, assignedTo, memo, startAt, completedAt, priority}}
+// ── 重点清掃項目 ──────────────────────────────────────────
+let priorityCleaningItems=[];
+let priorityCleaningSettings={defaultAlertDays:30, viewMonth:null, showThisMonthOnly:false};
+let nextPriorityCleaningId=1;
+const PRIORITY_CLEAN_CATEGORIES=[
+  {key:'ほこり',     icon:'🌫️', color:'#a89b8a'},
+  {key:'湿気・カビ', icon:'💧',  color:'#5fa8a2'},
+  {key:'害虫',       icon:'🐛',  color:'#9c7a52'},
+  {key:'臭気',       icon:'👃',  color:'#c47b6f'},
+  {key:'サビ',       icon:'🔧',  color:'#8a8077'},
+  {key:'床',         icon:'🧴',  color:'#8b9b6e'},
+  {key:'ペンキ',     icon:'🎨',  color:'#7e9aab'},
+  {key:'整理',       icon:'📦',  color:'#b59169'},
+  {key:'補充',       icon:'🧺',  color:'#9c8aaa'},
+];
+const PRIORITY_CLEAN_FREQUENCIES=['毎日','1週間','2週間','1ヶ月','2ヶ月','半年','1年'];
+const PRIORITY_CLEAN_DEFAULTS=[
+  {category:'ほこり',     name:'すのこ下',                                              place:'本館2階',         frequency:'1ヶ月', scheduledMonths:[11,12]},
+  {category:'ほこり',     name:'玄関屋根',                                              place:'本館2階',         frequency:'1年',   scheduledMonths:[10]},
+  {category:'ほこり',     name:'エアコンフィルター・換気扇・アパート浴室乾燥機',         place:'全館',           frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {category:'ほこり',     name:'オブジェ',                                              place:'全館',           frequency:'2ヶ月', scheduledMonths:[1,3,5,7,9,11]},
+  {category:'湿気・カビ', name:'清掃時：ソファを上げる・地下倉庫開放',                   place:'本館地下',       frequency:'毎日',  scheduledMonths:[5,6,7,8,9]},
+  {category:'湿気・カビ', name:'冷蔵庫の排水チェック',                                  place:'本館地下',       frequency:'毎日',  scheduledMonths:[6,7,8,9,10]},
+  {category:'湿気・カビ', name:'エアコン常時送風',                                      place:'本館地下・ANNEXラウンジ', frequency:'毎日', scheduledMonths:[5,6,7,8,9]},
+  {category:'湿気・カビ', name:'ソファ下に除湿剤設置（確認＆取替え）',                    place:'本館地下',       frequency:'2週間', scheduledMonths:[6,7,8,9]},
+  {category:'湿気・カビ', name:'シャワーブース折れ戸清掃',                              place:'全館',           frequency:'1週間', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {category:'湿気・カビ', name:'エアコン内部清掃',                                      place:'全館',           frequency:'1年',   scheduledMonths:[6,10]},
+  {category:'湿気・カビ', name:'キッチン周り・冷蔵庫・冷凍庫清掃',                       place:'本館地下',       frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {category:'害虫',       name:'ゴキブリ用殺虫剤（1年用）設置',                          place:'全館',           frequency:'1年',   scheduledMonths:[5]},
+  {category:'害虫',       name:'南京虫殺虫剤',                                          place:'本館',           frequency:'1年',   scheduledMonths:[6]},
+  {category:'臭気',       name:'シャワーブース・洗面所の重点清掃（折れ戸すみ・配管）',    place:'全館',           frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {category:'臭気',       name:'洗面所パイプユニッシュ',                                place:'全館',           frequency:'2週間', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+  {category:'サビ',       name:'自転車さび止め',                                        place:'',               frequency:'1年',   scheduledMonths:[4]},
+  {category:'サビ',       name:'自転車 砂・ホコリ掃除・空気チェック',                    place:'',               frequency:'1ヶ月', scheduledMonths:[3,4,5,6,7,8,9,10,11,12]},
+  {category:'床',         name:'ワックス塗り',                                          place:'本館',           frequency:'1年',   scheduledMonths:[1]},
+  {category:'ペンキ',     name:'ペンキ塗り・補修',                                      place:'',               frequency:'1年',   scheduledMonths:[2]},
+  {category:'整理',       name:'不要品整理',                                            place:'',               frequency:'半年',  scheduledMonths:[4,10]},
+  {category:'補充',       name:'アルコール・消臭剤の補充（トイレ・玄関）',                place:'本館・ANNEX',    frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
+];
 const CLEANING_STAFF=['木村','鈴木','田中','佐藤','その他'];
 const CLEANING_STATUS={
   waiting: {label:'清掃待ち', cls:'waiting'},
@@ -2529,8 +2661,291 @@ function renderCleaning(){
   });
 
   document.getElementById('cleaning-cards').innerHTML=html;
+  if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
 }
 
+// ── 重点清掃項目：ヘルパー関数群 ─────────────────────────
+function initPriorityCleaningIfEmpty(){
+  if(priorityCleaningItems&&priorityCleaningItems.length>0)return;
+  priorityCleaningItems=PRIORITY_CLEAN_DEFAULTS.map((d,i)=>({id:i+1,...d,alertDays:null,order:i,history:[]}));
+  nextPriorityCleaningId=priorityCleaningItems.length+1;
+}
+function getPriorityCleaningLastDate(item){
+  if(!item.history||!item.history.length)return null;
+  return [...item.history].sort().reverse()[0];
+}
+function getPriorityCleaningDaysSince(item){
+  const last=getPriorityCleaningLastDate(item);if(!last)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  return Math.floor((today-new Date(last+'T00:00:00'))/86400000);
+}
+function getPriorityCleaningMonthCount(item,year,month){
+  if(!item.history)return 0;
+  const prefix=`${year}-${String(month).padStart(2,'0')}-`;
+  return item.history.filter(d=>d.startsWith(prefix)).length;
+}
+function isPriorityCleaningAlert(item){
+  const days=getPriorityCleaningDaysSince(item);
+  if(days==null)return true;
+  const threshold=item.alertDays!=null?item.alertDays:priorityCleaningSettings.defaultAlertDays;
+  return days>=threshold;
+}
+function isScheduledThisMonth(item,month){
+  return Array.isArray(item.scheduledMonths)&&item.scheduledMonths.includes(month);
+}
+function togglePriorityCleaningDone(itemId){
+  const item=priorityCleaningItems.find(x=>x.id===itemId);if(!item)return;
+  const today=new Date();
+  const key=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  if(!item.history)item.history=[];
+  const idx=item.history.indexOf(key);
+  if(idx>=0)item.history.splice(idx,1);else item.history.push(key);
+  renderPriorityCleaning();
+  renderPriorityCleaningPreview();
+  if(typeof cloudSave==='function')cloudSave();
+}
+let editingPriorityCleaningId=null;
+function openPriorityCleaningEdit(itemId){
+  editingPriorityCleaningId=itemId;
+  const isNew=itemId==null;
+  const item=isNew?{category:PRIORITY_CLEAN_CATEGORIES[0].key,name:'',place:'',frequency:'1ヶ月',scheduledMonths:[],alertDays:null,history:[]}:priorityCleaningItems.find(x=>x.id===itemId);
+  if(!item)return;
+  document.getElementById('pc-edit-title').textContent=isNew?'⭐ 重点清掃項目を追加':'⭐ 重点清掃項目を編集';
+  const catSel=document.getElementById('pc-edit-category');
+  catSel.innerHTML=PRIORITY_CLEAN_CATEGORIES.map(c=>`<option value="${c.key}"${c.key===item.category?' selected':''}>${c.icon} ${c.key}</option>`).join('');
+  document.getElementById('pc-edit-name').value=item.name||'';
+  document.getElementById('pc-edit-place').value=item.place||'';
+  const freqSel=document.getElementById('pc-edit-frequency');
+  freqSel.innerHTML=PRIORITY_CLEAN_FREQUENCIES.map(f=>`<option${f===item.frequency?' selected':''}>${f}</option>`).join('');
+  const monthsArea=document.getElementById('pc-edit-months');
+  monthsArea.innerHTML=Array.from({length:12},(_,i)=>{
+    const m=i+1;const checked=item.scheduledMonths&&item.scheduledMonths.includes(m);
+    return `<label style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;border:1.5px solid ${checked?'#5fa8a2':'var(--sand-border)'};border-radius:6px;background:${checked?'#e8f4f3':'#fff'};cursor:pointer;font-size:11px;"><input type="checkbox" data-month="${m}" ${checked?'checked':''} style="margin:0;">${m}月</label>`;
+  }).join('');
+  monthsArea.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const lbl=cb.parentElement;
+      if(cb.checked){lbl.style.borderColor='#5fa8a2';lbl.style.background='#e8f4f3';}
+      else{lbl.style.borderColor='var(--sand-border)';lbl.style.background='#fff';}
+    });
+  });
+  document.getElementById('pc-edit-alert').value=item.alertDays!=null?item.alertDays:'';
+  document.getElementById('pc-edit-delete').style.display=isNew?'none':'';
+  document.getElementById('pc-edit-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('pc-edit-name').focus(),100);
+}
+function savePriorityCleaningEdit(){
+  const category=document.getElementById('pc-edit-category').value;
+  const name=document.getElementById('pc-edit-name').value.trim();
+  if(!name){showToast('⚠ 項目名を入力してください');return;}
+  const place=document.getElementById('pc-edit-place').value.trim();
+  const frequency=document.getElementById('pc-edit-frequency').value;
+  const scheduledMonths=[];
+  document.querySelectorAll('#pc-edit-months input[type=checkbox]:checked').forEach(cb=>scheduledMonths.push(Number(cb.dataset.month)));
+  scheduledMonths.sort((a,b)=>a-b);
+  const alertVal=document.getElementById('pc-edit-alert').value;
+  const alertDays=alertVal===''?null:Math.max(1,parseInt(alertVal)||30);
+  if(editingPriorityCleaningId==null){
+    const newOrder=Math.max(0,...priorityCleaningItems.map(x=>x.order||0))+1;
+    priorityCleaningItems.push({id:nextPriorityCleaningId++,category,name,place,frequency,scheduledMonths,alertDays,order:newOrder,history:[]});
+  } else {
+    const it=priorityCleaningItems.find(x=>x.id===editingPriorityCleaningId);
+    if(it)Object.assign(it,{category,name,place,frequency,scheduledMonths,alertDays});
+  }
+  document.getElementById('pc-edit-modal').classList.remove('open');
+  editingPriorityCleaningId=null;
+  renderPriorityCleaning();
+  if(typeof cloudSave==='function')cloudSave();
+  showToast('💾 保存しました');
+}
+function deletePriorityCleaningFromEdit(){
+  if(editingPriorityCleaningId==null)return;
+  if(!confirm('この重点清掃項目を削除しますか？\n実施履歴も削除されます。'))return;
+  priorityCleaningItems=priorityCleaningItems.filter(x=>x.id!==editingPriorityCleaningId);
+  document.getElementById('pc-edit-modal').classList.remove('open');
+  editingPriorityCleaningId=null;
+  renderPriorityCleaning();
+  if(typeof cloudSave==='function')cloudSave();
+  showToast('🗑 削除しました');
+}
+let _pcDragId=null;
+function pcOnDragStart(ev,id){_pcDragId=id;ev.dataTransfer.effectAllowed='move';ev.target.style.opacity='0.4';}
+function pcOnDragEnd(ev){ev.target.style.opacity='';_pcDragId=null;document.querySelectorAll('.pc-drop-over').forEach(el=>el.classList.remove('pc-drop-over'));}
+function pcOnDragOver(ev,id){ev.preventDefault();ev.dataTransfer.dropEffect='move';if(_pcDragId&&_pcDragId!==id)ev.currentTarget.classList.add('pc-drop-over');}
+function pcOnDragLeave(ev){ev.currentTarget.classList.remove('pc-drop-over');}
+function pcOnDrop(ev,targetId){
+  ev.preventDefault();ev.currentTarget.classList.remove('pc-drop-over');
+  if(_pcDragId==null||_pcDragId===targetId)return;
+  const from=priorityCleaningItems.findIndex(x=>x.id===_pcDragId);
+  const to=priorityCleaningItems.findIndex(x=>x.id===targetId);
+  if(from<0||to<0)return;
+  const [moved]=priorityCleaningItems.splice(from,1);
+  priorityCleaningItems.splice(to,0,moved);
+  priorityCleaningItems.forEach((it,i)=>it.order=i);
+  _pcDragId=null;
+  renderPriorityCleaning();
+  if(typeof cloudSave==='function')cloudSave();
+}
+function setPriorityCleaningAlertDays(){
+  const v=prompt('未実施アラートの閾値（日数）を入力してください\n（個別設定がない項目に適用）',priorityCleaningSettings.defaultAlertDays);
+  if(v==null)return;
+  const n=parseInt(v);
+  if(isNaN(n)||n<1){showToast('⚠ 1以上の整数を入力してください');return;}
+  priorityCleaningSettings.defaultAlertDays=n;
+  renderPriorityCleaning();
+  if(typeof cloudSave==='function')cloudSave();
+  showToast(`⚙ アラート閾値を${n}日に設定しました`);
+}
+function togglePriorityCleaningThisMonthOnly(){
+  priorityCleaningSettings.showThisMonthOnly=!priorityCleaningSettings.showThisMonthOnly;
+  renderPriorityCleaning();
+}
+function changePriorityCleaningViewMonth(ym){
+  priorityCleaningSettings.viewMonth=ym||null;
+  renderPriorityCleaning();
+}
+function renderPriorityCleaningPreview(){
+  const el=document.getElementById('priority-cleaning-preview');if(!el)return;
+  initPriorityCleaningIfEmpty();
+  const now=new Date();
+  const viewM=now.getMonth()+1;
+  const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  // 今月予定かつ今日まだ実施していない項目
+  const items=[...priorityCleaningItems]
+    .sort((a,b)=>(a.order||0)-(b.order||0))
+    .filter(it=>isScheduledThisMonth(it,viewM)&&!(it.history&&it.history.includes(todayKey)));
+  if(!items.length){
+    el.innerHTML=`<div style="background:#f0faf9;border:1.5px solid #c0e0dc;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">✅</span>
+      <span style="font-size:13px;color:#3b6c69;font-weight:600;">今月予定の重点清掃はすべて実施済みです</span>
+      <button class="btn btn-xs" onclick="showP('cleaning-focus',document.getElementById('nitem-cleaning-focus'))" style="margin-left:auto;font-size:11px;">⭐ 詳細を見る</button>
+    </div>`;
+    return;
+  }
+  const alertItems=items.filter(it=>isPriorityCleaningAlert(it));
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+    <div style="font-size:13px;font-weight:700;color:#7a4f00;">⭐ 今月の重点清掃（未実施 ${items.length}件${alertItems.length?` ／ ⚠ 警告 ${alertItems.length}件`:''}）</div>
+    <button class="btn btn-xs" onclick="showP('cleaning-focus',document.getElementById('nitem-cleaning-focus'))" style="margin-left:auto;font-size:11px;">すべて見る →</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;">`;
+  items.forEach(it=>{
+    const alert=isPriorityCleaningAlert(it);
+    const days=getPriorityCleaningDaysSince(it);
+    const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐',color:'#aaa'};
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1.5px solid ${alert?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${alert?'#e67e6a':cat.color};border-radius:8px;">
+      <div class="pc-check ${it.history&&it.history.includes(todayKey)?'done':''}" onclick="togglePriorityCleaningDone(${it.id})" style="flex-shrink:0;" title="今日実施したことを記録"></div>
+      <span style="font-size:13px;">${cat.icon}</span>
+      <span style="font-size:12px;font-weight:600;flex:1;">${it.name}</span>
+      ${it.place?`<span style="font-size:10px;color:var(--muted);">${it.place}</span>`:''}
+      <span style="font-size:10px;background:#eef5f4;color:#3b6c69;padding:1px 7px;border-radius:99px;font-weight:600;">${it.frequency}</span>
+      ${alert?`<span style="font-size:10px;background:#e67e6a;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
+    </div>`;
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
+}
+function renderPriorityCleaning(){
+  const el=document.getElementById('priority-cleaning-area');if(!el)return;
+  initPriorityCleaningIfEmpty();
+  const now=new Date();
+  let viewY=now.getFullYear(),viewM=now.getMonth()+1;
+  if(priorityCleaningSettings.viewMonth){
+    const [y,m]=priorityCleaningSettings.viewMonth.split('-').map(Number);
+    if(y&&m){viewY=y;viewM=m;}
+  }
+  const items=[...priorityCleaningItems].sort((a,b)=>(a.order||0)-(b.order||0));
+  const filtered=priorityCleaningSettings.showThisMonthOnly?items.filter(it=>isScheduledThisMonth(it,viewM)):items;
+  const scheduledCount=items.filter(it=>isScheduledThisMonth(it,viewM)).length;
+  const doneCount=items.filter(it=>getPriorityCleaningMonthCount(it,viewY,viewM)>0).length;
+  const alertCount=items.filter(it=>isPriorityCleaningAlert(it)).length;
+  const monthCounts=items.map(it=>({name:it.name,count:getPriorityCleaningMonthCount(it,viewY,viewM)})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+  const zeroCount=items.filter(it=>getPriorityCleaningMonthCount(it,viewY,viewM)===0).slice(0,5);
+  const monthOptions=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const y=d.getFullYear(),m=d.getMonth()+1;
+    const val=`${y}-${String(m).padStart(2,'0')}`;
+    const isSel=priorityCleaningSettings.viewMonth===val||(!priorityCleaningSettings.viewMonth&&i===0);
+    monthOptions.push(`<option value="${val}"${isSel?' selected':''}>${y}年${m}月</option>`);
+  }
+  const byCat={};
+  PRIORITY_CLEAN_CATEGORIES.forEach(c=>byCat[c.key]=[]);
+  filtered.forEach(it=>{if(!byCat[it.category])byCat[it.category]=[];byCat[it.category].push(it);});
+  const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const isThisYearMonth=(viewY===now.getFullYear()&&viewM===now.getMonth()+1);
+  let html=`
+  <div class="pc-section-header">
+    <div class="pc-section-title">⭐ 重点清掃項目</div>
+    <div class="pc-section-stats">
+      <div>今月予定 <strong>${scheduledCount}</strong>件</div>
+      <div>実施済 <strong style="color:#5fa8a2;">${doneCount}</strong>件</div>
+      <div>未実施警告 <strong style="color:#e67e6a;">${alertCount}</strong>件</div>
+      <div>項目数 <strong>${items.length}</strong></div>
+    </div>
+  </div>
+  <div class="pc-toolbar">
+    <button class="btn pc-btn-add" onclick="openPriorityCleaningEdit(null)">＋ 項目を追加</button>
+    <button class="btn" onclick="setPriorityCleaningAlertDays()">⚙ アラート設定（${priorityCleaningSettings.defaultAlertDays}日）</button>
+    <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 11px;border:1.5px solid ${priorityCleaningSettings.showThisMonthOnly?'#f4b860':'var(--sand-border)'};border-radius:6px;background:${priorityCleaningSettings.showThisMonthOnly?'#fff7e6':'#fff'};">
+      <input type="checkbox" ${priorityCleaningSettings.showThisMonthOnly?'checked':''} onchange="togglePriorityCleaningThisMonthOnly()" style="margin:0;"> ⚡ 今月予定のみ表示
+    </label>
+    <div style="flex:1;"></div>
+    <span style="font-size:11px;color:var(--muted);">💡 ⋮⋮ をドラッグで並び替え</span>
+  </div>
+  <div class="pc-month-summary">
+    <div class="pc-month-head">
+      <div class="pc-month-title">📊 ${viewY}年${viewM}月の実施回数</div>
+      <select onchange="changePriorityCleaningViewMonth(this.value)" style="margin-left:auto;font-size:11px;padding:4px 8px;border:1px solid var(--sand-border);border-radius:6px;">${monthOptions.join('')}</select>
+    </div>
+    <div class="pc-month-pills">
+      ${monthCounts.length===0?'<span style="font-size:11px;color:var(--muted);">この月はまだ実施記録がありません</span>':monthCounts.map(x=>`<div class="pc-month-pill"><span>${x.name}</span><strong>${x.count}回</strong></div>`).join('')}
+      ${zeroCount.map(it=>`<div class="pc-month-pill" style="color:#aaa;"><span>${it.name}</span><strong style="color:#aaa;">0回</strong></div>`).join('')}
+    </div>
+  </div>
+  <div class="pc-grid">`;
+  PRIORITY_CLEAN_CATEGORIES.forEach(cat=>{
+    const list=byCat[cat.key]||[];if(list.length===0)return;
+    const scheduledInCat=list.filter(it=>isScheduledThisMonth(it,viewM)).length;
+    html+=`<div class="pc-cat-card">
+      <div class="pc-cat-head" style="border-left:3px solid ${cat.color};padding-left:10px;">
+        <div class="pc-cat-icon">${cat.icon}</div>
+        <div class="pc-cat-name">${cat.key}</div>
+        <div class="pc-cat-count">${list.length}項目</div>
+        ${scheduledInCat>0&&isThisYearMonth?`<div class="pc-cat-scheduled">⚡今月${scheduledInCat}件</div>`:''}
+      </div><div>`;
+    list.forEach(it=>{
+      const days=getPriorityCleaningDaysSince(it);
+      const last=getPriorityCleaningLastDate(it);
+      const monthCount=getPriorityCleaningMonthCount(it,viewY,viewM);
+      const alert=isPriorityCleaningAlert(it);
+      const scheduledNow=isScheduledThisMonth(it,viewM)&&isThisYearMonth;
+      const doneToday=it.history&&it.history.includes(todayKey);
+      const cls=alert?'alert':(doneToday?'recent':'');
+      const lastLabel=last?(()=>{const dt=new Date(last+'T00:00:00');const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');return y===now.getFullYear()?`${m}/${d}`:`${y}/${m}/${d}`;})():'未実施';
+      html+=`<div class="pc-task ${cls} ${scheduledNow?'scheduled':''}" draggable="true" ondragstart="pcOnDragStart(event,${it.id})" ondragend="pcOnDragEnd(event)" ondragover="pcOnDragOver(event,${it.id})" ondragleave="pcOnDragLeave(event)" ondrop="pcOnDrop(event,${it.id})">
+        <div class="pc-drag">⋮⋮</div>
+        <div class="pc-check ${doneToday?'done':''}" onclick="event.stopPropagation();togglePriorityCleaningDone(${it.id})" title="${doneToday?'今日の実施を取消':'今日実施したことを記録'}"></div>
+        <div class="pc-body" onclick="openPriorityCleaningEdit(${it.id})">
+          <div class="pc-title">${it.name}${scheduledNow?'<span class="pc-scheduled-tag">⚡今月予定</span>':''}</div>
+          ${it.place?`<div class="pc-place">${it.place}</div>`:''}
+          <div class="pc-meta">
+            <span class="pc-freq">${it.frequency}</span>
+            <span class="pc-last">📅 ${lastLabel}</span>
+            ${monthCount>0?`<span class="pc-count">今月${monthCount}回</span>`:''}
+            ${alert&&days!=null?`<span class="pc-alert-tag">⚠ ${days}日未実施</span>`:(alert&&days==null?'<span class="pc-alert-tag">⚠ 未実施</span>':'')}
+          </div>
+        </div>
+        <div class="pc-actions"><button class="pc-icon-btn" onclick="event.stopPropagation();openPriorityCleaningEdit(${it.id})" title="編集">✏</button></div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  if(filtered.length===0){
+    html+=`<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:13px;background:#fff;border:1px dashed var(--sand-border);border-radius:10px;">${priorityCleaningSettings.showThisMonthOnly?'今月予定の項目はありません':'重点清掃項目がありません。「項目を追加」から登録してください。'}</div>`;
+  }
+  html+=`</div>`;
+  el.innerHTML=html;
+}
 function setCleaningStatus(roomId,status){
   const rid=String(roomId);
   if(!cleaningData[rid])return;
@@ -2741,6 +3156,13 @@ function getRoomPriority(roomId){
   return(v!=null&&!isNaN(Number(v)))?Number(v):1;
 }
 
+function toggleCleaningMenu(btn){
+  const sub=document.getElementById('cleaning-submenu');
+  const chev=btn.querySelector('.cleaning-chevron');
+  const open=sub.style.display==='none';
+  sub.style.display=open?'block':'none';
+  if(chev)chev.style.transform=open?'rotate(0deg)':'rotate(-90deg)';
+}
 function togglePropertyMenu(btn){
   const sub=document.getElementById('property-submenu');
   const chev=btn.querySelector('.property-chevron');
@@ -2874,7 +3296,21 @@ function showP(n,el){
   if(n==='occupancy')renderOcc();if(n==='cancel')renderCancel();if(n==='surf')renderSurf();
   if(n==='parking')renderParking();if(n==='sales')renderSales();
   if(n==='rental')renderRental();
-  if(n==='cleaning'){generateCleaningList();}
+  if(n==='cleaning'){
+    generateCleaningList();
+    // 清掃管理サブメニューを開く
+    const cs=document.getElementById('cleaning-submenu');
+    if(cs)cs.style.display='block';
+    const cc=document.querySelector('#cleaning-menu-btn .cleaning-chevron');
+    if(cc)cc.style.transform='rotate(0deg)';
+  }
+  if(n==='cleaning-focus'){
+    const cs=document.getElementById('cleaning-submenu');
+    if(cs)cs.style.display='block';
+    const cc=document.querySelector('#cleaning-menu-btn .cleaning-chevron');
+    if(cc)cc.style.transform='rotate(0deg)';
+    if(typeof renderPriorityCleaning==='function')renderPriorityCleaning();
+  }
   if(n==='property-info'){
     document.getElementById('property-room-count').textContent=rooms.length+'部屋';
     // 物件管理サブメニューを開く
@@ -6207,7 +6643,7 @@ function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
-    budgets,staffNames,snTypes,
+    budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -6386,6 +6822,13 @@ function applyServerData(data) {
   }
   if (data.snTypes && Array.isArray(data.snTypes) && data.snTypes.length > 0) {
     snTypes = data.snTypes;
+  }
+  if(Array.isArray(data.priorityCleaningItems)){
+    priorityCleaningItems=data.priorityCleaningItems;
+    nextPriorityCleaningId=Math.max(0,...priorityCleaningItems.map(x=>x.id||0))+1;
+  }
+  if(data.priorityCleaningSettings&&typeof data.priorityCleaningSettings==='object'){
+    priorityCleaningSettings={...priorityCleaningSettings,...data.priorityCleaningSettings};
   }
   if (data.cleaningData){ Object.assign(cleaningData, data.cleaningData); }
   if (data.salesData){
