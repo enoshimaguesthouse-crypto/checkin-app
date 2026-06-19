@@ -633,9 +633,29 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
 #mobile-stats-area{display:none;}
 #mobile-stats-area.open{display:block;}
 
-/* スマホでピンチイン（縮小）を有効化：コンテンツ幅をビューポートより広く設定 */
-@media(max-width:900px){
-  body,html{min-width:900px;}
+/* ── スマホ最適化（768px以下） ── */
+@media(max-width:768px){
+  body,html{min-width:0;}
+  /* mainのpadding削除：テーブルを端まで表示 */
+  .main{padding:0!important;}
+  /* register topbar をスクロール中も固定 */
+  #page-register .topbar{
+    position:sticky;top:0;z-index:50;
+    background:var(--white);
+    border-bottom:1px solid var(--sand-border);
+    padding:5px 8px;box-sizing:border-box;
+    flex-direction:column;align-items:flex-start;gap:4px;
+  }
+  #page-register .topbar .ttl{font-size:12px;font-weight:700;}
+  #page-register .topbar .sub{display:none;}
+  #page-register .topbar .ctr{gap:4px;flex-wrap:wrap;}
+  #page-register .topbar .btn{padding:4px 8px;font-size:11px;}
+  /* グループラベルを縦書き縮小 */
+  .grp-lbl{font-size:7px!important;writing-mode:vertical-rl;line-height:1;}
+  /* reg-scroll：高さはJSで制御 */
+  #reg-scroll{overflow-x:auto;overflow-y:auto;}
+  /* flex gapを減らす */
+  #page-register > div[style*="display:flex"]{gap:0!important;}
 }
 .gc.selected{outline:2.5px solid #e74c3c !important;box-shadow:0 0 0 1px #e74c3c inset,0 2px 8px rgba(231,76,60,.25) !important;background:#fff0f0 !important;}
 /* 名簿テーブル thead sticky */
@@ -3578,12 +3598,18 @@ function filteredRooms(){
 }
 function renderReg(){
   const year=2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
+  // ── モバイル判定・セル幅計算 ──
+  const _sw=Math.min(window.screen.width,window.screen.height);
+  const isMob=_sw<=768;
+  const C1=isMob?28:60;  // グループ列幅(px)
+  const C2=isMob?42:60;  // 部屋名列幅(px)
+  const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   let html='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
-  html+=`<th class="st" rowspan="2" style="width:60px;min-width:60px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
-  html+=`<th class="st2" rowspan="2" style="width:60px;min-width:60px;text-align:left;left:60px;position:sticky;top:0;z-index:30;background:var(--white);">部屋</th>`;
+  html+=`<th class="st" rowspan="2" style="width:${C1}px;min-width:${C1}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
+  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;text-align:left;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);">${isMob?'室':'部屋'}</th>`;
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
@@ -3594,7 +3620,7 @@ function renderReg(){
     const todayNumHtml=isToday
       ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#185FA5;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
-    html+=`<th${todayId} style="min-width:86px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
+    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
   html+=`</tr>`;
   // 曜日行（sticky top:日付行高さ分）
@@ -3679,15 +3705,15 @@ function renderReg(){
 
       // ── 左固定列：グループラベル（rowspan）──
       if(ri===0){
-        row+=`<td rowspan="${rowspan}" class="st" style="width:60px;min-width:60px;max-width:60px;left:0;z-index:11;padding:4px 3px;background:var(--sand);border-right:3px solid ${grp.color};text-align:center;vertical-align:middle;">`
+        row+=`<td rowspan="${rowspan}" class="st" style="width:${C1}px;min-width:${C1}px;max-width:${C1}px;left:0;z-index:11;padding:${isMob?'2px 1px':'4px 3px'};background:var(--sand);border-right:3px solid ${grp.color};text-align:center;vertical-align:middle;">`
           +`<span class="grp-lbl" style="color:${grp.color};">${GRP_SHORT[grp.name]||grp.name}</span>`
           +`</td>`;
       }
 
       // ── 部屋名列 ──
       const roomLabel=isSingle?'':(room.label||shortName(room.type));
-      row+=`<td class="st2 ri" style="width:60px;min-width:60px;max-width:60px;padding:4px 6px;vertical-align:middle;left:60px;overflow:hidden;background:var(--white);">`
-        +`<span style="font-size:10px;font-weight:600;color:${grp.color};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${roomLabel}</span>`
+      row+=`<td class="st2 ri" style="width:${C2}px;min-width:${C2}px;max-width:${C2}px;padding:${isMob?'2px 3px':'4px 6px'};vertical-align:middle;left:${C1}px;overflow:hidden;background:var(--white);">`
+        +`<span style="font-size:${isMob?'9':'10'}px;font-weight:600;color:${grp.color};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${roomLabel}</span>`
         +`</td>`;
 
       let rS=0,rM=0,rF=0,skip=0;
@@ -7523,7 +7549,7 @@ if(rankAPanelHidden){
 // クラウド同期：初回読込→最新データをGASに保存
 // ── スマホ：スクロール領域高さをJSで直接設定 ──────────────
 function adjustRegScrollHeight(){
-  if(window.innerWidth>768)return;
+  if(Math.min(window.screen.width,window.screen.height)>768)return;
   const el=document.getElementById('reg-scroll');
   if(!el)return;
   const top=el.getBoundingClientRect().top;
