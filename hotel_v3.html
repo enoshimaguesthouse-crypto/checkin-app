@@ -6726,7 +6726,7 @@ function renderStaffNotes(){
           <!-- タイトル（太字・大きめ） -->
           <div style="font-size:14.5px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''};margin-bottom:${n.detail?'5px':'0'};">${n.title||n.text||''}</div>
           <!-- 詳細（小さめ・改行保持） -->
-          ${(n.detail)?`<div style="font-size:12px;color:${n.done?'var(--light)':'var(--muted)'};line-height:1.65;white-space:pre-wrap;">${n.detail}</div>`:''}
+          ${(n.detail)?`<div style="font-size:12px;color:${n.done?'var(--light)':'var(--text)'};line-height:1.65;white-space:pre-wrap;">${n.detail}</div>`:''}
         </div>
         <button onclick="editSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--ocean);">✏</button>
         <button onclick="deleteSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--muted);">✕</button>
