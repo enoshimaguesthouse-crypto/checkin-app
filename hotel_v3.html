@@ -7224,7 +7224,7 @@ function renderRankAPanel(){
             <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;${ts.badge}">${ts.label}</span>
           </div>
           <div style="font-size:12px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:${n.detail?'3px':'0'};">${n.title||n.text||''}</div>
-          ${n.detail?`<div style="font-size:10.5px;color:var(--muted);line-height:1.5;white-space:pre-wrap;">${n.detail}</div>`:''}
+          ${n.detail?`<div style="font-size:10.5px;color:var(--text);line-height:1.5;white-space:pre-wrap;">${n.detail}</div>`:''}
           <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
             <span style="font-size:10px;font-weight:600;color:var(--ink);">${n.author}</span>
             <span style="font-size:10px;color:var(--muted);">${n.created}</span>
