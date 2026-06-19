@@ -648,6 +648,74 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
 #main-table thead th:not(.st):not(.st2){ z-index:20; }
 #main-table tbody .st { z-index:11; }
 #main-table tbody .st2{ z-index:11; }
+/* ── PIN認証オーバーレイ ── */
+#pin-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f3443 0%,#1a5276 100%);z-index:99999;display:flex;align-items:center;justify-content:center;}
+#pin-box{background:#fff;border-radius:20px;padding:32px 28px;width:300px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+#pin-logo{font-size:32px;margin-bottom:6px;}
+#pin-title{font-size:15px;font-weight:700;color:#1a3a4a;margin-bottom:3px;}
+#pin-sub{font-size:11px;color:#999;margin-bottom:20px;}
+#pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:8px;}
+.pin-dot{width:13px;height:13px;border-radius:50%;background:#e0e0e0;transition:.15s;}
+.pin-dot.filled{background:#1a5276;}
+#pin-error{font-size:12px;color:#e74c3c;height:18px;margin-bottom:10px;font-weight:600;}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.pin-key{background:#f5f7fa;border:none;border-radius:10px;padding:15px;font-size:20px;font-weight:600;cursor:pointer;transition:.1s;color:#1a3a4a;font-family:inherit;}
+.pin-key:hover{background:#e0eaf5;}
+.pin-key:active{background:#c8d8ec;transform:scale(.95);}
+.pin-key.del{font-size:16px;color:#888;}
+#role-badge{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(15,52,67,.75);color:#fff;font-size:11px;padding:5px 16px;border-radius:99px;z-index:9998;cursor:pointer;backdrop-filter:blur(4px);border:none;white-space:nowrap;}
+
+/* ── ロール別サイドバー制御 ── */
+/* 清掃スタッフ：清掃予定表のみ */
+body.role-cleaning .nitem[onclick*="showP('register'"],
+body.role-cleaning .nitem[onclick*="showP('import'"],
+body.role-cleaning .nitem[onclick*="showP('parking'"],
+body.role-cleaning .nitem[onclick*="showP('rental'"],
+body.role-cleaning .nitem[onclick*="showP('surf'"],
+body.role-cleaning .nitem[onclick*="showP('occupancy'"],
+body.role-cleaning .nitem[onclick*="showP('sales'"],
+body.role-cleaning .nitem[onclick*="showP('cancel'"],
+body.role-cleaning .nitem[onclick*="showP('todo'"],
+body.role-cleaning #sidebar-property-group,
+body.role-cleaning #nitem-cleaning-focus,
+body.role-cleaning .sb-div{display:none!important;}
+/* 接客スタッフ：宿泊名簿・駐車場・レンタル・サーフィン・清掃予定表 */
+body.role-reception .nitem[onclick*="showP('import'"],
+body.role-reception .nitem[onclick*="showP('occupancy'"],
+body.role-reception .nitem[onclick*="showP('sales'"],
+body.role-reception .nitem[onclick*="showP('cancel'"],
+body.role-reception .nitem[onclick*="showP('todo'"],
+body.role-reception #sidebar-property-group,
+body.role-reception #nitem-cleaning-focus{display:none!important;}
+/* 接客スタッフ：集計・CSV出力・セルドラッグを無効化 */
+body.role-reception [onclick*="toggleMobileStats"],
+body.role-reception [onclick*="toggleFilterPanel"],
+body.role-reception #mobile-stats-area,
+body.role-reception [onclick*="exportCSV("],
+body.role-reception [onclick*="exportRentalCSV"]{display:none!important;}
+body.role-reception .gc[draggable="true"]{-webkit-user-drag:none;}
+
+/* ── 閲覧専用：編集ボタンを非表示 ── */
+body.viewonly [onclick*="openAdd("],
+body.viewonly [onclick*="openCharterNew"],
+body.viewonly [onclick*="openParkAdd"],
+body.viewonly [onclick*="openRentalAdd"],
+body.viewonly [onclick*="openSurfAdd"],
+body.viewonly [onclick*="setCleaningStatus"],
+body.viewonly [onclick*="editSN("],
+body.viewonly [onclick*="deleteSN("],
+body.viewonly [onclick*="openSNTypeEdit"],
+body.viewonly [onclick*="openSNStaffEdit"],
+body.viewonly [onclick*="openPriorityCleaningEdit"],
+body.viewonly [onclick*="togglePriorityCleaningDone"],
+body.viewonly [onclick*="generateCleaningList"],
+body.viewonly [onclick*="copyLineMessage"],
+body.viewonly [onclick*="setPriorityCleaningAlertDays"],
+body.viewonly [onclick*="togglePriorityCleaningThisMonthOnly"],
+body.viewonly #sn-add-form,
+body.viewonly .pc-btn-add,
+body.viewonly #rank-a-panel{display:none!important;}
+body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 /* ── 重点清掃項目 ── */
 .pc-section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:14px 18px;background:linear-gradient(135deg,#fff7e6 0%,#fff 100%);border-left:4px solid #f4b860;border-radius:10px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
 .pc-section-title{font-size:15px;font-weight:700;color:#7a4f00;}
@@ -733,6 +801,36 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
+<!-- PIN認証オーバーレイ -->
+<div id="pin-overlay">
+  <div id="pin-box">
+    <div id="pin-logo">🏄</div>
+    <div id="pin-title">江ノ島ゲストハウス134</div>
+    <div id="pin-sub">PINを入力してください</div>
+    <div id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div id="pin-error"></div>
+    <div id="pin-pad">
+      <button class="pin-key" onclick="pinInput('1')">1</button>
+      <button class="pin-key" onclick="pinInput('2')">2</button>
+      <button class="pin-key" onclick="pinInput('3')">3</button>
+      <button class="pin-key" onclick="pinInput('4')">4</button>
+      <button class="pin-key" onclick="pinInput('5')">5</button>
+      <button class="pin-key" onclick="pinInput('6')">6</button>
+      <button class="pin-key" onclick="pinInput('7')">7</button>
+      <button class="pin-key" onclick="pinInput('8')">8</button>
+      <button class="pin-key" onclick="pinInput('9')">9</button>
+      <button class="pin-key del" onclick="pinClear()">CLR</button>
+      <button class="pin-key" onclick="pinInput('0')">0</button>
+      <button class="pin-key del" onclick="pinBackspace()">⌫</button>
+    </div>
+  </div>
+</div>
+<button id="role-badge" onclick="pinLogout()" style="display:none;"></button>
 <div class="layout">
 <div class="sidebar" id="sb">
   <button class="sb-toggle" onclick="toggleSB()">&#9776;</button>
@@ -1472,7 +1570,7 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   </div>
 
   <!-- 投稿フォーム -->
-  <div class="card" style="margin-bottom:12px;">
+  <div id="sn-add-form" class="card" style="margin-bottom:12px;">
     <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:center;margin-bottom:8px;">
       <select id="sn-type" style="font-weight:600;"></select>
       <select id="sn-rank" style="font-weight:600;">
@@ -7443,6 +7541,92 @@ else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); 
 })();
 // 初期表示後にスマホ高さ調整
 setTimeout(adjustRegScrollHeight,300);
+
+// ── PIN認証 ──────────────────────────────────────────────────
+const PIN_ROLES={
+  '5070':{role:'admin',    name:'管理者',       pages:'all'},
+  '5439':{role:'cleaning', name:'清掃スタッフ', pages:['cleaning']},
+  '1827':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning']},
+};
+let _pinBuffer='';
+let currentRole=null;
+
+function pinInput(d){
+  if(_pinBuffer.length>=4)return;
+  _pinBuffer+=d;
+  _updatePinDots();
+  if(_pinBuffer.length===4)setTimeout(_checkPin,80);
+}
+function pinBackspace(){_pinBuffer=_pinBuffer.slice(0,-1);_updatePinDots();}
+function pinClear(){_pinBuffer='';_updatePinDots();}
+function _updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById('pd'+i)?.classList.toggle('filled',i<_pinBuffer.length);
+  }
+  document.getElementById('pin-error').textContent='';
+}
+function _checkPin(){
+  const r=PIN_ROLES[_pinBuffer];
+  if(!r){
+    document.getElementById('pin-error').textContent='PINが違います';
+    _pinBuffer='';_updatePinDots();return;
+  }
+  sessionStorage.setItem('hotel_pin_role',r.role);
+  sessionStorage.setItem('hotel_pin_name',r.name);
+  _applyRole(r.role,r.name);
+  document.getElementById('pin-overlay').style.display='none';
+}
+function _applyRole(role,name){
+  currentRole=role;
+  document.body.classList.remove('role-admin','role-cleaning','role-reception','viewonly');
+  document.body.classList.add('role-'+role);
+  if(role!=='admin')document.body.classList.add('viewonly');
+  if(role==='reception'){
+    document.addEventListener('dragstart',function _receptionNoDrag(e){
+      if(e.target.closest&&e.target.closest('.gc'))e.preventDefault();
+    },true);
+  }
+  const badge=document.getElementById('role-badge');
+  if(badge){badge.textContent=name+' ログイン中 （タップでログアウト）';badge.style.display='';}
+  // 許可ページ以外にいたら先頭許可ページへ移動
+  if(role==='cleaning'){
+    showP('cleaning',document.getElementById('nitem-cleaning'));
+    // 清掃サブメニューを開く
+    const cs=document.getElementById('cleaning-submenu');
+    if(cs)cs.style.display='block';
+  } else if(role==='reception'){
+    showP('register',document.querySelector('.nitem[onclick*="showP(\'register\'"]'));
+  }
+}
+function pinLogout(){
+  if(!confirm('ログアウトしますか？'))return;
+  sessionStorage.removeItem('hotel_pin_role');
+  sessionStorage.removeItem('hotel_pin_name');
+  currentRole=null;_pinBuffer='';
+  document.body.classList.remove('role-admin','role-cleaning','role-reception','viewonly');
+  document.getElementById('role-badge').style.display='none';
+  _updatePinDots();
+  document.getElementById('pin-error').textContent='';
+  document.getElementById('pin-overlay').style.display='flex';
+}
+// ページ遷移時に権限チェック
+const _showPOrig=showP;
+showP=function(n,el){
+  if(currentRole&&currentRole!=='admin'){
+    const allowed=PIN_ROLES[Object.keys(PIN_ROLES).find(k=>PIN_ROLES[k].role===currentRole)]?.pages||[];
+    if(allowed!=='all'&&!allowed.includes(n))return;
+  }
+  _showPOrig(n,el);
+};
+// セッション復元
+(()=>{
+  const r=sessionStorage.getItem('hotel_pin_role');
+  const name=sessionStorage.getItem('hotel_pin_name');
+  if(r&&PIN_ROLES[Object.keys(PIN_ROLES).find(k=>PIN_ROLES[k].role===r)]){
+    _applyRole(r,name||r);
+    document.getElementById('pin-overlay').style.display='none';
+  }
+})();
 </script>
 <div id="notification-container"></div>
 </body>
