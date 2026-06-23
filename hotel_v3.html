@@ -2825,6 +2825,8 @@ function getPriorityCleaningMonthCount(item,year,month){
   return item.history.filter(d=>d.startsWith(prefix)).length;
 }
 function isPriorityCleaningAlert(item){
+  // 周期内にすでに実施済みなら警告は出さない（未実施扱いにしない）
+  if(isPriorityCleaningCompletedInPeriod(item))return false;
   const days=getPriorityCleaningDaysSince(item);
   if(days==null)return true;
   const threshold=item.alertDays!=null?item.alertDays:priorityCleaningSettings.defaultAlertDays;
@@ -2832,6 +2834,52 @@ function isPriorityCleaningAlert(item){
 }
 function isScheduledThisMonth(item,month){
   return Array.isArray(item.scheduledMonths)&&item.scheduledMonths.includes(month);
+}
+// ── 清掃タスク表示判定（重点清掃項目・清掃予定表で共通利用）──────────
+// 周期内にすでに実施済みか？（実施済み＝未実施リストから除外・警告解除）
+//  ・1ヶ月（毎月）：カレンダー「月」単位でリセット。当月に履歴があれば実施済み
+//  ・2ヶ月/半年/1年：最終実施日から所定の月数が経過するまで実施済み（非表示）
+//  ・毎日/1週間/2週間：最終実施日から所定の日数が経過するまで実施済み
+function isPriorityCleaningCompletedInPeriod(item,refDate){
+  if(!item||!item.history||!item.history.length)return false;
+  const ref=refDate?new Date(refDate):new Date();
+  const last=getPriorityCleaningLastDate(item); // 'YYYY-MM-DD'（最新）
+  if(!last)return false;
+  const freq=item.frequency||'1ヶ月';
+  // 毎月（1ヶ月）：当月のカレンダー月内に履歴があれば実施済み
+  if(freq==='1ヶ月'){
+    const prefix=`${ref.getFullYear()}-${String(ref.getMonth()+1).padStart(2,'0')}-`;
+    return item.history.some(d=>String(d).startsWith(prefix));
+  }
+  // 月数ベース：最終実施日＋月数 が未到来なら実施済み
+  const MONTHS={'2ヶ月':2,'半年':6,'1年':12};
+  const today=new Date(ref);today.setHours(0,0,0,0);
+  if(MONTHS[freq]){
+    const limit=new Date(last+'T00:00:00');
+    limit.setMonth(limit.getMonth()+MONTHS[freq]);
+    return today<limit;
+  }
+  // 日数ベース：毎日/1週間/2週間
+  const DAYS={'毎日':1,'1週間':7,'2週間':14};
+  const days=DAYS[freq]||1;
+  const diff=Math.floor((today-new Date(last+'T00:00:00'))/86400000);
+  return diff<days;
+}
+// このタスクを「今月の未実施リスト」に表示すべきか（今月予定 かつ 周期内未実施）
+function shouldDisplayTask(item,refDate){
+  const ref=refDate?new Date(refDate):new Date();
+  const scheduled=isScheduledThisMonth(item,ref.getMonth()+1);
+  const completed=isPriorityCleaningCompletedInPeriod(item,ref);
+  const display=scheduled&&!completed;
+  console.log({
+    taskName:item.name,
+    frequency:item.frequency,
+    lastCompletedDate:getPriorityCleaningLastDate(item),
+    today:ref.toISOString().split('T')[0],
+    isCompletedInPeriod:completed,
+    shouldDisplay:display
+  });
+  return display;
 }
 function togglePriorityCleaningDone(itemId){
   const item=priorityCleaningItems.find(x=>x.id===itemId);if(!item)return;
@@ -2948,12 +2996,11 @@ function renderPriorityCleaningPreview(){
   const el=document.getElementById('priority-cleaning-preview');if(!el)return;
   initPriorityCleaningIfEmpty();
   const now=new Date();
-  const viewM=now.getMonth()+1;
   const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  // 今月予定かつ今日まだ実施していない項目
+  // 今月予定かつ周期内に未実施の項目（共通判定 shouldDisplayTask）
   const items=[...priorityCleaningItems]
     .sort((a,b)=>(a.order||0)-(b.order||0))
-    .filter(it=>isScheduledThisMonth(it,viewM)&&!(it.history&&it.history.includes(todayKey)));
+    .filter(it=>shouldDisplayTask(it,now));
   if(!items.length){
     el.innerHTML=`<div style="background:#f0faf9;border:1.5px solid #c0e0dc;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:18px;">✅</span>
@@ -3060,7 +3107,8 @@ function renderPriorityCleaning(){
       const alert=isPriorityCleaningAlert(it);
       const scheduledNow=isScheduledThisMonth(it,viewM)&&isThisYearMonth;
       const doneToday=it.history&&it.history.includes(todayKey);
-      const cls=alert?'alert':(doneToday?'recent':'');
+      const completedInPeriod=isPriorityCleaningCompletedInPeriod(it);
+      const cls=alert?'alert':((doneToday||completedInPeriod)?'recent':'');
       const lastLabel=last?(()=>{const dt=new Date(last+'T00:00:00');const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');return y===now.getFullYear()?`${m}/${d}`:`${y}/${m}/${d}`;})():'未実施';
       html+=`<div class="pc-task ${cls} ${scheduledNow?'scheduled':''}" draggable="true" ondragstart="pcOnDragStart(event,${it.id})" ondragend="pcOnDragEnd(event)" ondragover="pcOnDragOver(event,${it.id})" ondragleave="pcOnDragLeave(event)" ondrop="pcOnDrop(event,${it.id})">
         <div class="pc-drag">⋮⋮</div>
