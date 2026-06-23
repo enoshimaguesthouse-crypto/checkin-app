@@ -4738,6 +4738,7 @@ function processCSV(file){
         importCSVText(text);
       }
     }catch(err){
+      console.error(err.stack);
       document.getElementById('import-result').innerHTML=`<div class="import-warn">エラー: ${err.message}</div>`;
     }
   };
@@ -5077,6 +5078,31 @@ function importCSVText(text){
       arrivalTime=tm.length>=4?tm:'';
     }
 
+    // ─── 連絡先・住所・予約ID（貸切変更検知・部屋割当より前に必要なため早期定義） ──────
+    const addr1=get(cols,'住所1')||'';
+    const natGuessed=natFromAddress(addr1);
+    const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
+    const phone=String(get(cols,'電話番号')||'').trim();
+    let address=String(addr1).trim();
+    if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
+      const biko2addr=String(get(cols,'備考2')||'').trim();
+      if(biko2addr){
+        address=biko2addr.replace(/^\d+[:：]\s*/,'').trim();
+      }
+    }
+    const _emailRe=/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
+    let email=String(
+      get(cols,'メールアドレス')||get(cols,'メール')||
+      get(cols,'Email')||get(cols,'E-mail')||get(cols,'email')||get(cols,'EMAIL')||''
+    ).trim();
+    if(!email){
+      const biko2=String(get(cols,'備考2')||get(cols,'メモ2')||'');
+      const m2=biko2.match(_emailRe);
+      if(m2) email=m2[0];
+    }
+    const guestName=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
+    if(!guestName){skipped++;continue;}
+
     // ─── ③ 貸切判定と重複除去 ─────────────────────────────
     const isCharter=planName.includes('貸切');
     const isAnnexCharter=isCharter&&(planName.includes('ANNEX')||planName.includes('annex'));
@@ -5107,31 +5133,6 @@ function importCSVText(text){
 
     // 貸切の区分は専用値
     if(isCharter)cat=charterType;
-
-    // ─── 連絡先・住所・予約ID（部屋割当より前に必要なため早期定義） ──────
-    const addr1=get(cols,'住所1')||'';
-    const natGuessed=natFromAddress(addr1);
-    const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
-    const phone=String(get(cols,'電話番号')||'').trim();
-    let address=String(addr1).trim();
-    if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
-      const biko2addr=String(get(cols,'備考2')||'').trim();
-      if(biko2addr){
-        address=biko2addr.replace(/^\d+[:：]\s*/,'').trim();
-      }
-    }
-    const _emailRe=/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/;
-    let email=String(
-      get(cols,'メールアドレス')||get(cols,'メール')||
-      get(cols,'Email')||get(cols,'E-mail')||get(cols,'email')||get(cols,'EMAIL')||''
-    ).trim();
-    if(!email){
-      const biko2=String(get(cols,'備考2')||get(cols,'メモ2')||'');
-      const m2=biko2.match(_emailRe);
-      if(m2) email=m2[0];
-    }
-    const guestName=get(cols,'宿泊者氏名')||get(cols,'予約者氏名')||'';
-    if(!guestName){skipped++;continue;}
 
     // ─── 予約ID 3分岐判定（部屋割当の前に実施）─────────────────
     // ★重要：自分自身の既存セルが「空室なし」原因にならないよう、
