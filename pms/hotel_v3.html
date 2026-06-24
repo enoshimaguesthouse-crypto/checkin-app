@@ -3622,12 +3622,13 @@ function initData(){
 // ============================================================
 // AUTO PARK / SURF
 // ============================================================
-function addAutoPark(g,month){
+function addAutoPark(g,month,year){
+  year=(year==null?DISP_YEAR:year);
   const nights=findN(g.roomId,g.day,month);
   for(let n=0;n<nights;n++){
     const d=g.day+n;
-    const dk=dateKey(2026,month,d);
-    const price=parkPrice(2026,month,d);
+    const dk=dateKey(year,month,d);
+    const price=parkPrice(year,month,d);
     const pk=parkData[dk]||[];
     if(!pk.some(e=>e.name===g.name&&e.type==='park-auto')){
       pk.push({id:nextParkId++,name:g.name,price,note:'宿泊者（自動）',type:'park-auto'});
@@ -3636,20 +3637,22 @@ function addAutoPark(g,month){
   }
 }
 
-function addAutoSurf(g,month){
+function addAutoSurf(g,month,year){
+  year=(year==null?DISP_YEAR:year);
   if(!surfList.some(s=>s.name===g.name&&(s.auto||s.guestLinked))){
     const d=g.day;
-    const dk=`2026/${String(month).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+    const dk=`${year}/${String(month).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
     surfList.unshift({name:g.name,site:g.site,price:0,nat:g.nat||'',sex:g.sex||'男',cat:g.cat||'Ｓ',surfday:'',shop:'ミスティ',contact:'',payment:'',note:'宿泊名簿から自動追加',date:dk,auto:true,guestLinked:true});
   }
 }
 
 // 駐車場チェックOFF時：該当予約者の自動登録分を削除
-function removeAutoPark(g,month){
+function removeAutoPark(g,month,year){
+  year=(year==null?DISP_YEAR:year);
   const nights=findN(g.roomId,g.day,month);
   for(let n=0;n<nights;n++){
     const d=g.day+n;
-    const dk=dateKey(2026,month,d);
+    const dk=dateKey(year,month,d);
     if(parkData[dk]){
       parkData[dk]=parkData[dk].filter(e=>!(e.name===g.name&&e.type==='park-auto'));
       if(parkData[dk].length===0)delete parkData[dk];
@@ -4665,8 +4668,8 @@ function saveGuest(){
   if(useParking){
     for(let n=0;n<nights;n++){
       const d=day+n;
-      const dk=dateKey(2026,month,d);
-      const price=parkPrice(2026,month,d);
+      const dk=dateKey(DISP_YEAR,month,d);
+      const price=parkPrice(DISP_YEAR,month,d);
       const pk=parkData[dk]||[];
       if(!pk.some(e=>e.name===base.name&&e.type==='park-auto')){
         pk.push({id:nextParkId++,name:base.name,price,note:'宿泊者（自動）',type:'park-auto'});
@@ -4690,7 +4693,7 @@ function syncDeleteRelated(g, month){
   if(g.parking){
     const nights=findN(g.roomId,g.day,month);
     for(let n=0;n<nights;n++){
-      const dk=dateKey(2026,month,g.day+n);
+      const dk=dateKey(DISP_YEAR,month,g.day+n);
       if(parkData[dk]){
         parkData[dk]=parkData[dk].filter(e=>!(e.name===g.name&&e.type==='park-auto'));
         if(parkData[dk].length===0)delete parkData[dk];
@@ -5423,9 +5426,9 @@ function importCSVText(text){
 
     if(hasParkKw(note)){
       for(let n=0;n<nights;n++){
-        const {m:nm,d:nd}=addDays(cm,cd,n);
-        const dk=dateKey(2026,nm,nd);
-        const pp=parkPrice(2026,nm,nd);const pk=parkData[dk]||[];
+        const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+        const dk=dateKey(ny,nm,nd);
+        const pp=parkPrice(ny,nm,nd);const pk=parkData[dk]||[];
         if(!pk.some(e=>e.name===gBase.name&&e.type==='park-auto')){
           pk.push({id:nextParkId++,name:gBase.name,price:pp,note:'宿泊者（自動）',type:'park-auto'});
           parkData[dk]=pk;parkAdded++;
