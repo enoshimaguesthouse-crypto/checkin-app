@@ -14,6 +14,7 @@
    カラートークン — 湘南ビーチハウス・モダン
    ===================================================== */
 :root{
+  --reg-row-h:  50px;      /* 宿泊カレンダー：左右共通の行高 */
   --sand:       #fdfaf5;   /* 砂浜：ページ背景 */
   --sand-mid:   #f5efe3;   /* 砂浜中：カードのホバー・テーブル偶数行 */
   --sand-border:#e8dfd0;   /* 砂浜：ボーダー全般 */
@@ -258,6 +259,12 @@ td{
   border-bottom:1px solid var(--sand-border);
   border-right:1px solid var(--sand-border);
   vertical-align:top;
+  box-sizing:border-box;
+}
+/* 左の部屋名列と右の日付セルの行高を完全同期（共通変数・border-box） */
+#main-table tbody td{
+  height:var(--reg-row-h);
+  box-sizing:border-box;
 }
 td.st{
   position:sticky;left:0;z-index:11;
@@ -928,20 +935,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="topbar">
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
-      <div class="cal-nav-card">
-        <div class="cal-nav-row1">
-          <span id="nav-today-date" class="cal-nav-date"></span>
-          <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ">今日</button>
-        </div>
-        <div class="cal-nav-row2">
-          <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月">◁</button>
-          <span id="nav-prev-month" class="cal-nav-months"></span>
-          <span class="cal-nav-dash">─</span>
-          <span id="nav-next-month" class="cal-nav-months"></span>
-          <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月">▷</button>
-        </div>
-        <span id="month-display" style="display:none;"></span>
-      </div>
+      <span id="month-display" style="display:none;"></span>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
         <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
@@ -3695,14 +3689,27 @@ function renderReg(){
   const _sw=Math.min(window.screen.width,window.screen.height);
   const isMob=_sw<=768;
   const C1=isMob?24:60;  // グループ列幅(px)
-  const C2=isMob?58:60;  // 部屋名列幅(px)
+  const C2=isMob?72:90;  // 部屋名列幅(px)
   const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   let html='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
-  html+=`<th class="st" rowspan="2" style="width:${C1}px;min-width:${C1}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
-  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;text-align:left;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);">${isMob?'室':'部屋'}</th>`;
+  const W12=C1+C2;
+  const navCardHtml=`<div style="display:flex;flex-direction:column;height:100%;">
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--sand-border);">
+      <span id="nav-today-date" style="flex:1;font-size:${isMob?'12':'14'}px;font-weight:600;color:var(--text);padding:3px 8px;display:flex;align-items:center;white-space:nowrap;"></span>
+      <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ" style="border-radius:0;font-size:${isMob?'10':'12'}px;padding:0 ${isMob?'8':'12'}px;">今日</button>
+    </div>
+    <div style="display:flex;align-items:center;">
+      <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月" style="padding:3px ${isMob?'5':'8'}px;">◁</button>
+      <span id="nav-prev-month" class="cal-nav-months"></span>
+      <span class="cal-nav-dash">─</span>
+      <span id="nav-next-month" class="cal-nav-months"></span>
+      <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月" style="padding:3px ${isMob?'5':'8'}px;">▷</button>
+    </div>
+  </div>`;
+  html+=`<th class="st" colspan="2" rowspan="2" style="width:${W12}px;min-width:${W12}px;padding:0;left:0;position:sticky;top:0;z-index:31;background:var(--white);vertical-align:top;border-right:1px solid var(--sand-border);">${navCardHtml}</th>`;
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
@@ -4096,6 +4103,7 @@ function renderReg(){
     html+=`<tr><td colspan="${days+2}" style="height:4px;background:#b0bec5;padding:0;border:none;"></td></tr>`;
   }); // end groups.forEach
   document.getElementById('main-table').innerHTML=html+'</tbody>';
+  _updateMonthDisplay(); // 再生成されたヘッダー内ナビカードへ日付/月を反映
   // 曜日行のtopを日付行の高さに合わせて動的設定
   requestAnimationFrame(()=>{
     const thead=document.querySelector('#main-table thead tr:first-child th:not(.st):not(.st2)');
