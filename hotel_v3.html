@@ -7719,11 +7719,18 @@ _updateMonthDisplay();
 renderReg();
 renderRankAPanel();
 // ── 検索バー：氏名・予約ID・国籍・備考・サイト等で絞り込み ──────────
-// スペース区切りの全条件を含む(AND)予約セルを強調し、それ以外を淡色化する。
-function applyRegSearch(opts){
+// 検索対象テキストを生成（予約データ1件分）
+function _searchHay(g){
+  return [g&&g.name,g&&g.reservationId,g&&g.nat,g&&g.note,g&&g.site,g&&g.phone,g&&g.email,g&&g.cat]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+function _searchTerms(){
   const input=document.getElementById('reg-search-input');
-  if(!input)return;
-  const terms=(input.value||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return input ? (input.value||'').trim().toLowerCase().split(/\s+/).filter(Boolean) : [];
+}
+// 表示中の月のセルに強調/淡色化を適用。jump:true で先頭ヒットへスクロール。
+function applyRegSearch(opts){
+  const terms=_searchTerms();
   const cells=document.querySelectorAll('#page-register .gc');
   if(terms.length===0){
     cells.forEach(c=>c.classList.remove('search-hit','search-dim'));
@@ -7732,33 +7739,63 @@ function applyRegSearch(opts){
   let hitCount=0,firstHit=null;
   cells.forEach(c=>{
     const g=guestData[c.getAttribute('data-k')];
-    const hay=[g&&g.name,g&&g.reservationId,g&&g.nat,g&&g.note,g&&g.site,g&&g.phone,g&&g.email,g&&g.cat]
-      .filter(Boolean).join(' ').toLowerCase();
-    const hit=terms.every(t=>hay.includes(t));
+    const hit=terms.every(t=>_searchHay(g).includes(t));
     c.classList.toggle('search-hit',hit);
     c.classList.toggle('search-dim',!hit);
     if(hit){hitCount++;if(!firstHit)firstHit=c;}
   });
-  // 検索実行時（Enter）は先頭ヒットへスクロール＆件数トースト
-  if(opts&&opts.jump){
-    if(firstHit){
-      firstHit.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
-      if(typeof showToast==='function')showToast(`🔍 ${hitCount}件ヒット（当月）`);
-    } else if(typeof showToast==='function'){
-      showToast('🔍 当月に該当する予約はありません');
-    }
+  if(opts&&opts.jump&&firstHit){
+    firstHit.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
   }
   return hitCount;
+}
+// 全月・全年を横断検索し、当月に無ければ該当月へ移動してから強調する。
+function runRegSearch(){
+  const value=(document.getElementById('reg-search-input').value||'').trim();
+  const terms=value.toLowerCase().split(/\s+/).filter(Boolean);
+  console.log('Search query:',value,terms);
+  if(terms.length===0){applyRegSearch();return;}
+  const curY=parseInt(document.getElementById('sel-year').value)||2026;
+  const curM=parseInt(document.getElementById('sel-month').value);
+  // guestData全体を走査（アンカー行のみ＝cont:falseで予約単位にカウント）
+  const matches=[];
+  for(const k in guestData){
+    const g=guestData[k];
+    if(!g||g.cont)continue;
+    if(terms.every(t=>_searchHay(g).includes(t)))matches.push(parseKey(k));
+  }
+  if(matches.length===0){
+    applyRegSearch();
+    if(typeof showToast==='function')showToast('🔍 該当する予約はありません');
+    return;
+  }
+  // 移動先：当月にヒットがあれば当月を維持、無ければ最も早い年月へ
+  const inCurrent=matches.some(p=>p.y===curY&&p.m===curM);
+  const monthSet=new Set(matches.map(p=>p.y*100+p.m));
+  let target;
+  if(inCurrent){
+    target={y:curY,m:curM};
+  } else {
+    target=matches.slice().sort((a,b)=>a.y-b.y||a.m-b.m||a.d-b.d)[0];
+    document.getElementById('sel-year').value=String(target.y);
+    document.getElementById('sel-month').value=String(target.m);
+    DISP_YEAR=target.y;
+    _updateMonthDisplay();
+    renderReg(); // renderReg内でapplyRegSearch()が呼ばれ強調が反映される
+  }
+  applyRegSearch({jump:true});
+  if(typeof showToast==='function'){
+    const label=`${target.y===2026?'':target.y+'/'}${target.m}月`;
+    const more=monthSet.size>1?`（${monthSet.size}か月に分散・${label}を表示）`:'';
+    showToast(`🔍 全${matches.length}件ヒット${more}`);
+  }
 }
 (function initRegSearch(){
   const input=document.getElementById('reg-search-input');
   if(!input)return;
   input.addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
-    const value=input.value.trim();
-    const terms=value.split(/\s+/).filter(Boolean);
-    console.log('Search query:',value,terms);
-    applyRegSearch({jump:true});
+    runRegSearch();
   });
   // 入力が空になったら強調を即解除
   input.addEventListener('input',()=>{
