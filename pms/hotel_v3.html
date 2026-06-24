@@ -422,6 +422,9 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
 .gc{min-height:52px;padding:4px 10px 4px 13px;gap:5px;}
 /* 貸切セルはrowspanで高さ確保→gc全体に反映 */
 .gc.charter{height:100%;box-sizing:border-box;}
+/* 検索ハイライト */
+.gc.search-hit{outline:2.5px solid var(--ocean);outline-offset:-2px;border-radius:4px;}
+.gc.search-dim{opacity:.25;filter:grayscale(.3);}
 
 /* 上段：氏名＋人数＋支払＋料金＋時刻（1行） */
 .c-namerow{display:flex;align-items:center;gap:3px;min-width:0;flex-wrap:nowrap;}
@@ -4328,6 +4331,8 @@ function renderReg(){
       // 通常の再描画：スクロール位置を維持（何もしない）
     }
   });
+  // 再描画でセルが作り直されるため検索ハイライトを再適用
+  if(typeof applyRegSearch==='function')applyRegSearch();
 }
 
 // チェックイン状態トグル（右クリック / 長押し）
@@ -7713,7 +7718,38 @@ renderFilterUI();
 _updateMonthDisplay();
 renderReg();
 renderRankAPanel();
-// ── 検索バー：Enterで検索（スペース区切りで複数条件）──────────
+// ── 検索バー：氏名・予約ID・国籍・備考・サイト等で絞り込み ──────────
+// スペース区切りの全条件を含む(AND)予約セルを強調し、それ以外を淡色化する。
+function applyRegSearch(opts){
+  const input=document.getElementById('reg-search-input');
+  if(!input)return;
+  const terms=(input.value||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const cells=document.querySelectorAll('#page-register .gc');
+  if(terms.length===0){
+    cells.forEach(c=>c.classList.remove('search-hit','search-dim'));
+    return 0;
+  }
+  let hitCount=0,firstHit=null;
+  cells.forEach(c=>{
+    const g=guestData[c.getAttribute('data-k')];
+    const hay=[g&&g.name,g&&g.reservationId,g&&g.nat,g&&g.note,g&&g.site,g&&g.phone,g&&g.email,g&&g.cat]
+      .filter(Boolean).join(' ').toLowerCase();
+    const hit=terms.every(t=>hay.includes(t));
+    c.classList.toggle('search-hit',hit);
+    c.classList.toggle('search-dim',!hit);
+    if(hit){hitCount++;if(!firstHit)firstHit=c;}
+  });
+  // 検索実行時（Enter）は先頭ヒットへスクロール＆件数トースト
+  if(opts&&opts.jump){
+    if(firstHit){
+      firstHit.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+      if(typeof showToast==='function')showToast(`🔍 ${hitCount}件ヒット（当月）`);
+    } else if(typeof showToast==='function'){
+      showToast('🔍 当月に該当する予約はありません');
+    }
+  }
+  return hitCount;
+}
 (function initRegSearch(){
   const input=document.getElementById('reg-search-input');
   if(!input)return;
@@ -7722,7 +7758,11 @@ renderRankAPanel();
     const value=input.value.trim();
     const terms=value.split(/\s+/).filter(Boolean);
     console.log('Search query:',value,terms);
-    // TODO: ここに絞り込みロジックを実装
+    applyRegSearch({jump:true});
+  });
+  // 入力が空になったら強調を即解除
+  input.addEventListener('input',()=>{
+    if(input.value.trim()==='')applyRegSearch();
   });
 })();
 if(typeof renderUnassignedPanel==='function')renderUnassignedPanel();
