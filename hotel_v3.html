@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -161,6 +161,16 @@ select:focus,input:focus{
 /* =====================================================
    ボタン
    ===================================================== */
+.cal-nav-card{display:inline-flex;flex-direction:column;border:1.5px solid var(--sand-border);border-radius:var(--radius-sm);background:var(--white);box-shadow:var(--shadow-sm);overflow:hidden;min-width:148px;}
+.cal-nav-row1{display:flex;align-items:stretch;border-bottom:1px solid var(--sand-border);}
+.cal-nav-row2{display:flex;align-items:center;}
+.cal-nav-date{flex:1;font-size:15px;font-weight:600;color:var(--text);padding:6px 12px;display:flex;align-items:center;}
+.cal-nav-today-btn{background:var(--ocean);color:var(--white);border:none;font-size:12px;font-weight:500;padding:0 12px;cursor:pointer;white-space:nowrap;transition:background .15s;}
+.cal-nav-today-btn:hover{background:var(--ocean-mid);}
+.cal-nav-arrow{background:none;border:none;color:var(--muted);font-size:14px;padding:6px 10px;cursor:pointer;transition:color .15s;flex-shrink:0;}
+.cal-nav-arrow:hover{color:var(--ocean);}
+.cal-nav-months{font-size:12px;color:var(--muted);flex:1;text-align:center;}
+.cal-nav-dash{font-size:12px;color:var(--sand-border);}
 .btn{
   padding:7px 16px;
   border-radius:var(--radius-sm);
@@ -649,6 +659,11 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   #page-register .topbar .sub{display:none;}
   #page-register .topbar .ctr{gap:4px;flex-wrap:wrap;}
   #page-register .topbar .btn{padding:4px 8px;font-size:11px;}
+  .cal-nav-card{min-width:130px;}
+  .cal-nav-date{font-size:13px;padding:5px 10px;}
+  .cal-nav-today-btn{font-size:11px;padding:0 10px;}
+  .cal-nav-arrow{padding:5px 8px;font-size:13px;}
+  .cal-nav-months{font-size:11px;}
   /* グループラベルを縦書き縮小 */
   .grp-lbl{font-size:7px!important;writing-mode:vertical-rl;line-height:1;}
   /* reg-scroll：高さはJSで制御 */
@@ -913,11 +928,19 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="topbar">
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
-      <div style="display:flex;align-items:center;gap:4px;">
-        <button class="btn" onclick="stepMonth(-1)" title="前の月">◀</button>
-        <span id="month-display" style="font-size:13px;font-weight:600;min-width:88px;text-align:center;color:var(--text);cursor:default;">2026年 6月</span>
-        <button class="btn" onclick="stepMonth(1)" title="次の月">▶</button>
-        <button class="btn" onclick="goToday()" title="今日の日付へ">今日</button>
+      <div class="cal-nav-card">
+        <div class="cal-nav-row1">
+          <span id="nav-today-date" class="cal-nav-date"></span>
+          <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ">【今日】</button>
+        </div>
+        <div class="cal-nav-row2">
+          <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月">◁</button>
+          <span id="nav-prev-month" class="cal-nav-months"></span>
+          <span class="cal-nav-dash">─</span>
+          <span id="nav-next-month" class="cal-nav-months"></span>
+          <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月">▷</button>
+        </div>
+        <span id="month-display" style="display:none;"></span>
       </div>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
@@ -3424,6 +3447,15 @@ function _updateMonthDisplay(){
   const y=parseInt(document.getElementById('sel-year').value);
   const m=parseInt(document.getElementById('sel-month').value);
   document.getElementById('month-display').textContent=`${y}年 ${m}月`;
+  const today=new Date();
+  const todayEl=document.getElementById('nav-today-date');
+  if(todayEl)todayEl.textContent=`${today.getMonth()+1}/${today.getDate()}`;
+  const prevM=m===1?12:m-1;
+  const nextM=m===12?1:m+1;
+  const prevEl=document.getElementById('nav-prev-month');
+  const nextEl=document.getElementById('nav-next-month');
+  if(prevEl)prevEl.textContent=`${prevM}月`;
+  if(nextEl)nextEl.textContent=`${nextM}月`;
 }
 
 function stepMonth(dir){
