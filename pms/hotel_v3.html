@@ -4198,6 +4198,7 @@ function renderReg(){
   if(allCharterDays.size>0){
     const table=document.getElementById('main-table');
     table.querySelectorAll('thead tr:first-child th').forEach(th=>{
+      if(th.classList.contains('st')||th.classList.contains('st2'))return; // 左上コーナー(ナビ)は除外
       const dayNum=parseInt(th.textContent);
       if(!isNaN(dayNum)&&allCharterDays.has(dayNum)){
         th.style.background='#fef9c3';
