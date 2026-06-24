@@ -918,7 +918,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
         <button class="btn" onclick="stepMonth(-1)" title="前の月">◀</button>
         <span id="month-display" style="font-size:13px;font-weight:600;min-width:88px;text-align:center;color:var(--text);cursor:default;">2026年 6月</span>
         <button class="btn" onclick="stepMonth(1)" title="次の月">▶</button>
-        <button class="btn" onclick="goToday()" title="今日の日付へ" style="background:#185FA5;color:#fff;border-color:#185FA5;">今日</button>
+        <button class="btn" onclick="goToday()" title="今日の日付へ">今日</button>
       </div>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
@@ -3680,7 +3680,7 @@ function renderReg(){
     const isToday=(year===_ty&&month===_tm&&d===_td);
     const todayId=isToday?' id="th-today"':'';
     const todayNumHtml=isToday
-      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#e53e3e;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
+      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#185FA5;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
     html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
