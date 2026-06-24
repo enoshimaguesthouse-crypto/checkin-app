@@ -14,7 +14,6 @@
    カラートークン — 湘南ビーチハウス・モダン
    ===================================================== */
 :root{
-  --reg-row-h:  56px;      /* 宿泊カレンダー：左右共通の行高（内容より大きい整数→明示高さが優先され全行が正確に整数pxになりsticky丸めズレを防ぐ）*/
   --sand:       #fdfaf5;   /* 砂浜：ページ背景 */
   --sand-mid:   #f5efe3;   /* 砂浜中：カードのホバー・テーブル偶数行 */
   --sand-border:#e8dfd0;   /* 砂浜：ボーダー全般 */
@@ -162,16 +161,6 @@ select:focus,input:focus{
 /* =====================================================
    ボタン
    ===================================================== */
-.cal-nav-card{display:inline-flex;flex-direction:column;border:1.5px solid var(--sand-border);border-radius:var(--radius-sm);background:var(--white);box-shadow:var(--shadow-sm);overflow:hidden;min-width:148px;}
-.cal-nav-row1{display:flex;align-items:stretch;border-bottom:1px solid var(--sand-border);}
-.cal-nav-row2{display:flex;align-items:center;}
-.cal-nav-date{flex:1;font-size:15px;font-weight:600;color:var(--text);padding:6px 12px;display:flex;align-items:center;}
-.cal-nav-today-btn{background:var(--ocean);color:var(--white);border:none;font-size:12px;font-weight:500;padding:0 12px;cursor:pointer;white-space:nowrap;transition:background .15s;}
-.cal-nav-today-btn:hover{background:var(--ocean-mid);}
-.cal-nav-arrow{background:none;border:none;color:var(--muted);font-size:14px;padding:6px 10px;cursor:pointer;transition:color .15s;flex-shrink:0;}
-.cal-nav-arrow:hover{color:var(--ocean);}
-.cal-nav-months{font-size:12px;color:var(--muted);flex:1;text-align:center;}
-.cal-nav-dash{font-size:12px;color:var(--sand-border);}
 .btn{
   padding:7px 16px;
   border-radius:var(--radius-sm);
@@ -259,13 +248,6 @@ td{
   border-bottom:1px solid var(--sand-border);
   border-right:1px solid var(--sand-border);
   vertical-align:top;
-  box-sizing:border-box;
-}
-/* 左の部屋名列と右の日付セルの行高を完全同期（共通変数・border-box） */
-#main-table tbody td{
-  height:var(--reg-row-h);
-  box-sizing:border-box;
-  overflow:hidden;            /* JSで整数高さを固定した際、内容が押し返さないようにする */
 }
 td.st{
   position:sticky;left:0;z-index:11;
@@ -667,11 +649,6 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   #page-register .topbar .sub{display:none;}
   #page-register .topbar .ctr{gap:4px;flex-wrap:wrap;}
   #page-register .topbar .btn{padding:4px 8px;font-size:11px;}
-  .cal-nav-card{min-width:130px;}
-  .cal-nav-date{font-size:13px;padding:5px 10px;}
-  .cal-nav-today-btn{font-size:11px;padding:0 10px;}
-  .cal-nav-arrow{padding:5px 8px;font-size:13px;}
-  .cal-nav-months{font-size:11px;}
   /* グループラベルを縦書き縮小 */
   .grp-lbl{font-size:7px!important;writing-mode:vertical-rl;line-height:1;}
   /* reg-scroll：高さはJSで制御 */
@@ -936,7 +913,12 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="topbar">
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
-      <span id="month-display" style="display:none;"></span>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="btn" onclick="stepMonth(-1)" title="前の月">◀</button>
+        <span id="month-display" style="font-size:13px;font-weight:600;min-width:88px;text-align:center;color:var(--text);cursor:default;">2026年 6月</span>
+        <button class="btn" onclick="stepMonth(1)" title="次の月">▶</button>
+        <button class="btn" onclick="goToday()" title="今日の日付へ">今日</button>
+      </div>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
         <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
@@ -3442,15 +3424,6 @@ function _updateMonthDisplay(){
   const y=parseInt(document.getElementById('sel-year').value);
   const m=parseInt(document.getElementById('sel-month').value);
   document.getElementById('month-display').textContent=`${y}年 ${m}月`;
-  const today=new Date();
-  const todayEl=document.getElementById('nav-today-date');
-  if(todayEl)todayEl.textContent=`${today.getMonth()+1}/${today.getDate()}`;
-  const prevM=m===1?12:m-1;
-  const nextM=m===12?1:m+1;
-  const prevEl=document.getElementById('nav-prev-month');
-  const nextEl=document.getElementById('nav-next-month');
-  if(prevEl)prevEl.textContent=`${prevM}月`;
-  if(nextEl)nextEl.textContent=`${nextM}月`;
 }
 
 function stepMonth(dir){
@@ -3684,54 +3657,20 @@ function setAllRoomFilter(val){
 function filteredRooms(){
   return rooms.filter(r=>roomFilter[r.group]!==false);
 }
-// ── 左固定列と右グリッドの行高ズレ（sticky×小数px丸め）を根絶 ──
-// 各行(tr)の実測高さを整数pxに固定。固定列セルも本体セルも同じtrに属するため、
-// 行高を整数化すると両者のサブピクセル丸めが一致し、1pxもズレなくなる。
-function syncRegRowHeights(){
-  const tb=document.querySelector('#main-table tbody');
-  if(!tb)return;
-  const trs=[...tb.rows].filter(tr=>tr.children.length>1); // 4px区切り行(セル1個)は除外
-  // まず既存の固定高さを解除して自然高さを再計測
-  for(const tr of trs)tr.style.height='';
-  // 自然高さを一括measure→整数化して一括設定（reflow最小化）
-  const heights=trs.map(tr=>Math.round(tr.getBoundingClientRect().height));
-  for(let i=0;i<trs.length;i++)trs[i].style.height=heights[i]+'px';
-}
-// 画面リサイズ・ズーム変更でも崩れないよう再同期（デバウンス）
-let _syncRowTimer=null;
-window.addEventListener('resize',()=>{
-  clearTimeout(_syncRowTimer);
-  _syncRowTimer=setTimeout(()=>{
-    if(document.getElementById('page-register')?.classList.contains('active'))syncRegRowHeights();
-  },150);
-});
 function renderReg(){
   const year=2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
   // ── モバイル判定・セル幅計算 ──
   const _sw=Math.min(window.screen.width,window.screen.height);
   const isMob=_sw<=768;
   const C1=isMob?24:60;  // グループ列幅(px)
-  const C2=isMob?72:90;  // 部屋名列幅(px)
+  const C2=isMob?58:60;  // 部屋名列幅(px)
   const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   let html='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
-  const W12=C1+C2;
-  const navCardHtml=`<div style="display:flex;flex-direction:column;height:100%;">
-    <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--sand-border);">
-      <span id="nav-today-date" style="flex:1;font-size:${isMob?'12':'14'}px;font-weight:600;color:var(--text);padding:3px 8px;display:flex;align-items:center;white-space:nowrap;"></span>
-      <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ" style="border-radius:0;font-size:${isMob?'10':'12'}px;padding:0 ${isMob?'8':'12'}px;">今日</button>
-    </div>
-    <div style="display:flex;align-items:center;">
-      <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月" style="padding:3px ${isMob?'5':'8'}px;">◁</button>
-      <span id="nav-prev-month" class="cal-nav-months"></span>
-      <span class="cal-nav-dash">─</span>
-      <span id="nav-next-month" class="cal-nav-months"></span>
-      <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月" style="padding:3px ${isMob?'5':'8'}px;">▷</button>
-    </div>
-  </div>`;
-  html+=`<th class="st" colspan="2" rowspan="2" style="width:${W12}px;min-width:${W12}px;padding:0;left:0;position:sticky;top:0;z-index:31;background:var(--white);vertical-align:top;border-right:1px solid var(--sand-border);">${navCardHtml}</th>`;
+  html+=`<th class="st" rowspan="2" style="width:${C1}px;min-width:${C1}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
+  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;text-align:left;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);">${isMob?'室':'部屋'}</th>`;
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
@@ -3836,7 +3775,7 @@ function renderReg(){
       const roomLabel=isSingle?'':(room.label||shortName(room.type));
       const _rs=roomSettings[room.id]||{};
       const _kc=_rs.keycode||'';
-      row+=`<td class="st2 ri" style="width:${C2}px;min-width:${C2}px;max-width:${C2}px;padding:${isMob?'4px 3px':'4px 6px'};vertical-align:top;left:${C1}px;overflow:hidden;background:var(--white);">`
+      row+=`<td class="st2 ri" style="width:${C2}px;min-width:${C2}px;max-width:${C2}px;padding:${isMob?'2px 3px':'4px 6px'};vertical-align:middle;left:${C1}px;overflow:hidden;background:var(--white);">`
         +`<span style="font-size:${isMob?'9':'10'}px;font-weight:600;color:${grp.color};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${roomLabel}</span>`
         +(_kc?`<span style="font-size:9px;color:#888;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">🔑${_kc}</span>`:'')
         +`</td>`;
@@ -4125,7 +4064,6 @@ function renderReg(){
     html+=`<tr><td colspan="${days+2}" style="height:4px;background:#b0bec5;padding:0;border:none;"></td></tr>`;
   }); // end groups.forEach
   document.getElementById('main-table').innerHTML=html+'</tbody>';
-  _updateMonthDisplay(); // 再生成されたヘッダー内ナビカードへ日付/月を反映
   // 曜日行のtopを日付行の高さに合わせて動的設定
   requestAnimationFrame(()=>{
     const thead=document.querySelector('#main-table thead tr:first-child th:not(.st):not(.st2)');
@@ -4135,7 +4073,6 @@ function renderReg(){
         th.style.top=h+'px';
       });
     }
-    syncRegRowHeights();
   });
 
   // ── カテゴリ別ダッシュボード集計（フィルタ適用）──
