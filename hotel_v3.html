@@ -14,7 +14,7 @@
    カラートークン — 湘南ビーチハウス・モダン
    ===================================================== */
 :root{
-  --reg-row-h:  50px;      /* 宿泊カレンダー：左右共通の行高 */
+  --reg-row-h:  56px;      /* 宿泊カレンダー：左右共通の行高（内容より大きい整数→明示高さが優先され全行が正確に整数pxになりsticky丸めズレを防ぐ）*/
   --sand:       #fdfaf5;   /* 砂浜：ページ背景 */
   --sand-mid:   #f5efe3;   /* 砂浜中：カードのホバー・テーブル偶数行 */
   --sand-border:#e8dfd0;   /* 砂浜：ボーダー全般 */
@@ -265,6 +265,7 @@ td{
 #main-table tbody td{
   height:var(--reg-row-h);
   box-sizing:border-box;
+  overflow:hidden;            /* JSで整数高さを固定した際、内容が押し返さないようにする */
 }
 td.st{
   position:sticky;left:0;z-index:11;
@@ -3683,6 +3684,27 @@ function setAllRoomFilter(val){
 function filteredRooms(){
   return rooms.filter(r=>roomFilter[r.group]!==false);
 }
+// ── 左固定列と右グリッドの行高ズレ（sticky×小数px丸め）を根絶 ──
+// 各行(tr)の実測高さを整数pxに固定。固定列セルも本体セルも同じtrに属するため、
+// 行高を整数化すると両者のサブピクセル丸めが一致し、1pxもズレなくなる。
+function syncRegRowHeights(){
+  const tb=document.querySelector('#main-table tbody');
+  if(!tb)return;
+  const trs=[...tb.rows].filter(tr=>tr.children.length>1); // 4px区切り行(セル1個)は除外
+  // まず既存の固定高さを解除して自然高さを再計測
+  for(const tr of trs)tr.style.height='';
+  // 自然高さを一括measure→整数化して一括設定（reflow最小化）
+  const heights=trs.map(tr=>Math.round(tr.getBoundingClientRect().height));
+  for(let i=0;i<trs.length;i++)trs[i].style.height=heights[i]+'px';
+}
+// 画面リサイズ・ズーム変更でも崩れないよう再同期（デバウンス）
+let _syncRowTimer=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(_syncRowTimer);
+  _syncRowTimer=setTimeout(()=>{
+    if(document.getElementById('page-register')?.classList.contains('active'))syncRegRowHeights();
+  },150);
+});
 function renderReg(){
   const year=2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
   // ── モバイル判定・セル幅計算 ──
@@ -4113,6 +4135,7 @@ function renderReg(){
         th.style.top=h+'px';
       });
     }
+    syncRegRowHeights();
   });
 
   // ── カテゴリ別ダッシュボード集計（フィルタ適用）──
