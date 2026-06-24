@@ -363,6 +363,41 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
 
 
 /* =====================================================
+   左上コーナー ナビゲーション（3分割）
+   ===================================================== */
+.cnav{
+  position:absolute;inset:0;
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-rows:1fr 1fr;
+  box-sizing:border-box;
+  padding:4px 5px;gap:2px 3px;align-items:center;
+}
+.cnav-date{
+  grid-column:1;grid-row:1;
+  font-size:12px;font-weight:700;color:var(--ocean);
+  line-height:1;white-space:nowrap;
+}
+.cnav-today{
+  grid-column:2;grid-row:1;
+  font-size:10px;font-weight:700;line-height:1;white-space:nowrap;
+  padding:3px 6px;border:1px solid var(--ocean);
+  background:var(--ocean);color:#fff;border-radius:5px;cursor:pointer;
+}
+.cnav-today:hover{filter:brightness(1.12);}
+.cnav-month{
+  grid-column:1 / span 2;grid-row:2;
+  display:flex;align-items:center;justify-content:space-between;gap:2px;
+}
+.cnav-month button{
+  font-size:11px;font-weight:700;line-height:1.1;
+  padding:1px 5px;border:1px solid var(--sand-border,#ddd);
+  background:var(--white);color:var(--text);border-radius:4px;cursor:pointer;
+}
+.cnav-month button:hover{background:#eef3f8;}
+.cnav-mlabel{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;}
+
+/* =====================================================
    セル2段レイアウト（コンパクト）
    ===================================================== */
 .gc{min-height:52px;padding:4px 10px 4px 13px;gap:5px;}
@@ -914,12 +949,6 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="topbar">
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
-      <div style="display:flex;align-items:center;gap:4px;">
-        <button class="btn" onclick="stepMonth(-1)" title="前の月">◀</button>
-        <span id="month-display" style="font-size:13px;font-weight:600;min-width:88px;text-align:center;color:var(--text);cursor:default;">2026年 6月</span>
-        <button class="btn" onclick="stepMonth(1)" title="次の月">▶</button>
-        <button class="btn" onclick="goToday()" title="今日の日付へ">今日</button>
-      </div>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
         <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
@@ -3424,7 +3453,8 @@ let _regInitialLoad = true;
 function _updateMonthDisplay(){
   const y=parseInt(document.getElementById('sel-year').value);
   const m=parseInt(document.getElementById('sel-month').value);
-  document.getElementById('month-display').textContent=`${y}年 ${m}月`;
+  const md=document.getElementById('month-display');
+  if(md)md.textContent=`${y}年 ${m}月`;
 }
 
 function stepMonth(dir){
@@ -3667,12 +3697,23 @@ function renderReg(){
   const C2=isMob?58:60;  // 部屋名列幅(px)
   const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
+  const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   let html='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
-  html+=`<th class="st" rowspan="2" style="width:${C1}px;min-width:${C1}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
-  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;text-align:left;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);">${isMob?'室':'部屋'}</th>`;
-  const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
+  // 左上コーナー：3分割ナビ（今日の日付／今日ボタン／月移動）を1セルに集約
+  const cornerW=C1+C2;
+  html+=`<th class="st" colspan="2" rowspan="2" style="width:${cornerW}px;min-width:${cornerW}px;max-width:${cornerW}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);">`
+    +`<div class="cnav">`
+      +`<div class="cnav-date">${_tm}/${_td}</div>`
+      +`<button class="cnav-today" onclick="goToday()" title="今日の日付へ">今日</button>`
+      +`<div class="cnav-month">`
+        +`<button onclick="stepMonth(-1)" title="前の月">◀</button>`
+        +`<span class="cnav-mlabel">${month}月</span>`
+        +`<button onclick="stepMonth(1)" title="次の月">▶</button>`
+      +`</div>`
+    +`</div>`
+  +`</th>`;
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
     const rsCnt=rentalCountOnDate(year,month,d);
