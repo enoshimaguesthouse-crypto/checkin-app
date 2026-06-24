@@ -551,7 +551,20 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
   animation:modalSlideIn .22s ease;
 }
 @keyframes modalSlideIn{from{transform:translateX(100%);}to{transform:translateX(0);}}
-.mbg.open>.mbox{pointer-events:auto;}
+/* 旧型カードモーダル(.mbox)はドッキングではなく従来の中央表示に戻す */
+.mbg:has(> .mbox){
+  align-items:center;justify-content:center;
+  padding:20px;
+  background:rgba(20,30,40,.35);
+  pointer-events:auto;
+}
+.mbg.open > .mbox{
+  pointer-events:auto;
+  flex:0 0 auto;align-self:center;
+  width:min(500px,92vw);
+  height:auto;max-height:90vh;overflow-y:auto;
+  animation:none;
+}
 /* パネル右上の閉じる(×)ボタン */
 .mbg-close{
   position:absolute;top:10px;right:12px;z-index:2;
