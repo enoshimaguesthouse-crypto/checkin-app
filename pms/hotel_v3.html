@@ -928,20 +928,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="topbar">
     <div><div class="ttl">宿泊者名簿 — 江ノ島ゲストハウス134</div><div class="sub" style="display:flex;align-items:center;gap:12px;"><span>藤沢市片瀬海岸2-15-15</span><span id="sync-status" style="font-size:11px;color:var(--muted);">☁ GAS URL未設定</span></div></div>
     <div class="ctr">
-      <div class="cal-nav-card">
-        <div class="cal-nav-row1">
-          <span id="nav-today-date" class="cal-nav-date"></span>
-          <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ">今日</button>
-        </div>
-        <div class="cal-nav-row2">
-          <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月">◁</button>
-          <span id="nav-prev-month" class="cal-nav-months"></span>
-          <span class="cal-nav-dash">─</span>
-          <span id="nav-next-month" class="cal-nav-months"></span>
-          <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月">▷</button>
-        </div>
-        <span id="month-display" style="display:none;"></span>
-      </div>
+      <span id="month-display" style="display:none;"></span>
       <select id="sel-year" style="display:none;"><option>2026</option></select>
       <select id="sel-month" style="display:none;" onchange="window._regScrollToToday=true;renderReg()">
         <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
@@ -3695,14 +3682,27 @@ function renderReg(){
   const _sw=Math.min(window.screen.width,window.screen.height);
   const isMob=_sw<=768;
   const C1=isMob?24:60;  // グループ列幅(px)
-  const C2=isMob?58:60;  // 部屋名列幅(px)
+  const C2=isMob?100:140;  // 部屋名列幅(px)（ナビカード格納のため拡幅）
   const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   let html='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
   html+=`<th class="st" rowspan="2" style="width:${C1}px;min-width:${C1}px;padding:0;left:0;position:sticky;top:0;z-index:30;background:var(--white);"></th>`;
-  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;text-align:left;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);">${isMob?'室':'部屋'}</th>`;
+  const navCardHtml=`<div class="cal-nav-card" style="margin:0;border-radius:0;border:none;border-bottom:1px solid var(--sand-border);box-shadow:none;width:100%;box-sizing:border-box;">
+    <div class="cal-nav-row1" style="border-bottom:1px solid var(--sand-border);">
+      <span id="nav-today-date" class="cal-nav-date" style="${isMob?'font-size:12px;padding:4px 6px;':''}"></span>
+      <button class="cal-nav-today-btn" onclick="goToday()" title="今日の日付へ" style="${isMob?'font-size:10px;padding:0 7px;':''}">今日</button>
+    </div>
+    <div class="cal-nav-row2">
+      <button class="cal-nav-arrow" onclick="stepMonth(-1)" title="前の月" style="${isMob?'padding:4px 5px;font-size:12px;':''}">◁</button>
+      <span id="nav-prev-month" class="cal-nav-months" style="${isMob?'font-size:10px;':''}"></span>
+      <span class="cal-nav-dash">─</span>
+      <span id="nav-next-month" class="cal-nav-months" style="${isMob?'font-size:10px;':''}"></span>
+      <button class="cal-nav-arrow" onclick="stepMonth(1)" title="次の月" style="${isMob?'padding:4px 5px;font-size:12px;':''}">▷</button>
+    </div>
+  </div>`;
+  html+=`<th class="st2" rowspan="2" style="width:${C2}px;min-width:${C2}px;padding:0;left:${C1}px;position:sticky;top:0;z-index:30;background:var(--white);vertical-align:top;">${navCardHtml}</th>`;
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
