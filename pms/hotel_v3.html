@@ -268,9 +268,10 @@ tr:last-child td{border-bottom:none;}
    予約セル（.gc）
    ===================================================== */
 .gc{
-  padding:5px 6px 5px 13px;
-  font-size:10.5px;
+  padding:5px 10px 5px 13px;
+  font-size:11px;
   line-height:1.4;
+  gap:4px;
   cursor:pointer;
   user-select:none;
   min-height:62px;
@@ -364,14 +365,14 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
 /* =====================================================
    セル2段レイアウト（コンパクト）
    ===================================================== */
-.gc{min-height:52px;padding:4px 6px 4px 13px;gap:2px;}
+.gc{min-height:52px;padding:4px 10px 4px 13px;gap:5px;}
 /* 貸切セルはrowspanで高さ確保→gc全体に反映 */
 .gc.charter{height:100%;box-sizing:border-box;}
 
 /* 上段：氏名＋人数＋支払＋料金＋時刻（1行） */
 .c-namerow{display:flex;align-items:center;gap:3px;min-width:0;flex-wrap:nowrap;}
 .c-name{
-  font-size:12px;font-weight:700;flex:1;min-width:0;
+  font-size:13px;font-weight:700;flex:1;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   color:var(--ocean);
 }
@@ -386,11 +387,11 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
 .c-guests.ci{background:var(--seaglass);}
 .c-chips{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
 .c-pay{font-size:8.5px;font-weight:700;border-radius:3px;padding:1px 4px;white-space:nowrap;flex-shrink:0;}
-.c-price{font-size:9.5px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0;}
+.c-price{font-size:10.5px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0;}
 .c-time{font-size:8.5px;font-weight:700;color:#7d4c00;background:var(--sunset-lt);border-radius:3px;padding:1px 4px;white-space:nowrap;flex-shrink:0;}
 
 /* 下段：サイト＋バッジ群 */
-.c-sub{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;overflow:hidden;}
+.c-sub{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;overflow:hidden;opacity:.72;}
 .c-nights{background:var(--sand);color:var(--muted);border:1px solid var(--sand-border);}
 
 /* 備考（条件表示） */
