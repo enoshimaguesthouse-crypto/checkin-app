@@ -3783,7 +3783,7 @@ function renderReg(){
     const todayNumHtml=isToday
       ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#185FA5;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
-    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#FEF3CD':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
+    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#ffedd5':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
   html+=`</tr>`;
   // 曜日行（sticky top:日付行高さ分）
