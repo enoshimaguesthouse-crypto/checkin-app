@@ -533,19 +533,24 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
    ===================================================== */
 .mbg{
   display:none;position:fixed;inset:0;
-  background:rgba(28,40,51,.45);
-  backdrop-filter:blur(2px);
-  z-index:100;align-items:flex-start;justify-content:center;padding-top:40px;
+  background:transparent;            /* 暗転なし：カレンダーは見えたまま */
+  z-index:100;
+  align-items:stretch;justify-content:flex-end;padding:0;
+  pointer-events:none;               /* クリックを背面へ透過＝カレンダー操作可 */
 }
 .mbg.open{display:flex;}
 .modal{
+  pointer-events:auto;               /* パネル自身は操作可 */
   background:var(--white);
-  border-radius:var(--radius-lg);
-  border:1.5px solid var(--sand-border);
-  padding:1.75rem;
-  width:440px;max-width:96vw;max-height:88vh;overflow-y:auto;
-  box-shadow:var(--shadow-md);
+  border-radius:0;
+  border:none;border-left:1.5px solid var(--sand-border);
+  padding:1.5rem;
+  width:400px!important;max-width:92vw!important;
+  height:100vh;max-height:100vh!important;overflow-y:auto;
+  box-shadow:-6px 0 20px rgba(28,40,51,.14);
+  animation:modalSlideIn .22s ease;
 }
+@keyframes modalSlideIn{from{transform:translateX(100%);}to{transform:translateX(0);}}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:1.1rem;color:var(--ink);}
 .mr{display:grid;gap:9px;margin-top:10px;}
 .mr2{grid-template-columns:1fr 1fr;}.mr3{grid-template-columns:1fr 1fr 1fr;}
