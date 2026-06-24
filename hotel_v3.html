@@ -3689,7 +3689,7 @@ function filteredRooms(){
   return rooms.filter(r=>roomFilter[r.group]!==false);
 }
 function renderReg(){
-  const year=2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
+  const year=parseInt(document.getElementById('sel-year').value)||2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
   // ── モバイル判定・セル幅計算 ──
   const _sw=Math.min(window.screen.width,window.screen.height);
   const isMob=_sw<=768;
@@ -3709,7 +3709,7 @@ function renderReg(){
       +`<button class="cnav-today" onclick="goToday()" title="今日の日付へ">今日</button>`
       +`<div class="cnav-month">`
         +`<button onclick="stepMonth(-1)" title="前の月">◀</button>`
-        +`<span class="cnav-mlabel">${month}月</span>`
+        +`<span class="cnav-mlabel">${year===2026?`${month}月`:`${year}/${month}`}</span>`
         +`<button onclick="stepMonth(1)" title="次の月">▶</button>`
       +`</div>`
     +`</div>`
