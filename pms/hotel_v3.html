@@ -14,6 +14,7 @@
    カラートークン — 湘南ビーチハウス・モダン
    ===================================================== */
 :root{
+  --reg-row-h:  50px;      /* 宿泊カレンダー：左右共通の行高 */
   --sand:       #fdfaf5;   /* 砂浜：ページ背景 */
   --sand-mid:   #f5efe3;   /* 砂浜中：カードのホバー・テーブル偶数行 */
   --sand-border:#e8dfd0;   /* 砂浜：ボーダー全般 */
@@ -258,6 +259,12 @@ td{
   border-bottom:1px solid var(--sand-border);
   border-right:1px solid var(--sand-border);
   vertical-align:top;
+  box-sizing:border-box;
+}
+/* 左の部屋名列と右の日付セルの行高を完全同期（共通変数・border-box） */
+#main-table tbody td{
+  height:var(--reg-row-h);
+  box-sizing:border-box;
 }
 td.st{
   position:sticky;left:0;z-index:11;
