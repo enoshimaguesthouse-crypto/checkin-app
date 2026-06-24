@@ -3793,7 +3793,7 @@ function renderReg(){
     const rsCnt2=rentalCountOnDate(year,month,d);
     const rentalBg2=rsCnt2>0?'background:#fff3e0;':'';
     const isToday2=(year===_ty&&month===_tm&&d===_td);
-    html+=`<th style="font-size:10px;color:${isToday2?'#854F0B':dow===0||hol?'#c0392b':dow===6?'#2980b9':'#aaa'};font-weight:${isToday2?'700':'400'};position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?'#FEF3CD':rsCnt2>0?'#fff3e0':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
+    html+=`<th style="font-size:10px;color:${isToday2?'#9a3412':dow===0||hol?'#c0392b':dow===6?'#2980b9':'#aaa'};font-weight:${isToday2?'700':'400'};position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?'#ffedd5':rsCnt2>0?'#fff3e0':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
   }
   html+='</tr></thead><tbody>';
   let tM=0,tF=0,cS=0,cG=0,cC=0,cF=0,tS=0,tCash=0;
@@ -4074,7 +4074,7 @@ function renderReg(){
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
 
           
-          row+=`<td colspan="${span}" class="${tdCls}" style="padding:0;${isTodayCol&&!bg?'background:#FEF3CD;':bg?'background:'+bg:''}" `
+          row+=`<td colspan="${span}" class="${tdCls}" style="padding:0;${isTodayCol&&!bg?'background:#ffedd5;':bg?'background:'+bg:''}" `
             +`ondragover="event.preventDefault();this.classList.add('dt-swap')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -4136,7 +4136,7 @@ function renderReg(){
           const isTodayColE=(year===_ty&&month===_tm&&d===_td);
 
           
-          row+=`<td style="padding:0;${isTodayColE&&!bg?'background:#FEF3CD;':bg?'background:'+bg:''};max-height:62px;" `
+          row+=`<td style="padding:0;${isTodayColE&&!bg?'background:#ffedd5;':bg?'background:'+bg:''};max-height:62px;" `
             +`ondragover="event.preventDefault();this.classList.add('dt')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -4150,7 +4150,7 @@ function renderReg(){
         const _dw=gDow(year,month,d),_hl=isHoliday(year,month,d);
         const _pbg=_dw===0||_hl?'rgba(255,240,240,.45)':_dw===6?'rgba(240,247,255,.45)':'';
         const _pToday=(year===_ty&&month===_tm&&d===_td);
-        row+=`<td style="padding:0;${_pToday?'background:#FEF3CD;':_pbg?'background:'+_pbg:''};max-height:62px;" `
+        row+=`<td style="padding:0;${_pToday?'background:#ffedd5;':_pbg?'background:'+_pbg:''};max-height:62px;" `
           +`ondragover="event.preventDefault();this.classList.add('dt')" `
           +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
           +`ondrop="onDrop(event,${room.id},${d})">`
