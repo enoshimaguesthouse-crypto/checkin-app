@@ -268,7 +268,7 @@ tr:last-child td{border-bottom:none;}
    予約セル（.gc）
    ===================================================== */
 .gc{
-  padding:5px 6px;
+  padding:5px 6px 5px 13px;
   font-size:10.5px;
   line-height:1.4;
   cursor:pointer;
@@ -280,12 +280,12 @@ tr:last-child td{border-bottom:none;}
 .gc:hover{filter:brightness(.97);}
 .gc.rv{
   background:linear-gradient(135deg,#eaf4fd 0%,#d6eaf8 100%);
-  border-top:2.5px solid var(--ocean);
+  box-shadow:inset 7px 0 0 0 var(--ocean);
   border-radius:4px;
 }
 .gc.ci{
   background:linear-gradient(135deg,var(--seaglass-lt) 0%,#a9dfce 100%);
-  border-top:2.5px solid var(--seaglass);
+  box-shadow:inset 7px 0 0 0 var(--seaglass);
   border-radius:4px;
 }
 .gc.solo{border-radius:6px;}
@@ -364,7 +364,7 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
 /* =====================================================
    セル2段レイアウト（コンパクト）
    ===================================================== */
-.gc{min-height:52px;padding:4px 6px;gap:2px;}
+.gc{min-height:52px;padding:4px 6px 4px 13px;gap:2px;}
 /* 貸切セルはrowspanで高さ確保→gc全体に反映 */
 .gc.charter{height:100%;box-sizing:border-box;}
 
@@ -420,8 +420,7 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
    ===================================================== */
 .gc.charter{
   background:linear-gradient(135deg,#fef6e4 0%,#fdebd0 100%)!important;
-  border-top:3px solid var(--sunset)!important;
-  border-left:3px solid var(--sunset);
+  box-shadow:inset 7px 0 0 0 var(--sunset)!important;
 }
 .charter-banner{
   display:inline-flex;align-items:center;gap:3px;
@@ -656,8 +655,13 @@ td.charter-col{background:rgba(229,152,102,.10)!important;}
   #reg-scroll{overflow-x:auto;overflow-y:auto;}
   /* flex gapを減らす */
   #page-register > div[style*="display:flex"]{gap:0!important;}
+  /* 左帯をモバイルで5pxに縮小 */
+  .gc{padding-left:11px;}
+  .gc.rv{box-shadow:inset 5px 0 0 0 var(--ocean);}
+  .gc.ci{box-shadow:inset 5px 0 0 0 var(--seaglass);}
+  .gc.charter{box-shadow:inset 5px 0 0 0 var(--sunset)!important;}
 }
-.gc.selected{outline:2.5px solid #e74c3c !important;box-shadow:0 0 0 1px #e74c3c inset,0 2px 8px rgba(231,76,60,.25) !important;background:#fff0f0 !important;}
+.gc.selected{outline:2.5px solid #e74c3c !important;outline-offset:1px;background:#fff0f0 !important;}
 /* 名簿テーブル thead sticky */
 #main-table thead th{
   position:sticky;
@@ -988,8 +992,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <!-- カテゴリ別ダッシュボード -->
   <div id="cat-dashboard" style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:10px;"></div>
   <div class="lg">
-    <div class="li"><div class="lsq" style="background:#eef4fc;border-top:2px solid #185FA5;"></div>予約済み</div>
-    <div class="li"><div class="lsq" style="background:#d1f2eb;border-top:2px solid #45b39d;"></div>チェックイン済み</div>
+    <div class="li"><div class="lsq" style="background:#eef4fc;box-shadow:inset 4px 0 0 0 #185FA5;"></div>予約済み</div>
+    <div class="li"><div class="lsq" style="background:#d1f2eb;box-shadow:inset 4px 0 0 0 #45b39d;"></div>チェックイン済み</div>
   </div>
   </div><!-- /mobile-stats-area -->
   <div style="display:flex;gap:12px;align-items:flex-start;">
@@ -3957,15 +3961,11 @@ function renderReg(){
             if(g.charterGroup==='ANNEX'){planBorder='#9370DB';planBg='#f5f0ff';}
             else{planBorder='#FF8F00';planBg='#FFF8E1';}
           }
+          const _pb=planBorder.includes(',')?planBorder.split(',')[0].trim():planBorder;
           const planStyle=planBorder
             ? (cin
-                // チェックイン済み：背景は通常の緑グラデーションを活かし、左ボーダーのみオプション色を残す
-                ? (planBorder.includes(',')
-                    ? `border-left:3px solid transparent;border-image:linear-gradient(to bottom,${planBorder}) 1;`
-                    : `border-left:3px solid ${planBorder};`)
-                : (planBorder.includes(',')
-                    ? `border-left:3px solid transparent;border-image:linear-gradient(to bottom,${planBorder}) 1;background:${planBg};`
-                    : `border-left:3px solid ${planBorder};background:${planBg};`))
+                ? `box-shadow:inset 7px 0 0 0 ${_pb};`
+                : `box-shadow:inset 7px 0 0 0 ${_pb};background:${planBg};`)
             : '';
 
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
