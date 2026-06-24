@@ -2321,6 +2321,8 @@ let rooms=[
 ];
 let nextRoomId=25;
 let guestData={};
+// 表示中の年（複数年対応）。renderRegでsel-yearから更新。gk/addDaysの既定年。
+let DISP_YEAR=2026;
 let editKey=null,editRoomId=null,editCancelIdx=null,editSurfIdx=null,dragSrc=null;
 let staffNotes=[],nextSnId=0,snFilter='all';
 
@@ -2355,12 +2357,25 @@ let budgets={1:1800000,2:1800000,3:2000000,4:2200000,5:2500000,6:2500000,7:30000
 // ============================================================
 // UTILS
 // ============================================================
-// 月跨ぎに対応した日付計算：year=2026固定、月・日を正しく進める
-function addDays(m,d,n){
-  const dt=new Date(2026,m-1,d+n);
-  return{m:dt.getMonth()+1,d:dt.getDate()};
+// 月跨ぎ・年跨ぎに対応した日付計算。基準年yは既定でDISP_YEAR。年も返す。
+function addDays(m,d,n,y){
+  y=(y==null?DISP_YEAR:y);
+  const dt=new Date(y,m-1,d+n);
+  return{y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate()};
 }
-function gk(m,r,d){return `${m}:${r}:${d}`;}
+// データキー。後方互換：2026年は従来形式(月:部屋:日)、それ以外は年付き(年:月:部屋:日)。
+// yは既定でDISP_YEAR。月のオーバーフロー/アンダーフローは年へ繰り上げ/繰り下げ。
+function gk(m,r,d,y){
+  y=(y==null?DISP_YEAR:y);
+  while(m>12){m-=12;y++;}
+  while(m<1){m+=12;y--;}
+  return y===2026 ? `${m}:${r}:${d}` : `${y}:${m}:${r}:${d}`;
+}
+// データキーを解析（後方互換）：3要素=2026(m:r:d)、4要素=(y:m:r:d)
+function parseKey(k){
+  const p=k.split(':').map(Number);
+  return p.length===4 ? {y:p[0],m:p[1],r:p[2],d:p[3]} : {y:2026,m:p[0],r:p[1],d:p[2]};
+}
 // ステータスENUM判定（旧'checkedin'と新'checked_in'の両対応）
 function isCheckedIn(status){return status==='checked_in'||status==='checkedin';}
 // ステータス正規化（互換性補完：未設定はreserved）
@@ -3543,7 +3558,7 @@ function showP(n,el){
 }
 function findN(rid,sd,m){
   const g0=guestData[gk(m,rid,sd)];if(!g0)return 1;
-  let n=1,days=gDays(2026,m);
+  let n=1,days=gDays(DISP_YEAR,m);
   for(let d=sd+1;d<=days;d++){
     const g=guestData[gk(m,rid,d)];
     if(g&&g.cont&&!g.charterAnchor&&g.name===g0.name)n++;
@@ -3556,14 +3571,14 @@ function findN(rid,sd,m){
 function findAllKeys(rid,startM,startD){
   const g0=guestData[gk(startM,rid,startD)];if(!g0)return [{m:startM,d:startD,k:gk(startM,rid,startD)}];
   const keys=[{m:startM,d:startD,k:gk(startM,rid,startD)}];
-  let m=startM,d=startD;
+  let m=startM,d=startD,y=DISP_YEAR;
   for(let i=0;i<180;i++){
-    const {m:nm,d:nd}=addDays(m,d,1);
-    const k=gk(nm,rid,nd);
+    const {y:ny,m:nm,d:nd}=addDays(m,d,1,y);
+    const k=gk(nm,rid,nd,ny);
     const g=guestData[k];
     if(g&&g.cont&&!g.charterAnchor&&g.name===g0.name){
       keys.push({m:nm,d:nd,k});
-      m=nm;d=nd;
+      m=nm;d=nd;y=ny;
     } else break;
   }
   return keys;
@@ -3690,6 +3705,7 @@ function filteredRooms(){
 }
 function renderReg(){
   const year=parseInt(document.getElementById('sel-year').value)||2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
+  DISP_YEAR=year; // 以降のgk/addDaysが表示中の年を使うように同期
   // ── モバイル判定・セル幅計算 ──
   const _sw=Math.min(window.screen.width,window.screen.height);
   const isMob=_sw<=768;
@@ -3744,9 +3760,9 @@ function renderReg(){
 
   Object.entries(guestData).forEach(([k,gd])=>{
     if(!gd||!gd.charter||!gd.charterAnchor)return;
-    const parts=k.split(':');
-    if(parseInt(parts[0])!==month)return;
-    const startDay=parseInt(parts[2]);
+    const pk=parseKey(k);
+    if(pk.m!==month||pk.y!==year)return;
+    const startDay=pk.d;
     const cg=gd.charterGroup||'本館';
 
     // 泊数カウント：同一部屋で charter かつ cont:true（＝同一予約の連泊後続）のみ加算
@@ -3838,8 +3854,9 @@ function renderReg(){
           // d=1（月初）の場合は前月末を確認 → 月跨ぎ連泊の続き
           if(d===1){
             const prevMonth=month>1?month-1:12;
-            const prevMonthDays=gDays(2026,prevMonth);
-            const prevMonthG=guestData[gk(prevMonth,room.id,prevMonthDays)];
+            const prevYear=month>1?year:year-1;
+            const prevMonthDays=gDays(prevYear,prevMonth);
+            const prevMonthG=guestData[gk(prevMonth,room.id,prevMonthDays,prevYear)];
             if(prevMonthG&&prevMonthG.name===_g.name){
               // 月跨ぎ連泊の月頭 → アンカーとして描画（cont:falseに一時変換）
               // _gをアンカー扱いにして描画させる（deleteしない）
@@ -4426,8 +4443,8 @@ function onDrop(e,rid,day){
     const srcCopyAll=srcAllKeys.map(({m:sm,d:sd,k})=>({...guestData[k],_m:sm,_d:sd}));
     srcAllKeys.forEach(({k})=>delete guestData[k]);
     srcCopyAll.forEach((g,n)=>{
-      const {m:nm,d:nd}=addDays(month,day,n);
-      guestData[gk(nm,rid,nd)]={...g,roomId:rid,day:nd,cont:n>0,_m:undefined,_d:undefined};
+      const {y:ny,m:nm,d:nd}=addDays(month,day,n);
+      guestData[gk(nm,rid,nd,ny)]={...g,roomId:rid,day:nd,cont:n>0,_m:undefined,_d:undefined};
     });
 
   } else {
@@ -4451,8 +4468,8 @@ function onDrop(e,rid,day){
     // 押し出される予約（dst）が移動元の部屋（srcRoom）に収まるか確認。
     // dstの各日程について srcRoom の同日セルに「src自身ではない別予約」があれば中断。
     for(let n=0;n<dstAllKeys.length;n++){
-      const {m:nm,d:nd}=addDays(month,dstDay,n);
-      const targetKey=gk(nm,srcRoom,nd);
+      const {y:ny,m:nm,d:nd}=addDays(month,dstDay,n);
+      const targetKey=gk(nm,srcRoom,nd,ny);
       const existing=guestData[targetKey];
       if(existing&&!srcKeys.has(targetKey)){
         showToast('⚠ スワップ先の部屋に別の予約があるため入れ替えできません');
@@ -4468,12 +4485,12 @@ function onDrop(e,rid,day){
     dstAllKeys.forEach(({k})=>delete guestData[k]);
 
     srcCopyAll.forEach((g,n)=>{
-      const {m:nm,d:nd}=addDays(month,day,n);
-      guestData[gk(nm,rid,nd)]={...g,roomId:rid,day:nd,cont:n>0};
+      const {y:ny,m:nm,d:nd}=addDays(month,day,n);
+      guestData[gk(nm,rid,nd,ny)]={...g,roomId:rid,day:nd,cont:n>0};
     });
     dstCopyAll.forEach((g,n)=>{
-      const {m:nm,d:nd}=addDays(month,dstDay,n);
-      guestData[gk(nm,srcRoom,nd)]={...g,roomId:srcRoom,day:nd,cont:n>0};
+      const {y:ny,m:nm,d:nd}=addDays(month,dstDay,n);
+      guestData[gk(nm,srcRoom,nd,ny)]={...g,roomId:srcRoom,day:nd,cont:n>0};
     });
     showToast('⇄ 予約を入れ替えました');
   }
@@ -4512,7 +4529,7 @@ function openEdit(k){
   editKey=k;document.getElementById('modal-title').textContent='予約編集';document.getElementById('del-btn').style.display='block';
   document.getElementById('f-name').value=g.name||'';
   // チェックイン日：guestDataのキー(month:roomId:day)からmonthを逆引き
-  const editM=editKey?parseInt(editKey.split(':')[0]):parseInt(document.getElementById('sel-month').value);
+  const editM=editKey?parseKey(editKey).m:parseInt(document.getElementById('sel-month').value);
   document.getElementById('f-day').value=`2026-${String(editM).padStart(2,'0')}-${String(g.day||1).padStart(2,'0')}`;
   const month=parseInt(document.getElementById('sel-month').value);
   document.getElementById('f-nights').value=findN(g.roomId,g.day,month);
@@ -4699,7 +4716,8 @@ function deleteGuest(){
 }
 function exportCSV(){
   const month=parseInt(document.getElementById('sel-month').value);let csv='部屋,日,氏名,予約サイト,支払,料金,国籍,性別,区分,ステータス,備考\n';
-  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const p=k.split(':');if(parseInt(p[0])!==month)return;const r=rooms.find(x=>x.id===g.roomId);csv+=`${r?r.type:''},${g.day}日,${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}"\n`;});
+  const year=parseInt(document.getElementById('sel-year').value)||2026;
+  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);csv+=`${r?r.type:''},${g.day}日,${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}"\n`;});
   const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`宿泊者名簿_2026_${month}月.csv`;a.click();
 }
 
@@ -4710,7 +4728,8 @@ function handleDrop(e){e.preventDefault();document.getElementById('drop-zone').c
 function handleFileSelect(e){const file=e.target.files[0];if(file)processCSV(file);e.target.value='';}
 // CSV取込: 部屋タイプ名 → group → 空き部屋を順番に割当
 // ── エラー理由判定 ──────────────────────────────────────
-function _judgeAssignError(typeName,month,day,nights,guests){
+function _judgeAssignError(typeName,month,day,nights,guests,year){
+  year=(year==null?DISP_YEAR:year);
   let group=null;
   if(/本館.*ダブル|本館.*クイーン|本館.*ツイン/i.test(typeName)) group='本館−個室';
   else if(/本館.*ドミトリー|本館.*混合/i.test(typeName)) group='本館−男女混合ドミトリー';
@@ -4724,19 +4743,20 @@ function _judgeAssignError(typeName,month,day,nights,guests){
   if(!groupRooms.length)return '対象部屋なし';
   let anyFreeOneNight=false;
   for(const r of groupRooms){
-    if(!guestData[gk(month,r.id,day)]){anyFreeOneNight=true;break;}
+    if(!guestData[gk(month,r.id,day,year)]){anyFreeOneNight=true;break;}
   }
   if(!anyFreeOneNight)return '空室不足';
   if(nights>1)return '連泊可能な空床なし';
   return '空室不足';
 }
 
-function getRoomIdByType(typeName, month, day, nights){
-  // 空き判定ヘルパー（月跨ぎ対応）
+function getRoomIdByType(typeName, month, day, nights, year){
+  year=(year==null?DISP_YEAR:year);
+  // 空き判定ヘルパー（月跨ぎ・年跨ぎ対応）
   const _isFree=(rid)=>{
     for(let n=0;n<(nights||1);n++){
-      const {m:nm,d:nd}=addDays(month,(day||1),n);
-      if(guestData[gk(nm,rid,nd)])return false;
+      const {y:ny,m:nm,d:nd}=addDays(month,(day||1),n,year);
+      if(guestData[gk(nm,rid,nd,ny)])return false;
     }
     return true;
   };
@@ -4972,8 +4992,8 @@ function importAirhostCSV(text){
 
     // 全nights分書き込み
     for(let n=0;n<nights;n++){
-      const {m:nm,d:nd}=addDays(cm,cd,n);
-      guestData[gk(nm,rid,nd)]={...gBase,day:nd,price:n===0?price:null,cont:n>0};
+      const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+      guestData[gk(nm,rid,nd,ny)]={...gBase,day:nd,price:n===0?price:null,cont:n>0};
     }
     imported++;
   }
@@ -4993,8 +5013,8 @@ function findExistingReservationInfo(resId){
     if(g&&!g.cont&&String(g.reservationId)===String(resId)){anchorKey=k;anchorG=g;break;}
   }
   if(!anchorKey)return null;
-  const parts=anchorKey.split(':');
-  const month=parseInt(parts[0]),roomId=parseInt(parts[1]),day=parseInt(parts[2]);
+  const _pk=parseKey(anchorKey);
+  const month=_pk.m,roomId=_pk.r,day=_pk.d;
   const nights=Object.keys(guestData).filter(k=>{
     const g=guestData[k];return g&&String(g.reservationId)===String(resId);
   }).length;
@@ -5281,7 +5301,7 @@ function importCSVText(text){
       }
       rid=charterGroupRooms.length>0?charterGroupRooms[0].id:0;
     } else {
-      rid=effectiveType?getRoomIdByType(effectiveType,cm,cd,nights):0;
+      rid=effectiveType?getRoomIdByType(effectiveType,cm,cd,nights,cy):0;
     }
 
     // 自動割当に失敗（空室なし）→ 未割当キューへ退避（既存予約を上書きしない）
@@ -5293,11 +5313,11 @@ function importCSVText(text){
             name:guestName,
             reservationId,
             yoyakuNo:yoyakuNo||'',
-            checkinMonth:cm,checkinDay:cd,nights,
+            checkinMonth:cm,checkinDay:cd,checkinYear:cy,nights,
             guests:guestCount,
             site,cat,sex,pay:payMethod,price,
             typeName:effectiveType,
-            reason:_judgeAssignError(effectiveType,cm,cd,nights,guestCount),
+            reason:_judgeAssignError(effectiveType,cm,cd,nights,guestCount,cy),
             addedAt:new Date().toISOString(),
           });
           if(updatedList.length && updatedList[updatedList.length-1].reservationId===reservationId){
@@ -5327,9 +5347,9 @@ function importCSVText(text){
       // 【最終防衛】既存予約のある部屋・日程は上書きしない
       charterGroupRooms.forEach((room,ri)=>{
         for(let n=0;n<nights;n++){
-          const {m:nm,d:nd}=addDays(cm,cd,n);
-          if(guestData[gk(nm,room.id,nd)])continue; // 既存予約を保護
-          guestData[gk(nm,room.id,nd)]={
+          const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+          if(guestData[gk(nm,room.id,nd,ny)])continue; // 既存予約を保護
+          guestData[gk(nm,room.id,nd,ny)]={
             ...gBase,roomId:room.id,day:nd,
             price:ri===0&&n===0?gBase.price:null,
             cont:ri>0||n>0,
@@ -5356,8 +5376,8 @@ function importCSVText(text){
           // 全泊空いているかチェック
           let avail=true;
           for(let n=0;n<nights;n++){
-            const {m:nm,d:nd}=addDays(cm,cd,n);
-            if(guestData[gk(nm,r.id,nd)]){avail=false;break;}
+            const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+            if(guestData[gk(nm,r.id,nd,ny)]){avail=false;break;}
           }
           if(avail)assignedRoomIds.push(r.id);
         }
@@ -5366,8 +5386,8 @@ function importCSVText(text){
           const isFirst=gi===0;
           const extraNote=isFirst?note:(note?note+' ':'')+`[人数展開データ: ${reservationId||yoyakuNo}]`;
           for(let n=0;n<nights;n++){
-            const {m:nm,d:nd}=addDays(cm,cd,n);
-            guestData[gk(nm,roomId,nd)]={
+            const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+            guestData[gk(nm,roomId,nd,ny)]={
               ...gBase,roomId,day:nd,guests:1,note:extraNote,
               price:(isFirst&&n===0)?gBase.price:null,  // 料金は1人目の1泊目のみ
               cont:n>0,
@@ -5379,14 +5399,14 @@ function importCSVText(text){
         // 【最終防衛】書き込み先に既存予約があれば上書きせず未割当キューへ退避
         let blocked=false;
         for(let n=0;n<nights;n++){
-          const {m:nm,d:nd}=addDays(cm,cd,n);
-          if(guestData[gk(nm,rid,nd)]){blocked=true;break;}
+          const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+          if(guestData[gk(nm,rid,nd,ny)]){blocked=true;break;}
         }
         if(blocked){
           if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===reservationId&&reservationId)){
             unassignedReservations.push({
               name:guestName,reservationId,yoyakuNo:yoyakuNo||'',
-              checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
+              checkinMonth:cm,checkinDay:cd,checkinYear:cy,nights,guests:guestCount,
               site,cat,sex,pay:payMethod,price,typeName:typeName||'',
               reason:'連泊可能な空床なし',addedAt:new Date().toISOString(),
             });
@@ -5395,8 +5415,8 @@ function importCSVText(text){
           continue;
         }
         for(let n=0;n<nights;n++){
-          const {m:nm,d:nd}=addDays(cm,cd,n);
-          guestData[gk(nm,rid,nd)]={...gBase,day:nd,price:n===0?gBase.price:null,cont:n>0};
+          const {y:ny,m:nm,d:nd}=addDays(cm,cd,n,cy);
+          guestData[gk(nm,rid,nd,ny)]={...gBase,day:nd,price:n===0?gBase.price:null,cont:n>0};
         }
       }
     }
@@ -5490,8 +5510,8 @@ function openManualAssign(idx){
   sel.innerHTML=rooms.map(r=>{
     let free=true;
     for(let n=0;n<(u.nights||1);n++){
-      const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
-      if(guestData[gk(nm,r.id,nd)]){free=false;break;}
+      const {y:ny,m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n,u.checkinYear);
+      if(guestData[gk(nm,r.id,nd,ny)]){free=false;break;}
     }
     return `<option value="${r.id}">${r.no}　${r.type}　${free?'（空き）':'⚠ 埋まっています'}</option>`;
   }).join('');
@@ -5506,8 +5526,8 @@ function saveManualAssign(){
   const rid=parseInt(document.getElementById('ma-room').value);
   // 空き再チェック（保険：既存予約を絶対上書きしない）
   for(let n=0;n<(u.nights||1);n++){
-    const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
-    if(guestData[gk(nm,rid,nd)]){
+    const {y:ny,m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n,u.checkinYear);
+    if(guestData[gk(nm,rid,nd,ny)]){
       alert('選択した部屋は'+nm+'/'+nd+'に既に予約が入っています。別の部屋を選んでください。');
       return;
     }
@@ -5521,8 +5541,8 @@ function saveManualAssign(){
     reservationId:u.reservationId||'',
   };
   for(let n=0;n<(u.nights||1);n++){
-    const {m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n);
-    guestData[gk(nm,rid,nd)]={...gBase,day:nd,price:n===0?u.price:null,cont:n>0};
+    const {y:ny,m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n,u.checkinYear);
+    guestData[gk(nm,rid,nd,ny)]={...gBase,day:nd,price:n===0?u.price:null,cont:n>0};
   }
   // キューから削除
   unassignedReservations.splice(idx,1);
