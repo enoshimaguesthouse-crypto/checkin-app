@@ -4983,7 +4983,8 @@ function importAirhostCSV(text){
   const normSite=s=>{
     if(!s)return 'その他';
     if(s.includes('Booking')||s.includes('booking'))return 'Booking.com';
-    if(s.includes('楽天')||s.includes('Rakuten')||s.includes('Vacation Stay'))return '楽天トラベル';
+    if(s.includes('Rakuten Oyado')||s.includes('Vacation Stay'))return 'Rakuten Oyado';
+    if(s.includes('楽天')||s.includes('Rakuten'))return '楽天トラベル';
     if(s.includes('Airbnb')||s.includes('airbnb'))return 'Airbnb';
     if(s.includes('Expedia'))return 'Expedia';
     if(s.includes('agoda')||s.includes('Agoda'))return 'Agoda';
