@@ -7590,6 +7590,7 @@ function openCharterNew(){
 }
 
 function openCharterEdit(charterGroup, startDay, month){
+  if(currentRole==='reception')return;
   editCharterGroup=charterGroup;
   editCharterStartDay=parseInt(startDay);
   editCharterMonth=parseInt(month);
