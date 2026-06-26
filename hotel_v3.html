@@ -6158,7 +6158,7 @@ async function rentalCloudLoad(silent=false){
 
 const RENTAL_SITE_CLASS={'直接':'rs-site-直接','スペースマーケット':'rs-site-スペースマーケット','インスタベース':'rs-site-インスタベース','カシカシ':'rs-site-カシカシ'};
 
-function rentalDateOf(r){ return (r.start||'').slice(0,30); } // YYYY-MM-DD
+function rentalDateOf(r){ return (r.start||'').slice(0,10); } // YYYY-MM-DD
 
 function getFilteredRentals(){
   const kw=(document.getElementById('rental-search')?.value||'').toLowerCase().trim();
@@ -6303,14 +6303,14 @@ function saveRental(){
   } else {
     rentalSpaceReservations.push(data);
   }
-  closeM('rental-modal');renderRental();renderReg();rentalCloudSave();
+  closeM('rental-modal');renderRental();renderReg();saveToLS();autoSave();
   showToast('📷 レンタルスペース予約を保存しました');
 }
 
 function deleteRental(){
   if(editRentalId==null)return;
   rentalSpaceReservations=rentalSpaceReservations.filter(x=>x.id!==editRentalId);
-  closeM('rental-modal');renderRental();renderReg();rentalCloudSave();
+  closeM('rental-modal');renderRental();renderReg();saveToLS();autoSave();
   showToast('🗑 削除しました');
 }
 
@@ -7046,6 +7046,7 @@ function collectAllData() {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
+    rentalSpaceReservations,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -7244,6 +7245,10 @@ function applyServerData(data) {
       });
       salesData[yi]=monthObj;
     });
+  }
+  if (data.rentalSpaceReservations && Array.isArray(data.rentalSpaceReservations)) {
+    rentalSpaceReservations = data.rentalSpaceReservations;
+    nextRentalId = rentalSpaceReservations.reduce((mx,r)=>Math.max(mx,(r.id||0)+1), 1);
   }
   if (data.occCumul){
     Object.keys(data.occCumul).forEach(y=>{
