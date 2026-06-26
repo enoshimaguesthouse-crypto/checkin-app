@@ -1780,6 +1780,16 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
     const p = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
   })();
+  // 連泊の画像重複保存を避けるため、画像付きはアンカー（最も早い泊）1件のみに保存。
+  // 他の泊レコードには画像を除いた軽量配列を保存（人数表示等は維持）。
+  const _keyDateNum = k => { const p=String(k).split(':'); return (parseInt(p[0])||0)*100 + (parseInt(p[2])||0); };
+  const matchingKeys = Object.keys(guestData).filter(k => {
+    const g = guestData[k]; const gid = g && (g.reservationId || g.id);
+    return gid && String(gid).trim() === targetId;
+  }).sort((a,b)=>_keyDateNum(a)-_keyDateNum(b));
+  const anchorKey = matchingKeys[0];
+  const finalGuestsLight = (Array.isArray(finalGuests)?finalGuests:[]).map(g=>{ const {passportImage, ...rest}=g; return rest; });
+
   let updated = 0;
   Object.keys(guestData).forEach(k => {
     const g = guestData[k];
@@ -1804,9 +1814,9 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
         if(updatedGuestData.email)   g.email   = updatedGuestData.email;
         if(updatedGuestData.phone)   g.phone   = updatedGuestData.phone;
       }
-      // ── 全宿泊者情報（配列）を記録 ──
+      // ── 全宿泊者情報（配列）を記録：画像はアンカー1件のみ、他は画像なし ──
       if(Array.isArray(finalGuests) && finalGuests.length){
-        g.guests = finalGuests;
+        g.guests = (k===anchorKey) ? finalGuests : finalGuestsLight;
       }
       updated++;
     }

@@ -1848,6 +1848,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     <div class="fl"><label>メールアドレス</label><input id="f-email" type="email" placeholder="example@email.com" style="min-width:0;width:100%;"></div>
   </div>
   <div class="mr"><div class="fl"><label>住所</label><input id="f-address" placeholder="神奈川県鎌倉市○○1-2-3"></div></div>
+  <!-- チェックイン済みのパスポート写真（開いた時にtype=searchで遅延取得） -->
+  <div class="mr" id="f-passports-row" style="display:none;"><div class="fl" style="width:100%;"><label>パスポート写真（チェックイン済み）</label><div id="f-passports" style="display:flex;flex-wrap:wrap;gap:10px;"></div></div></div>
   <div class="mr"><div class="fl"><label>備考</label><input id="f-note" placeholder="備考・メモ"></div></div>
   <div class="mr" style="margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">
     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
@@ -4677,6 +4679,7 @@ function openAdd(){
   document.getElementById('f-parking').checked=false;
   document.getElementById('f-lower').checked=false;
   PLAN_RULES.forEach(r=>{if(r.checkboxId){const el=document.getElementById(r.checkboxId);if(el)el.checked=false;}});
+  const ppRow=document.getElementById('f-passports-row'); if(ppRow)ppRow.style.display='none'; // 追加時はパスポート欄を隠す
   populateNat('f-nat','日本');populateRS(-1);document.getElementById('modal').classList.add('open');
 }
 function openAddAt(rid,day){
@@ -4717,8 +4720,50 @@ function openEdit(k){
   document.getElementById('f-address').value=g.address||'';
   document.getElementById('f-email').value=g.email||'';
   populateNat('f-nat',g.nat||'日本');populateRS(g.roomId);document.getElementById('modal').classList.add('open');
+  // パスポート写真を遅延取得（起動データには画像を含めず、開いた予約の分だけ取得）
+  loadPassportPhotos(g.reservationId);
 }
 function populateRS(sid){document.getElementById('f-room').innerHTML=rooms.map(r=>`<option value="${r.id}"${r.id===sid?' selected':''}>${r.no} (${r.type})</option>`).join('');}
+
+// データURLを新規タブで開く（大きな画像でも確実に表示）
+function openDataUrl(dataUrl){
+  try{
+    const parts=dataUrl.split(','); const mime=(parts[0].match(/:(.*?);/)||[])[1]||'image/jpeg';
+    const bin=atob(parts[1]); const arr=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    window.open(URL.createObjectURL(new Blob([arr],{type:mime})),'_blank');
+  }catch(e){ window.open(dataUrl,'_blank'); }
+}
+
+// 予約編集を開いた時のみ type=search でパスポート画像を取得して表示（遅延読み込み）
+async function loadPassportPhotos(resId){
+  const row=document.getElementById('f-passports-row');
+  const box=document.getElementById('f-passports');
+  if(!row||!box)return;
+  box.innerHTML=''; row.style.display='none';
+  if(!resId)return;
+  try{
+    const res=await fetch(GAS_URL+'?type=search&id='+encodeURIComponent(String(resId).trim())+'&t='+Date.now());
+    const data=await res.json();
+    const gd=data.guestData||{};
+    // 画像付きの guests 配列を持つレコード（アンカー1件）を探す
+    let guestsArr=null;
+    Object.values(gd).forEach(g=>{
+      if(g&&Array.isArray(g.guests)&&g.guests.some(x=>x&&x.passportImage))guestsArr=g.guests;
+    });
+    const imgs=guestsArr?guestsArr.filter(x=>x&&x.passportImage):[];
+    if(!imgs.length)return;
+    box.innerHTML=imgs.map((x,i)=>{
+      const nm=((x.familyName||'')+' '+(x.givenName||'')).trim()||('宿泊者'+(i+1));
+      return `<div style="text-align:center;">
+        <img src="${x.passportImage}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
+        <div style="font-size:10px;color:#888;margin-top:2px;">${nm}</div>
+        <a href="${x.passportImage}" download="passport_${String(resId)}_${i+1}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
+      </div>`;
+    }).join('');
+    row.style.display='';
+  }catch(e){ console.warn('パスポート写真の取得に失敗:',e); }
+}
 function saveGuest(){
   const dateVal=document.getElementById('f-day').value; // YYYY-MM-DD
   const dateParts=dateVal?dateVal.split('-'):null;
@@ -4763,6 +4808,14 @@ function saveGuest(){
     address:String(document.getElementById('f-address')?.value||'').trim(),
     email:String(document.getElementById('f-email')?.value||'').trim(),
   };
+  // チェックイン時に保存された宿泊者配列(guests)・約款同意・チェックイン日時などは
+  // フォームに無いため、編集保存で消えないよう既存レコードから引き継ぐ。
+  const _preserve={};
+  if(editKey&&guestData[editKey]){
+    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport'].forEach(f=>{
+      if(guestData[editKey][f]!==undefined)_preserve[f]=guestData[editKey][f];
+    });
+  }
   saveHistory(); // Undo履歴保存
   // ── キャンセル済みの場合：名簿から全泊削除→cancelListへ追加 ──
   if(status==='cancelled'){
@@ -4820,7 +4873,7 @@ function saveGuest(){
   // 既存予約を削除（編集時・衝突なし確認後）
   editOccupiedKeys.forEach(k=>delete guestData[k]);
 
-  for(let n=0;n<nights;n++)guestData[gk(month,rid,day+n)]={...base,day:day+n,price:n===0?base.price:null,cont:n>0};
+  for(let n=0;n<nights;n++)guestData[gk(month,rid,day+n)]={..._preserve,...base,day:day+n,price:n===0?base.price:null,cont:n>0};
 
   // 駐車場：チェックONなら追加、OFFなら自動登録分を削除
   if(useParking){
