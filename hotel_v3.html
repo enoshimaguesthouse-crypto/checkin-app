@@ -3985,7 +3985,7 @@ function renderReg(){
             const catLabelC=cg==='ANNEX'?'ANNEX🔒':'本館🔒';
             const {combined:allIconsC}=getCellIcons(cMeta);
             const planIconsHtmlC=allIconsC?`<span style="font-size:11px;margin-right:2px;flex-shrink:0;">${allIconsC}</span>`:'';
-            const noteCleanC=(cMeta.note||'').replace(/🚙|🏄|駐車場?|parking|car |surf|サーフ/gi,'').trim();
+            const noteCleanC=(cMeta.note||'').replace(/🚙|🏄|surf|サーフ/gi,'').trim();
 
             // 貸切背景色
             let cBorder='#FF8F00',cBg='#FFF8E1';
@@ -4140,7 +4140,7 @@ function renderReg(){
           if(timeChip)row+=timeChip;
           row+=nightsBadge;
           // 備考：泊数の右に表示（駐車・サーフ除外）
-          const noteClean=(g.note||'').replace(/🚙|🏄|駐車場?|parking|car |surf|サーフ/gi,'').trim();
+          const noteClean=(g.note||'').replace(/🚙|🏄|surf|サーフ/gi,'').trim();
           if(noteClean)row+=`<span class="c-note">📌${noteClean.slice(0,30)}</span>`;
           row+=`</div>`;
 
