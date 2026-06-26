@@ -390,6 +390,26 @@ input.needs-input::placeholder { color:#d08a3a; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .sending-text { font-family:'Shippori Mincho',serif; font-size:14px; letter-spacing:0.15em; color:var(--gray); }
 
+/* ── パスポート撮影カメラ（インカメラ・ミラープレビュー） ── */
+.cam-overlay {
+  display:none; position:fixed; inset:0; background:#0d2d3a;
+  z-index:1000; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px;
+}
+.cam-overlay.active { display:flex; }
+.cam-title { color:#fff; font-size:15px; letter-spacing:0.1em; font-family:'Shippori Mincho',serif; }
+.cam-stage {
+  width:100%; max-width:520px; aspect-ratio:4/3; background:#000;
+  border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+}
+/* 重要：プレビューのみ左右反転（鏡と同じ挙動）。Canvasキャプチャは反転しない */
+.cam-video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+.cam-error { color:#ffb4ab; font-size:13px; text-align:center; min-height:18px; max-width:520px; }
+.cam-actions { display:flex; gap:14px; width:100%; max-width:520px; }
+.cam-btn { flex:1; padding:15px; border:none; border-radius:12px; font-family:inherit; font-size:15px; cursor:pointer; }
+.cam-cancel { background:rgba(255,255,255,0.14); color:#fff; }
+.cam-shutter { background:linear-gradient(135deg, var(--shell), var(--shell-dark)); color:#fff; font-weight:600; letter-spacing:0.08em; }
+.cam-shutter:disabled { opacity:0.5; cursor:not-allowed; }
+
 /* ── PROGRESS ── */
 .progress-container { margin-bottom:24px; }
 .progress-steps { display:flex; justify-content:center; margin-bottom:7px; }
@@ -441,6 +461,19 @@ input.needs-input::placeholder { color:#d08a3a; }
 <div class="sending-overlay" id="sendingOverlay">
   <div class="spinner"></div>
   <div class="sending-text" id="sendingText">送信中...</div>
+</div>
+
+<!-- パスポート撮影カメラ（インカメラ・ミラープレビュー） -->
+<div class="cam-overlay" id="camOverlay">
+  <div class="cam-title" id="cam-title">パスポートを撮影</div>
+  <div class="cam-stage">
+    <video id="cam-video" class="cam-video" playsinline autoplay muted></video>
+  </div>
+  <div class="cam-error" id="cam-error"></div>
+  <div class="cam-actions">
+    <button type="button" class="cam-btn cam-cancel" id="cam-cancel-btn" onclick="closeCamera()">キャンセル</button>
+    <button type="button" class="cam-btn cam-shutter" id="cam-shutter-btn" onclick="capturePassport()">● 撮影</button>
+  </div>
 </div>
 
 <div class="app-wrapper">
@@ -604,7 +637,7 @@ input.needs-input::placeholder { color:#d08a3a; }
       <div class="divider"></div>
       <div id="guests-container"></div>
       <!-- 全宿泊者で共有する隠しファイル入力。押された宿泊者を _pendingPhotoIndex で識別 -->
-      <input type="file" id="passportInput" accept="image/*" capture="environment" style="display:none" onchange="onPassportPhotoSelected(this)">
+      <input type="file" id="passportInput" accept="image/*" capture="user" style="display:none" onchange="onPassportPhotoSelected(this)">
     </div>
 
     <!-- （旧）静的入力欄：動的生成へ移行したため非表示で温存 -->
@@ -803,6 +836,7 @@ const T = {
     guestsTitle:'宿泊者情報', guestLabel:'宿泊者', residentJp:'日本在住', residentForeign:'外国籍',
     familyNameLabel:'氏名（姓）', givenNameLabel:'氏名（名）', natLabel:'国籍',
     ppPhotoLabel:'パスポート写真', ppPending:'⚠ パスポートを撮影してください', ppDone:'✓ パスポート取得済み', takePhoto:'パスポートを撮影', retakePhoto2:'撮り直す',
+    camTitle:'パスポートを撮影', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -836,6 +870,7 @@ const T = {
     guestsTitle:'Guests', guestLabel:'Guest', residentJp:'Japan Resident', residentForeign:'Foreign National',
     familyNameLabel:'Family Name', givenNameLabel:'Given Name', natLabel:'Nationality',
     ppPhotoLabel:'Passport Photo', ppPending:'⚠ Please take a passport photo', ppDone:'✓ Passport captured', takePhoto:'Take Passport Photo', retakePhoto2:'Retake',
+    camTitle:'Take Passport Photo', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -869,6 +904,7 @@ const T = {
     guestsTitle:'住宿人信息', guestLabel:'住宿人', residentJp:'日本居民', residentForeign:'外国人',
     familyNameLabel:'姓', givenNameLabel:'名', natLabel:'国籍',
     ppPhotoLabel:'护照照片', ppPending:'⚠ 请拍摄护照', ppDone:'✓ 护照已采集', takePhoto:'拍摄护照', retakePhoto2:'重新拍摄',
+    camTitle:'拍摄护照', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -902,6 +938,7 @@ const T = {
     guestsTitle:'투숙객 정보', guestLabel:'투숙객', residentJp:'일본 거주자', residentForeign:'외국인',
     familyNameLabel:'성(姓)', givenNameLabel:'이름(名)', natLabel:'국적',
     ppPhotoLabel:'여권 사진', ppPending:'⚠ 여권을 촬영해 주세요', ppDone:'✓ 여권 촬영 완료', takePhoto:'여권 촬영', retakePhoto2:'다시 촬영',
+    camTitle:'여권 촬영', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
@@ -1508,23 +1545,86 @@ function onGuestInput(i){ syncGuestFromDom(i); validateAllGuests(); }
 // ═══════════════════════════════════════
 function takePassportPhoto(i){
   _pendingPhotoIndex=i;
-  const inp=el('passportInput');
-  inp.value='';      // 同じファイル連続選択でもonchangeが発火するようリセット
-  inp.click();
+  openCamera();
 }
 
-// 共有ファイル入力のonchange。_pendingPhotoIndexで該当宿泊者のみ更新（上書き防止）
+// ── キャプチャ後の共通処理（保存・再描画。OCR/保存ロジックは従来どおり） ──
+// 該当indexのみ更新（他人の写真を上書きしない）
+function _applyPassportPhoto(idx, dataUrl){
+  if(idx===null||idx===undefined||!guestsList[idx])return;
+  guestsList[idx].passportImage=dataUrl;       // 該当indexのみ更新
+  syncGuestFromDom(idx);                        // 入力済みの氏名・国籍を保持
+  const fields=document.getElementById('gb-fields-'+idx);
+  if(fields)fields.innerHTML=guestFieldsHtml(idx);
+  validateAllGuests();
+}
+
+// ── インカメラ（前面）でライブ撮影 ──────────────────────────
+let _camStream=null;
+async function openCamera(){
+  const t=T[lang];
+  el('cam-title').textContent=t.camTitle;
+  el('cam-cancel-btn').textContent=t.camCancel;
+  el('cam-shutter-btn').textContent=t.camCapture;
+  el('cam-error').textContent='';
+  el('camOverlay').classList.add('active');
+
+  const video=el('cam-video');
+  // ① インカメラ優先（facingMode:'user'）で起動
+  try{
+    _camStream=await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'user', width:{ideal:1280}, height:{ideal:720} },
+      audio:false
+    });
+  }catch(e1){
+    // ② OverconstrainedError等 → 緩い制約(video:true)で再試行しカメラ不起動を防止
+    console.warn('インカメラ制約で失敗、video:trueで再試行:', e1);
+    try{
+      _camStream=await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    }catch(e2){
+      // ③ getUserMedia自体が不可（権限拒否/未対応WebView） → ファイル選択にフォールバック
+      console.warn('getUserMedia不可、ファイル選択にフォールバック:', e2);
+      closeCamera();
+      const inp=el('passportInput');
+      inp.value='';
+      inp.click();
+      return;
+    }
+  }
+  video.srcObject=_camStream;
+  try{ await video.play(); }catch(e){}
+}
+
+function capturePassport(){
+  const idx=_pendingPhotoIndex;
+  const video=el('cam-video');
+  if(!video || !video.videoWidth){ return; }
+  // 既存の解像度・圧縮設定を維持（MAX1200・jpeg0.7）
+  const MAX=1200;
+  let w=video.videoWidth, h=video.videoHeight;
+  if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;} else {w=Math.round(w*MAX/h);h=MAX;} }
+  const canvas=document.createElement('canvas');
+  canvas.width=w; canvas.height=h;
+  // 重要：プレビューはCSSでミラー表示だが、Canvasへは反転せず描画＝保存画像は正位置（OCR可読）
+  canvas.getContext('2d').drawImage(video,0,0,w,h);
+  const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+  closeCamera();
+  _applyPassportPhoto(idx, dataUrl);
+}
+
+function closeCamera(){
+  if(_camStream){ _camStream.getTracks().forEach(tr=>tr.stop()); _camStream=null; }
+  const video=el('cam-video'); if(video) video.srcObject=null;
+  el('camOverlay').classList.remove('active');
+}
+
+// 共有ファイル入力のonchange（getUserMedia不可端末のフォールバック経路）。
+// _pendingPhotoIndexで該当宿泊者のみ更新（上書き防止）。圧縮・保存処理は従来どおり。
 function onPassportPhotoSelected(input){
   if(!input.files||!input.files[0])return;
   const idx=_pendingPhotoIndex;
   if(idx===null||idx===undefined||!guestsList[idx])return;
-  _resizeImageToDataUrl(input.files[0], dataUrl=>{
-    guestsList[idx].passportImage=dataUrl;     // 該当indexのみ更新
-    syncGuestFromDom(idx);                      // 入力済みの氏名・国籍を保持
-    const fields=document.getElementById('gb-fields-'+idx);
-    if(fields)fields.innerHTML=guestFieldsHtml(idx);
-    validateAllGuests();
-  });
+  _resizeImageToDataUrl(input.files[0], dataUrl=>_applyPassportPhoto(idx, dataUrl));
 }
 
 // 画像を縮小してdataURL化（従来のhandlePassportPhotoと同一ロジック）
@@ -2111,6 +2211,7 @@ function restartApp() {
   passportDataUrl = null;
   currentNat = 'jp';
   // 多客入力ステートをリセット
+  if(typeof closeCamera==='function')closeCamera(); // カメラ起動中なら停止
   guestsList = [];
   finalGuests = [];
   _pendingPhotoIndex = null;
