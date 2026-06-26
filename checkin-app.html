@@ -185,6 +185,32 @@ input.needs-input::placeholder { color:#d08a3a; }
 .nat-fields { display:none; }
 .nat-fields.active { display:block; }
 
+/* ── 動的な宿泊者ブロック ── */
+.guest-block {
+  border:1px solid var(--border); border-radius:12px;
+  padding:16px 14px; margin-bottom:16px; background:#fcfeff;
+}
+.guest-block:last-child { margin-bottom:0; }
+.guest-block-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:12px;
+}
+.guest-block-title {
+  font-size:14px; font-weight:600; color:var(--ocean-deep);
+  font-family:'Shippori Mincho',serif; letter-spacing:0.05em;
+}
+.guest-block-badge {
+  font-size:11px; color:var(--gray); background:var(--foam);
+  border:1px solid var(--border); border-radius:99px; padding:2px 10px;
+}
+.gb-pp-status {
+  margin-top:8px; font-size:13px; font-weight:600;
+  display:flex; align-items:center; gap:6px;
+}
+.gb-pp-status.pending { color:var(--red); }
+.gb-pp-status.done    { color:var(--green); }
+.gb-pp-thumb { width:100%; max-height:170px; object-fit:cover; border-radius:8px; border:1px solid var(--border); margin-top:8px; }
+
 /* ── RESERVATION RESULT ── */
 .res-found {
   background:linear-gradient(135deg, #e8f6fb, #f0fbf8);
@@ -570,17 +596,18 @@ input.needs-input::placeholder { color:#d08a3a; }
       </div>
     </div>
 
-    <!-- 宿泊者区分 -->
+    <!-- 宿泊者情報（予約人数に応じて動的生成） -->
     <div class="card">
-      <div class="card-title" id="f-nat-title">宿泊者区分</div>
-      <div class="card-title-en">Guest Type</div>
+      <div class="card-title" id="f-nat-title">宿泊者情報</div>
+      <div class="card-title-en">Guests</div>
       <div class="divider"></div>
-      <div class="nat-tabs">
-        <button class="nat-tab active" id="tab-jp" onclick="switchNat('jp')">🇯🇵　<span id="tab-jp-label">日本在住</span></button>
-        <button class="nat-tab" id="tab-foreign" onclick="switchNat('foreign')">🌏　<span id="tab-foreign-label">外国人</span></button>
-      </div>
+      <div id="guests-container"></div>
+      <!-- 全宿泊者で共有する隠しファイル入力。押された宿泊者を _pendingPhotoIndex で識別 -->
+      <input type="file" id="passportInput" accept="image/*" capture="environment" style="display:none" onchange="onPassportPhotoSelected(this)">
+    </div>
 
-      <!-- 日本在住 -->
+    <!-- （旧）静的入力欄：動的生成へ移行したため非表示で温存 -->
+    <div style="display:none">
       <div class="nat-fields active" id="nat-jp">
         <div class="field-row">
           <div class="field-group">
@@ -643,7 +670,7 @@ input.needs-input::placeholder { color:#d08a3a; }
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               <span id="btn-camera-label">パスポートを撮影</span>
             </button>
-            <input type="file" id="passportInput" accept="image/*" capture="environment" onchange="handlePassportPhoto(this)">
+            <input type="file" id="passportInput_legacy" accept="image/*" capture="environment">
             <div class="camera-hint" id="camera-hint">カメラでパスポートの顔写真ページを撮影してください</div>
           </div>
           <div class="passport-preview" id="passportPreview">
@@ -772,6 +799,9 @@ const T = {
   ja: {
     title: 'チェックイン受付',
     agreeTitle: '宿泊約款の確認', agreeCheckLabel: '内容を確認し、同意します', agreeSignHint: '下の枠内にご署名ください',
+    guestsTitle:'宿泊者情報', guestLabel:'宿泊者', residentJp:'日本在住', residentForeign:'外国籍',
+    familyNameLabel:'氏名（姓）', givenNameLabel:'氏名（名）', natLabel:'国籍',
+    ppPhotoLabel:'パスポート写真', ppPending:'⚠ パスポートを撮影してください', ppDone:'✓ パスポート取得済み', takePhoto:'パスポートを撮影', retakePhoto2:'撮り直す',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -802,6 +832,9 @@ const T = {
   en: {
     title: 'Check-in',
     agreeTitle: 'Accommodation Terms', agreeCheckLabel: 'I have read and agree to the terms', agreeSignHint: 'Please sign in the box below',
+    guestsTitle:'Guests', guestLabel:'Guest', residentJp:'Japan Resident', residentForeign:'Foreign National',
+    familyNameLabel:'Family Name', givenNameLabel:'Given Name', natLabel:'Nationality',
+    ppPhotoLabel:'Passport Photo', ppPending:'⚠ Please take a passport photo', ppDone:'✓ Passport captured', takePhoto:'Take Passport Photo', retakePhoto2:'Retake',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -832,6 +865,9 @@ const T = {
   zh: {
     title: '办理入住',
     agreeTitle: '住宿条款确认', agreeCheckLabel: '我已阅读并同意以上条款', agreeSignHint: '请在下方框内签名',
+    guestsTitle:'住宿人信息', guestLabel:'住宿人', residentJp:'日本居民', residentForeign:'外国人',
+    familyNameLabel:'姓', givenNameLabel:'名', natLabel:'国籍',
+    ppPhotoLabel:'护照照片', ppPending:'⚠ 请拍摄护照', ppDone:'✓ 护照已采集', takePhoto:'拍摄护照', retakePhoto2:'重新拍摄',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -862,6 +898,9 @@ const T = {
   ko: {
     title: '체크인',
     agreeTitle: '숙박약관 확인', agreeCheckLabel: '내용을 확인하고 동의합니다', agreeSignHint: '아래 칸에 서명해 주세요',
+    guestsTitle:'투숙객 정보', guestLabel:'투숙객', residentJp:'일본 거주자', residentForeign:'외국인',
+    familyNameLabel:'성(姓)', givenNameLabel:'이름(名)', natLabel:'국적',
+    ppPhotoLabel:'여권 사진', ppPending:'⚠ 여권을 촬영해 주세요', ppDone:'✓ 여권 촬영 완료', takePhoto:'여권 촬영', retakePhoto2:'다시 촬영',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
@@ -898,6 +937,13 @@ let lang = 'ja';
 let currentNat = 'jp';
 let passportDataUrl = null;
 let reservationData = null;
+
+// ── 多客入力 state ──
+// 予約人数に応じて動的生成する宿泊者ごとの入力データ（配列）。
+//   { residentType:'jp'|'foreign', familyName, givenName, nationality, passportImage, passportNumber }
+let guestsList = [];
+// パスポート撮影：押された宿泊者のindexを保持（共有ファイル入力で他人の写真を上書きしない）
+let _pendingPhotoIndex = null;
 
 // ── 契約確認（宿泊約款）state ──
 // 設定はcloudData.propertySettings.contractAgreementから取得（別保存ルートは作らない）
@@ -1075,22 +1121,13 @@ function applyLang() {
   el('res-found-label').textContent = t.foundLabel;
   el('btn-back-lang').textContent = t.backBtn;
   el('btn-to-form').textContent = t.nextBtn;
-  // フォーム
-  el('f-nat-title').textContent = t.natTitle;
-  el('tab-jp-label').textContent = t.tabJp;
-  el('tab-foreign-label').textContent = t.tabForeign;
-  el('lbl-lastname').innerHTML = t.lblLastname + ' <span class="req">必須</span>';
-  el('lbl-firstname').innerHTML = t.lblFirstname + ' <span class="req">必須</span>';
-  el('lbl-pref').innerHTML = t.lblPref + ' <span class="req">必須</span>';
-  el('lbl-address').innerHTML = t.lblAddress + ' <span class="req">必須</span>';
+  // フォーム（宿泊者ブロックは renderGuests() が言語別に描画するためここでは触れない）
+  el('f-nat-title').textContent = t.guestsTitle;
   el('f-contact-title').textContent = t.contactTitle;
   el('contact-note').textContent = t.contactNote;
   el('lbl-phone').textContent = t.lblPhone;
   el('lbl-email').textContent = t.lblEmail;
   el('contactError').textContent = t.contactError;
-  el('btn-camera-label').textContent = t.cameraBtn;
-  el('camera-hint').textContent = t.cameraHint;
-  el('btn-retake-label').textContent = t.retakeBtn;
   el('btn-back-search').textContent = t.backBtn;
   el('btn-to-confirm').textContent = t.nextBtn;
   // 確認
@@ -1347,110 +1384,194 @@ function _splitPrefecture(addr){
   return { pref:'', rest:s };
 }
 
-// ── フォームへの自動入力（ハイブリッド） ─────────────────────
-function fillBasicFields(r){
-  const {last,first}=_splitName(r.name);
+// ═══════════════════════════════════════
+//  多客入力（予約人数に応じた動的フォーム）
+// ═══════════════════════════════════════
+const NATIONALITY_OPTIONS = ['アメリカ合衆国 / United States','中国 / China','韓国 / South Korea','台湾 / Taiwan','香港 / Hong Kong','タイ / Thailand','シンガポール / Singapore','マレーシア / Malaysia','インドネシア / Indonesia','フィリピン / Philippines','ベトナム / Vietnam','インド / India','オーストラリア / Australia','ニュージーランド / New Zealand','イギリス / United Kingdom','フランス / France','ドイツ / Germany','イタリア / Italy','スペイン / Spain','カナダ / Canada','ブラジル / Brazil','その他 / Other'];
 
-  if(currentNat==='jp'){
-    fillField('lastName',  last);
-    fillField('firstName', first);
-    // 住所に都道府県が含まれる場合は分離してセレクトへ自動セット
-    const {pref,rest}=_splitPrefecture(r.address);
-    if(pref){
-      const sel=el('prefecture');
-      Array.from(sel.options).forEach(o=>{ if(o.value===pref||o.text===pref)sel.value=o.value||o.text; });
-      // セレクト側のエラー解除
-      const fg=sel.closest('.field-group'); if(fg)fg.classList.remove('has-error');
-      fillField('address', rest); // 都道府県を除いた残り
-    } else {
-      fillField('address', r.address);
-    }
-  } else {
-    fillField('lastNameEn',  last);
-    fillField('firstNameEn', first);
-    // 国籍select
-    const natVal=_matchNationalityOption(r.nat);
-    const sel=el('nationalitySelect');
-    if(natVal){
-      Array.from(sel.options).forEach(o=>{
-        if(o.value===natVal||o.text===natVal)sel.value=o.value||o.text;
-      });
-    }
-    fillField('passportNo', r.passport||r.passportNo);
-  }
-  // 共通：電話・メール
-  fillField('phone', r.phone);
-  fillField('email', r.email);
+function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// 予約のnat文字列をNATIONALITY_OPTIONSに照合
+function _matchNat(nat){
+  if(!nat)return '';
+  const exact=NATIONALITY_OPTIONS.find(o=>o===nat);
+  if(exact)return exact;
+  const partial=NATIONALITY_OPTIONS.find(o=>o.includes(nat)||nat.includes(o.split('/')[0].trim())||nat.includes((o.split('/')[1]||'').trim()||'__'));
+  return partial||'';
 }
 
-// ── 予約情報をフォームへ反映（検索成功後に呼ぶ） ──────────────
-function populateGuestForm(r){
-  console.log("予約情報", r);
-  console.log("国籍", r.nat);
-  console.log("宿泊者区分", r.guestType);
-
-  // nat も guestType も不明な場合 → デフォルト「日本在住」（ゲストが変更可能）
-  const natKnown = !!(r.nat && String(r.nat).trim());
-  const isForeign = (r.guestType==='foreign') || (natKnown && r.nat!=='日本');
-  if(isForeign){
-    switchNat('foreign');
-    reservationData.guestType='foreign';
-  } else {
-    switchNat('jp');
-    reservationData.guestType='domestic';
+// 宿泊者ブロック内の入力欄HTML（居住区分に応じて切替）
+function guestFieldsHtml(i){
+  const g=guestsList[i], t=T[lang];
+  let h=`<div class="field-row">
+      <div class="field-group">
+        <label>${t.familyNameLabel} <span class="req">必須</span></label>
+        <input type="text" id="g${i}-family" value="${_esc(g.familyName)}" oninput="onGuestInput(${i})">
+      </div>
+      <div class="field-group">
+        <label>${t.givenNameLabel} <span class="req">必須</span></label>
+        <input type="text" id="g${i}-given" value="${_esc(g.givenName)}" oninput="onGuestInput(${i})">
+      </div>
+    </div>`;
+  if(g.residentType==='foreign'){
+    h+=`<div class="field-group">
+        <label>${t.natLabel} <span class="req">必須</span></label>
+        <select id="g${i}-nat" onchange="onGuestInput(${i})">
+          <option value="">${lang==='ja'?'選択してください':lang==='ko'?'선택':lang==='zh'?'请选择':'Select'}</option>
+          ${NATIONALITY_OPTIONS.map(o=>`<option${o===g.nationality?' selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-group">
+        <label>${t.ppPhotoLabel} <span class="req">必須</span></label>
+        <button type="button" class="camera-btn" style="width:100%;justify-content:center;" onclick="takePassportPhoto(${i})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>${g.passportImage?t.retakePhoto2:t.takePhoto}</span>
+        </button>
+        <div id="g${i}-pp">${ppStatusHtml(i)}</div>
+      </div>`;
   }
-  fillBasicFields(r);
+  return h;
+}
+
+function ppStatusHtml(i){
+  const g=guestsList[i], t=T[lang];
+  if(g.passportImage){
+    return `<div class="gb-pp-status done">${t.ppDone}</div><img class="gb-pp-thumb" src="${g.passportImage}" alt="passport">`;
+  }
+  return `<div class="gb-pp-status pending">${t.ppPending}</div>`;
+}
+
+// 宿泊者ブロックを人数分描画（代表者(0)は予約の氏名・国籍をプリセット）
+function renderGuests(){
+  const t=T[lang];
+  const n=Math.max(1, parseInt(reservationData && reservationData.guests) || 1);
+  const {last,first}=_splitName((reservationData&&reservationData.name)||'');
+  const repForeign=!!(reservationData && ((reservationData.guestType==='foreign')||(reservationData.nat&&String(reservationData.nat).trim()&&reservationData.nat!=='日本')));
+  // 人数が変わった場合のみ作り直し（戻る→再表示では入力を保持）
+  if(guestsList.length!==n){
+    guestsList=[];
+    for(let i=0;i<n;i++){
+      guestsList.push({
+        residentType:(i===0&&repForeign)?'foreign':'jp',
+        familyName:i===0?last:'',
+        givenName:i===0?first:'',
+        nationality:(i===0&&repForeign)?(_matchNat(reservationData.nat)||''):'',
+        passportImage:'',
+        passportNumber:''
+      });
+    }
+  }
+  el('f-nat-title').textContent=t.guestsTitle;
+  const repBadge=lang==='ja'?'代表者':lang==='ko'?'대표자':lang==='zh'?'代表':'Representative';
+  let html='';
+  for(let i=0;i<n;i++){
+    const g=guestsList[i];
+    html+=`<div class="guest-block" id="guest-block-${i}">
+      <div class="guest-block-head">
+        <span class="guest-block-title">${t.guestLabel} ${i+1}</span>
+        ${i===0?`<span class="guest-block-badge">${repBadge}</span>`:''}
+      </div>
+      <div class="nat-tabs">
+        <button type="button" class="nat-tab ${g.residentType==='jp'?'active':''}" onclick="setGuestResident(${i},'jp')">🇯🇵　${t.residentJp}</button>
+        <button type="button" class="nat-tab ${g.residentType==='foreign'?'active':''}" onclick="setGuestResident(${i},'foreign')">🌏　${t.residentForeign}</button>
+      </div>
+      <div id="gb-fields-${i}">${guestFieldsHtml(i)}</div>
+    </div>`;
+  }
+  el('guests-container').innerHTML=html;
+  validateAllGuests();
+}
+
+// DOMの現在値を guestsList[i] へ反映
+function syncGuestFromDom(i){
+  const g=guestsList[i]; if(!g)return;
+  const f=document.getElementById('g'+i+'-family'); if(f)g.familyName=f.value;
+  const gv=document.getElementById('g'+i+'-given'); if(gv)g.givenName=gv.value;
+  const nt=document.getElementById('g'+i+'-nat'); if(nt)g.nationality=nt.value;
+}
+
+// 居住区分トグル：該当ブロックのみ再描画（他人のデータは触らない）
+function setGuestResident(i,type){
+  syncGuestFromDom(i);
+  guestsList[i].residentType=type;
+  const block=document.getElementById('guest-block-'+i);
+  if(block)block.querySelectorAll('.nat-tab').forEach((b,idx)=>b.classList.toggle('active',(idx===0&&type==='jp')||(idx===1&&type==='foreign')));
+  document.getElementById('gb-fields-'+i).innerHTML=guestFieldsHtml(i);
+  validateAllGuests();
+}
+
+function onGuestInput(i){ syncGuestFromDom(i); validateAllGuests(); }
+
+// ═══════════════════════════════════════
+//  パスポート撮影（宿泊者ごと・index安全）
+// ═══════════════════════════════════════
+function takePassportPhoto(i){
+  _pendingPhotoIndex=i;
+  const inp=el('passportInput');
+  inp.value='';      // 同じファイル連続選択でもonchangeが発火するようリセット
+  inp.click();
+}
+
+// 共有ファイル入力のonchange。_pendingPhotoIndexで該当宿泊者のみ更新（上書き防止）
+function onPassportPhotoSelected(input){
+  if(!input.files||!input.files[0])return;
+  const idx=_pendingPhotoIndex;
+  if(idx===null||idx===undefined||!guestsList[idx])return;
+  _resizeImageToDataUrl(input.files[0], dataUrl=>{
+    guestsList[idx].passportImage=dataUrl;     // 該当indexのみ更新
+    syncGuestFromDom(idx);                      // 入力済みの氏名・国籍を保持
+    const fields=document.getElementById('gb-fields-'+idx);
+    if(fields)fields.innerHTML=guestFieldsHtml(idx);
+    validateAllGuests();
+  });
+}
+
+// 画像を縮小してdataURL化（従来のhandlePassportPhotoと同一ロジック）
+function _resizeImageToDataUrl(file, cb){
+  const img=new Image();
+  const reader=new FileReader();
+  reader.onload=e=>{
+    img.onload=()=>{
+      const MAX=1200;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;} else {w=Math.round(w*MAX/h);h=MAX;} }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      cb(canvas.toDataURL('image/jpeg',0.7));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 全宿泊者＋連絡先のバリデーション → Nextボタン活性制御
+function validateAllGuests(){
+  let ok=true;
+  for(let i=0;i<guestsList.length;i++){
+    syncGuestFromDom(i);
+    const g=guestsList[i];
+    if(!g.familyName.trim()||!g.givenName.trim())ok=false;
+    if(g.residentType==='foreign'){
+      if(!g.nationality||!g.nationality.trim())ok=false;
+      if(!g.passportImage)ok=false;
+    }
+  }
+  const phone=el('phone').value.trim(), email=el('email').value.trim();
+  if(!phone&&!email)ok=false;
+  const btn=el('btn-to-confirm'); if(btn)btn.disabled=!ok;
+  return ok;
 }
 
 function goToForm() {
-  if(reservationData) populateGuestForm(reservationData);
+  renderGuests();
+  // 連絡先（予約から取得済みがあればプリセット）
+  fillField('phone', reservationData?reservationData.phone:'');
+  fillField('email', reservationData?reservationData.email:'');
+  // 連絡先入力でもNextボタンの活性を更新（一度だけバインド）
+  ['phone','email'].forEach(id=>{const e=el(id); if(e&&!e._vbound){e._vbound=true; e.addEventListener('input',validateAllGuests);}});
   showScreen('screen-form');
-}
-
-// ═══════════════════════════════════════
-//  国籍切替
-// ═══════════════════════════════════════
-function switchNat(type) {
-  currentNat = type;
-  document.querySelectorAll('.nat-tab').forEach((t,i) =>
-    t.classList.toggle('active', (i===0&&type==='jp')||(i===1&&type==='foreign')));
-  el('nat-jp').classList.toggle('active', type==='jp');
-  el('nat-foreign').classList.toggle('active', type==='foreign');
-}
-
-// ═══════════════════════════════════════
-//  パスポート撮影
-// ═══════════════════════════════════════
-function handlePassportPhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  const img = new Image();
-  const reader = new FileReader();
-  reader.onload = e => {
-    img.onload = () => {
-      const MAX = 1200;
-      let w = img.width, h = img.height;
-      if (w > MAX || h > MAX) {
-        if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
-        else       { w = Math.round(w*MAX/h); h = MAX; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      passportDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-      el('passportImg').src = passportDataUrl;
-      el('passportPreview').style.display = 'block';
-      el('cameraArea').style.display = 'none';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
-function retakePhoto() {
-  passportDataUrl = null;
-  el('passportPreview').style.display = 'none';
-  el('cameraArea').style.display = 'block';
-  el('passportInput').value = '';
+  validateAllGuests();
 }
 
 // ═══════════════════════════════════════
@@ -1458,94 +1579,85 @@ function retakePhoto() {
 // ═══════════════════════════════════════
 // ゲストが入力・確定したデータ（reservationIdと紐づけて名簿へ保存する想定）
 let updatedGuestData = {};
+let finalGuests = []; // 確定した宿泊者配列（保存データ構造）
 
+function v(id) { const e = el(id); return e ? e.value.trim() : ''; }
+
+// 宿泊者配列を確定（保存データ構造）
+//   jp     : {familyName, givenName, nationality:'Japan', residentType:'jp'}
+//   foreign: {..., residentType:'foreign', passportImage, passportNumber}
+function collectGuests(){
+  finalGuests = guestsList.map((g,i)=>{
+    syncGuestFromDom(i);
+    const base = {
+      familyName: g.familyName.trim(),
+      givenName:  g.givenName.trim(),
+      nationality: g.residentType==='jp' ? 'Japan' : (g.nationality||''),
+      residentType: g.residentType
+    };
+    if(g.residentType==='foreign'){
+      base.passportImage  = g.passportImage || '';
+      base.passportNumber = g.passportNumber || ''; // 画面非表示。OCR結果の格納先として維持
+    }
+    return base;
+  });
+  return finalGuests;
+}
+
+// 代表者（宿泊者1）＋連絡先：宿泊者名簿の連絡先同期に使用
 function collectUpdatedGuestData(){
-  const prefName = (currentNat==='jp') ? v('prefecture') : '';
-  const addr = (currentNat==='jp') ? v('address') : '';
-  const last = (currentNat==='jp') ? v('lastName')  : v('lastNameEn');
-  const first= (currentNat==='jp') ? v('firstName') : v('firstNameEn');
+  const g0 = guestsList[0] || {familyName:'',givenName:'',residentType:'jp',nationality:''};
   updatedGuestData = {
     reservationId: reservationData ? (reservationData.reservationId||'') : '',
-    guestType: currentNat==='jp' ? 'domestic' : 'foreign',
-    name: (last + (first?(' '+first):'')).trim(),
-    lastName: last,
-    firstName: first,
-    nat: currentNat==='jp' ? '日本' : v('nationalitySelect'),
-    prefecture: prefName,
-    address: (prefName ? prefName : '') + addr,
+    guestType: g0.residentType==='jp' ? 'domestic' : 'foreign',
+    name: (g0.familyName + (g0.givenName?(' '+g0.givenName):'')).trim(),
+    lastName: g0.familyName||'',
+    firstName: g0.givenName||'',
+    nat: g0.residentType==='jp' ? '日本' : (g0.nationality||''),
+    prefecture: '',
+    address: '',          // 新仕様では住所は宿泊者ごとに収集しない
     phone: v('phone'),
     email: v('email'),
-    passport: currentNat==='jp' ? '' : v('passportNo'),
+    passport: '',
     roomId: reservationData ? (reservationData.roomId||'') : '',
     roomNo: reservationData ? (reservationData.roomNo||'') : '',
     checkin: reservationData ? (reservationData.checkin||'') : '',
     checkout: reservationData ? (reservationData.checkout||'') : '',
   };
-  console.log("確定ゲストデータ(updatedGuestData):", updatedGuestData);
   return updatedGuestData;
 }
 
 function goToConfirm() {
-  if (!validateForm()) return;
+  if (!validateAllGuests()) return;   // 全宿泊者＋連絡先が必須を満たさなければ進めない
+  collectGuests();
   collectUpdatedGuestData();
   buildConfirmTable();
   showScreen('screen-confirm');
 }
 
-function validateForm() {
-  let ok = true;
-  if (currentNat === 'jp') {
-    ok = req('lastName') & req('firstName') & req('address');
-    const pref = el('prefecture');
-    if (!pref.value) { pref.closest('.field-group').classList.add('has-error'); ok = false; }
-  } else {
-    ok = req('lastNameEn') & req('firstNameEn');
-    const nat = el('nationalitySelect');
-    if (!nat.value) { nat.closest('.field-group').classList.add('has-error'); ok = false; }
-    const pp = el('passportNo');
-    if (!pp.value.trim()) { pp.closest('.field-group').classList.add('has-error'); ok = false; }
-  }
-  const phone = el('phone').value.trim();
-  const email = el('email').value.trim();
-  if (!phone && !email) { el('contactError').style.display='block'; ok = false; }
-  else el('contactError').style.display='none';
-  return !!ok;
-}
-
-function req(id) {
-  const e = el(id);
-  const p = e.closest('.field-group');
-  if (!e.value.trim()) { p.classList.add('has-error'); return false; }
-  p.classList.remove('has-error'); return true;
-}
-
-function v(id) { const e = el(id); return e ? e.value.trim() : ''; }
-
 function buildConfirmTable() {
   const t = T[lang];
   const r = reservationData;
-  const rows = [];
-  rows.push([t.cfReservation, r ? r.reservationId : '']);
-  if (currentNat === 'jp') {
-    rows.push([t.cfName, v('lastName') + ' ' + v('firstName')]);
-    rows.push([t.cfPref, v('prefecture')]);
-    rows.push([t.cfAddress, v('address')]);
-  } else {
-    rows.push([t.cfName, v('lastNameEn') + ' ' + v('firstNameEn')]);
-    rows.push([t.cfNat, v('nationalitySelect')]);
-    rows.push([t.cfPass, v('passportNo')]);
-  }
+  const row = (k,val)=>`<tr><th>${k}</th><td>${val||'—'}</td></tr>`;
+  let html = row(t.cfReservation, r ? r.reservationId : '');
   if (r) {
-    rows.push([t.cfCheckin, r.checkin || '']);
-    rows.push([t.cfCheckout, r.checkout || '']);
+    html += row(t.cfCheckin, r.checkin || '');
+    html += row(t.cfCheckout, r.checkout || '');
   }
-  if (v('phone')) rows.push([t.cfPhone, v('phone')]);
-  if (v('email')) rows.push([t.cfEmail, v('email')]);
-
-  let html = rows.map(([k,val]) => `<tr><th>${k}</th><td>${val||'—'}</td></tr>`).join('');
-  if (currentNat === 'foreign' && passportDataUrl) {
-    html += `<tr><th>${t.cfPass}</th><td><img src="${passportDataUrl}" class="passport-thumb"></td></tr>`;
-  }
+  if (v('phone')) html += row(t.cfPhone, v('phone'));
+  if (v('email')) html += row(t.cfEmail, v('email'));
+  // 宿泊者ごと
+  finalGuests.forEach((g,i)=>{
+    const typeLabel = g.residentType==='jp' ? t.residentJp : t.residentForeign;
+    html += `<tr><th colspan="2" style="background:var(--foam);color:var(--ocean-deep);">${t.guestLabel} ${i+1}（${typeLabel}）</th></tr>`;
+    html += row(t.cfName, (g.familyName + ' ' + g.givenName).trim());
+    html += row(t.cfNat, g.residentType==='jp' ? '日本 / Japan' : g.nationality);
+    if(g.residentType==='foreign'){
+      html += g.passportImage
+        ? `<tr><th>${t.ppPhotoLabel}</th><td><img src="${g.passportImage}" class="passport-thumb"></td></tr>`
+        : row(t.ppPhotoLabel, t.ppPending);
+    }
+  });
   el('confirmTable').innerHTML = html;
 }
 
@@ -1590,9 +1702,10 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
       if(updatedGuestData && updatedGuestData.reservationId===targetId){
         if(updatedGuestData.email)   g.email   = updatedGuestData.email;
         if(updatedGuestData.phone)   g.phone   = updatedGuestData.phone;
-        if(updatedGuestData.address){
-          g.address = (updatedGuestData.prefecture||'') + (updatedGuestData.address||'');
-        }
+      }
+      // ── 全宿泊者情報（配列）を記録 ──
+      if(Array.isArray(finalGuests) && finalGuests.length){
+        g.guests = finalGuests;
       }
       updated++;
     }
@@ -1619,35 +1732,39 @@ async function submitCheckin() {
     + '-' + String(Math.floor(Math.random()*9000)+1000);
 
   const r = reservationData || {};
-  const formData = {
-    action: 'saveRecord',
-    registrationNo: reg,
-    natType:     currentNat === 'jp' ? '日本在住' : '外国人',
-    name:        currentNat === 'jp'
-                   ? v('lastName') + ' ' + v('firstName')
-                   : v('lastNameEn') + ' ' + v('firstNameEn'),
-    prefecture:  currentNat === 'jp' ? v('prefecture') : '',
-    address:     currentNat === 'jp' ? v('address') : '',
-    nationality: v('nationalitySelect'),
-    passportNo:  v('passportNo'),
-    phone:       v('phone'),
-    email:       v('email'),
-    checkinDate:  r.checkin  || '',
-    checkoutDate: r.checkout || '',
-    reservationId: r.reservationId || '',
-    roomId:       r.roomId   || '',
-    site:         r.site     || ''
-  };
+  // 確定済みの宿泊者配列（念のため再収集）
+  if(!finalGuests.length) collectGuests();
 
-  const sends = [
-    fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(formData) })
-  ];
-  if (passportDataUrl) {
-    sends.push(fetch(GAS_URL, {
-      method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'savePhoto', registrationNo:reg, passportPhoto:passportDataUrl })
-    }));
-  }
+  // 宿泊者ごとに名簿レコード（saveRecord）＋パスポート写真（savePhoto）を送信
+  const sends = [];
+  finalGuests.forEach((g, i) => {
+    const regNo = reg + '-' + (i+1);   // 宿泊者ごとに一意の登録番号
+    const formData = {
+      action: 'saveRecord',
+      registrationNo: regNo,
+      natType:     g.residentType === 'jp' ? '日本在住' : '外国人',
+      name:        (g.familyName + ' ' + g.givenName).trim(),
+      prefecture:  '',
+      address:     '',
+      nationality: g.residentType === 'jp' ? '日本' : (g.nationality || ''),
+      passportNo:  g.passportNumber || '',   // OCR前提。手入力は廃止
+      phone:       i===0 ? v('phone') : '',  // 連絡先は代表者のみ
+      email:       i===0 ? v('email') : '',
+      checkinDate:  r.checkin  || '',
+      checkoutDate: r.checkout || '',
+      reservationId: r.reservationId || '',
+      roomId:       r.roomId   || '',
+      site:         r.site     || '',
+      guestIndex:   i+1
+    };
+    sends.push(fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(formData) }));
+    if (g.residentType === 'foreign' && g.passportImage) {
+      sends.push(fetch(GAS_URL, {
+        method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'savePhoto', registrationNo:regNo, passportPhoto:g.passportImage })
+      }));
+    }
+  });
 
   try {
     await Promise.all(sends);
@@ -1992,6 +2109,12 @@ function restartApp() {
   reservationData = null;
   passportDataUrl = null;
   currentNat = 'jp';
+  // 多客入力ステートをリセット
+  guestsList = [];
+  finalGuests = [];
+  _pendingPhotoIndex = null;
+  const gc = el('guests-container'); if(gc) gc.innerHTML = '';
+  const toConfirm = el('btn-to-confirm'); if(toConfirm) toConfirm.disabled = false;
   // 契約確認の一時ステートと署名をリセット（設定 contractSettings はキャッシュ保持）
   agreement = { accepted:false, acceptedAt:'', language:'', method:'', signature:'' };
   _signatureHasInk = false; _signDrawing = false;
@@ -2005,8 +2128,6 @@ function restartApp() {
   document.querySelectorAll('select').forEach(e => e.selectedIndex=0);
   el('contactError').style.display = 'none';
   document.querySelectorAll('.has-error').forEach(e => e.classList.remove('has-error'));
-  retakePhoto();
-  switchNat('jp');
   showScreen('screen-lang');
 }
 
