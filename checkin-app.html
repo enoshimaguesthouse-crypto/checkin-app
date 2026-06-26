@@ -151,6 +151,7 @@ body::before {
 .field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 label { font-size:11px; font-weight:500; letter-spacing:0.08em; color:var(--gray); display:flex; align-items:center; gap:5px; }
 .req { color:var(--red); font-size:10px; }
+.required-mark { color:#dc3545; font-weight:600; margin-left:4px; }
 .opt { font-size:9px; font-weight:300; background:var(--ocean-pale); color:var(--ocean-mid); padding:1px 5px; border-radius:10px; }
 input[type="text"], input[type="tel"], input[type="email"], input[type="date"], input[type="number"], select {
   font-family:inherit; font-size:16px; color:var(--ink); background:var(--foam);
@@ -611,18 +612,18 @@ input.needs-input::placeholder { color:#d08a3a; }
       <div class="nat-fields active" id="nat-jp">
         <div class="field-row">
           <div class="field-group">
-            <label id="lbl-lastname">氏名（姓） <span class="req">必須</span></label>
+            <label id="lbl-lastname">氏名（姓） <span class="required-mark">*</span></label>
             <input type="text" id="lastName" placeholder="山田">
             <span class="field-error" id="err-lastname">入力してください</span>
           </div>
           <div class="field-group">
-            <label id="lbl-firstname">氏名（名） <span class="req">必須</span></label>
+            <label id="lbl-firstname">氏名（名） <span class="required-mark">*</span></label>
             <input type="text" id="firstName" placeholder="太郎">
             <span class="field-error" id="err-firstname">入力してください</span>
           </div>
         </div>
         <div class="field-group">
-          <label id="lbl-pref">都道府県 <span class="req">必須</span></label>
+          <label id="lbl-pref">都道府県 <span class="required-mark">*</span></label>
           <select id="prefecture">
             <option value="">選択してください</option>
             <option>北海道</option><option>青森県</option><option>岩手県</option><option>宮城県</option><option>秋田県</option><option>山形県</option><option>福島県</option><option>茨城県</option><option>栃木県</option><option>群馬県</option><option>埼玉県</option><option>千葉県</option><option>東京都</option><option>神奈川県</option><option>新潟県</option><option>富山県</option><option>石川県</option><option>福井県</option><option>山梨県</option><option>長野県</option><option>岐阜県</option><option>静岡県</option><option>愛知県</option><option>三重県</option><option>滋賀県</option><option>京都府</option><option>大阪府</option><option>兵庫県</option><option>奈良県</option><option>和歌山県</option><option>鳥取県</option><option>島根県</option><option>岡山県</option><option>広島県</option><option>山口県</option><option>徳島県</option><option>香川県</option><option>愛媛県</option><option>高知県</option><option>福岡県</option><option>佐賀県</option><option>長崎県</option><option>熊本県</option><option>大分県</option><option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option>
@@ -630,7 +631,7 @@ input.needs-input::placeholder { color:#d08a3a; }
           <span class="field-error" id="err-pref">選択してください</span>
         </div>
         <div class="field-group">
-          <label id="lbl-address">住所 <span class="req">必須</span></label>
+          <label id="lbl-address">住所 <span class="required-mark">*</span></label>
           <input type="text" id="address" placeholder="鎌倉市○○1-2-3">
           <span class="field-error" id="err-address">入力してください</span>
         </div>
@@ -640,18 +641,18 @@ input.needs-input::placeholder { color:#d08a3a; }
       <div class="nat-fields" id="nat-foreign">
         <div class="field-row">
           <div class="field-group">
-            <label>Family Name <span class="req">必須</span></label>
+            <label>Family Name <span class="required-mark">*</span></label>
             <input type="text" id="lastNameEn" placeholder="YAMADA">
             <span class="field-error">Please enter</span>
           </div>
           <div class="field-group">
-            <label>Given Name <span class="req">必須</span></label>
+            <label>Given Name <span class="required-mark">*</span></label>
             <input type="text" id="firstNameEn" placeholder="TARO">
             <span class="field-error">Please enter</span>
           </div>
         </div>
         <div class="field-group">
-          <label id="lbl-nat">Nationality / 国籍 <span class="req">必須</span></label>
+          <label id="lbl-nat">Nationality / 国籍 <span class="required-mark">*</span></label>
           <select id="nationalitySelect">
             <option value="">Select / 選択</option>
             <option>アメリカ合衆国 / United States</option><option>中国 / China</option><option>韓国 / South Korea</option><option>台湾 / Taiwan</option><option>香港 / Hong Kong</option><option>タイ / Thailand</option><option>シンガポール / Singapore</option><option>マレーシア / Malaysia</option><option>インドネシア / Indonesia</option><option>フィリピン / Philippines</option><option>ベトナム / Vietnam</option><option>インド / India</option><option>オーストラリア / Australia</option><option>ニュージーランド / New Zealand</option><option>イギリス / United Kingdom</option><option>フランス / France</option><option>ドイツ / Germany</option><option>イタリア / Italy</option><option>スペイン / Spain</option><option>カナダ / Canada</option><option>ブラジル / Brazil</option><option>その他 / Other</option>
@@ -659,7 +660,7 @@ input.needs-input::placeholder { color:#d08a3a; }
           <span class="field-error">選択してください</span>
         </div>
         <div class="field-group">
-          <label>Passport No. / 旅券番号 <span class="req">必須</span></label>
+          <label>Passport No. / 旅券番号 <span class="required-mark">*</span></label>
           <input type="text" id="passportNo" placeholder="AB1234567" style="text-transform:uppercase">
           <span class="field-error">入力してください</span>
         </div>
@@ -1405,24 +1406,24 @@ function guestFieldsHtml(i){
   const g=guestsList[i], t=T[lang];
   let h=`<div class="field-row">
       <div class="field-group">
-        <label>${t.familyNameLabel} <span class="req">必須</span></label>
+        <label>${t.familyNameLabel} <span class="required-mark">*</span></label>
         <input type="text" id="g${i}-family" value="${_esc(g.familyName)}" oninput="onGuestInput(${i})">
       </div>
       <div class="field-group">
-        <label>${t.givenNameLabel} <span class="req">必須</span></label>
+        <label>${t.givenNameLabel} <span class="required-mark">*</span></label>
         <input type="text" id="g${i}-given" value="${_esc(g.givenName)}" oninput="onGuestInput(${i})">
       </div>
     </div>`;
   if(g.residentType==='foreign'){
     h+=`<div class="field-group">
-        <label>${t.natLabel} <span class="req">必須</span></label>
+        <label>${t.natLabel} <span class="required-mark">*</span></label>
         <select id="g${i}-nat" onchange="onGuestInput(${i})">
           <option value="">${lang==='ja'?'選択してください':lang==='ko'?'선택':lang==='zh'?'请选择':'Select'}</option>
           ${NATIONALITY_OPTIONS.map(o=>`<option${o===g.nationality?' selected':''}>${o}</option>`).join('')}
         </select>
       </div>
       <div class="field-group">
-        <label>${t.ppPhotoLabel} <span class="req">必須</span></label>
+        <label>${t.ppPhotoLabel} <span class="required-mark">*</span></label>
         <button type="button" class="camera-btn" style="width:100%;justify-content:center;" onclick="takePassportPhoto(${i})">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>${g.passportImage?t.retakePhoto2:t.takePhoto}</span>
