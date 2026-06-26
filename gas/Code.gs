@@ -23,6 +23,8 @@ function getHotelFile() {
     staffNotes:[], salesData:{}, occCumul:{}, cleaningData:{},
     roomSettings:{}, rooms:[], roomPriorityMaster:{}, unassignedReservations:[],
     budgets:{},                                                    // ←追加
+    staffNames:[], snTypes:[], priorityCleaningItems:[], priorityCleaningSettings:{},
+    propertySettings:{},                                           // ←契約確認設定などタブレット表示設定
     updatedAt: new Date().toISOString(), updatedBy:'init'
   });
 }
@@ -85,6 +87,11 @@ function doPost(e) {
   roomPriorityMaster:  payload.roomPriorityMaster  || {},
   unassignedReservations: payload.unassignedReservations || [],
   budgets:             payload.budgets             || {},   // ←追加
+  staffNames:              payload.staffNames              || [],
+  snTypes:                 payload.snTypes                 || [],
+  priorityCleaningItems:   payload.priorityCleaningItems   || [],
+  priorityCleaningSettings:payload.priorityCleaningSettings|| {},
+  propertySettings:        payload.propertySettings        || {},   // ←契約確認設定などタブレット表示設定
   updatedAt:   new Date().toISOString(),
   updatedBy:   payload.updatedBy   || '不明'
 };
