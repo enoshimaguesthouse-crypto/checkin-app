@@ -2755,7 +2755,7 @@ function generateCleaningList(){
       let priority='low';
       if(yestAnchor.charter||room.group==='ANNEX−個室'||room.group==='本館−個室')priority='high';
       else if(hasNextBooking)priority='high';
-      else if(nights>=3||yestAnchor.guests>=3)priority='mid';
+      else if(nights>=3||guestCountOf(yestAnchor)>=3)priority='mid';
 
       newMap.set(room.id,{
         room,guest:yestAnchor,nights,hasNextBooking,priority,
@@ -2937,10 +2937,10 @@ function renderCleaning(){
             ?'<span class="cl-badge" style="background:#dcfce7;color:#15803d;">🏠 連泊中</span>'
             :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
-        <div class="cl-guest">${guest.name||'—'}　${guest.guests||1}名　${info.nights||1}泊</div>
+        <div class="cl-guest">${guest.name||'—'}　${guestCountOf(guest)}名　${info.nights||1}泊</div>
         <div class="cl-badges">
           ${info.hasNextBooking
-          ? `<span class="cl-badge mid">📅 次予約あり ${info.nextGuest?.guests||''}${info.nextGuest?.guests?'名':''}</span>`
+          ? `<span class="cl-badge mid">📅 次予約あり ${info.nextGuest?guestCountOf(info.nextGuest)+'名':''}</span>`
           : ''}
           ${guest.charter?'<span class="cl-badge high">🔒 貸切</span>':''}
           ${info.nights>=3?'<span class="cl-badge">長期'+info.nights+'泊</span>':''}
@@ -3423,7 +3423,7 @@ function copyLineMessage(){
           let line=`・個室${short}`;
           // 次予約あり（個室のみ表示）
           if(e.info.hasNextBooking&&e.info.nextGuest){
-            line+=` 次予約あり${e.info.nextGuest.guests||''}名`;
+            line+=` 次予約あり${guestCountOf(e.info.nextGuest)}名`;
           }
           msg+=line+'\n';
         });
@@ -3440,10 +3440,10 @@ function copyLineMessage(){
       other.forEach(e=>{
         const num=roomShort(e.room);
         let line=`・${num}`;
-        const guests=e.info.guest?.guests||1;
+        const guests=guestCountOf(e.info.guest);
         if(guests>0)line+=` ${guests}名分`;
         if(e.info.hasNextBooking&&e.info.nextGuest){
-          line+=` 次予約あり${e.info.nextGuest.guests||''}名`;
+          line+=` 次予約あり${guestCountOf(e.info.nextGuest)}名`;
         }
         msg+=line+'\n';
       });
@@ -3848,6 +3848,14 @@ function setAllRoomFilter(val){
 function filteredRooms(){
   return rooms.filter(r=>roomFilter[r.group]!==false);
 }
+// 宿泊人数を堅牢に取得（チェックイン前=数値 / 後=guests配列 のどちらでも数値を返す）
+// チェックインアプリは g.guests に宿泊者オブジェクト配列を保存するため、配列なら要素数を人数とする。
+function guestCountOf(g){
+  if(!g) return 1;
+  if(Array.isArray(g.guests)) return g.guests.length || 1;
+  return g.guests || g.guestCount || g.totalGuests || 1;
+}
+
 function renderReg(){
   const year=parseInt(document.getElementById('sel-year').value)||2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
   DISP_YEAR=year; // 以降のgk/addDaysが表示中の年を使うように同期
@@ -4050,7 +4058,7 @@ function renderReg(){
             const payLabelC=isCashC?'💴現金':isStripeC?'Stripe':isBankC?'振込':'事前';
             const payColorC=isCashC?'var(--coral)':isStripeC?'#7c3aed':isBankC?'var(--seaglass)':'var(--ocean)';
             const payBgC=isCashC?'var(--coral-lt)':isStripeC?'#ede9fe':isBankC?'var(--seaglass-lt)':'var(--ocean-light)';
-            const gcC=cMeta.guests||1;
+            const gcC=guestCountOf(cMeta);
             const guestsBadgeC=`<span class="c-guests">${gcC}</span>`;
             const payChipC=`<span class="c-pay" style="color:${payColorC};background:${payBgC};">${payLabelC}</span>`;
             const priceChipC=cMeta.price
@@ -4133,7 +4141,12 @@ function renderReg(){
           const bcls=g.sex==='男'?'bm':g.sex==='女'?'bf':'';
           if(g.price)rS+=g.price;
           if(isCash&&g.price&&!isCheckedIn(g.status))tCash+=g.price;
-          const gc=g.guests||1;
+          const gc=guestCountOf(g);
+          // ── デバッグ（一時）：guests配列で保存された予約のみ出力 ──
+          if(Array.isArray(g.guests)){
+            console.log('Render reservation data:', g);
+            console.log('Guest count display source:', gc, g.guests);
+          }
           // 性別集計: 空欄は不明としてカウントしない
           if(g.sex==='男')rM+=gc;else if(g.sex==='女')rF+=gc;
           if(g.cat==='Ｓ')cS++;else if(g.cat==='Ｇ')cG++;else if(g.cat==='Ｆ')cF++;else cC++;
@@ -4681,7 +4694,7 @@ function openEdit(k){
   document.getElementById('f-day').value=`2026-${String(editM).padStart(2,'0')}-${String(g.day||1).padStart(2,'0')}`;
   const month=parseInt(document.getElementById('sel-month').value);
   document.getElementById('f-nights').value=findN(g.roomId,g.day,month);
-  document.getElementById('f-guests').value=g.guests||1;
+  document.getElementById('f-guests').value=guestCountOf(g);
   document.getElementById('f-price').value=g.price||'';
   document.getElementById('f-note').value=g.note||'';
   document.getElementById('f-arrival').value=g.arrivalTime||'';
