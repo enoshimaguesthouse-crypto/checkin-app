@@ -924,16 +924,24 @@ async function selectLang(l) {
 // ═══════════════════════════════════════
 //  契約確認（宿泊約款）
 // ═══════════════════════════════════════
-// cloudData.propertySettings.contractAgreement を取得（GAS→失敗時は無効扱い）
+// cloudData.propertySettings.contractAgreement を取得
+// キオスク端末は開きっぱなしのため、TTL(30秒)付きで再取得し、
+// 宿泊名簿アプリ側の設定変更が（再読み込みなしで）30秒以内に反映されるようにする。
+// 取得失敗時は前回値を維持（ネットワーク瞬断で約款がスキップされるのを防ぐ）。
+// ※宿泊データJSONは大きいため毎タップ取得は避け、TTLでキャッシュする。
+let _contractFetchedAt = 0;
+const CONTRACT_TTL_MS = 30000;
 async function loadContractSettings() {
-  if (contractSettings !== null) return contractSettings;
+  const now = Date.now();
+  if (contractSettings !== null && (now - _contractFetchedAt) < CONTRACT_TTL_MS) return contractSettings;
   try {
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + Date.now());
+    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + now);
     const data = await res.json();
     contractSettings = (data.propertySettings && data.propertySettings.contractAgreement) || { enabled:false };
+    _contractFetchedAt = now;
   } catch(e) {
     console.warn('契約確認設定の取得に失敗:', e);
-    contractSettings = { enabled:false };
+    if (contractSettings === null) contractSettings = { enabled:false };
   }
   return contractSettings;
 }
