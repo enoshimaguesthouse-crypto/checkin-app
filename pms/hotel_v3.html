@@ -6383,14 +6383,14 @@ function saveRental(){
   } else {
     rentalSpaceReservations.push(data);
   }
-  closeM('rental-modal');renderRental();renderReg();saveToLS();autoSave();
+  closeM('rental-modal');renderRental();renderReg();saveToLS();rentalCloudSave();
   showToast('📷 レンタルスペース予約を保存しました');
 }
 
 function deleteRental(){
   if(editRentalId==null)return;
   rentalSpaceReservations=rentalSpaceReservations.filter(x=>x.id!==editRentalId);
-  closeM('rental-modal');renderRental();renderReg();saveToLS();autoSave();
+  closeM('rental-modal');renderRental();renderReg();saveToLS();rentalCloudSave();
   showToast('🗑 削除しました');
 }
 
