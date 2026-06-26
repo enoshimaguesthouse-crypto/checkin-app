@@ -935,7 +935,9 @@ async function loadContractSettings() {
   const now = Date.now();
   if (contractSettings !== null && (now - _contractFetchedAt) < CONTRACT_TTL_MS) return contractSettings;
   try {
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + now);
+    // 軽量設定エンドポイント（type=settings）。guestDataを含まないためデータ増加の影響を受けない。
+    // 旧GAS（type未対応）でも全データを返すため後方互換あり。
+    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + now);
     const data = await res.json();
     contractSettings = (data.propertySettings && data.propertySettings.contractAgreement) || { enabled:false };
     _contractFetchedAt = now;
@@ -1170,8 +1172,9 @@ async function searchReservation() {
   el('sendingText').textContent = T[lang].searching;
 
   try {
-    // Google Drive上の最新JSONをGETで取得（キャッシュ回避）
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + Date.now());
+    // 予約ID検索エンドポイント（type=search）：一致レコードのみ取得しデータ増加の影響を受けない。
+    // 旧GAS（type未対応）でも全データを返し、下のID一致フィルタで動作するため後方互換あり。
+    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=search&id=' + encodeURIComponent(targetId) + '&t=' + Date.now());
     const data = await res.json();
 
     // guestDataはキーバリュー型オブジェクト → 配列に平坦化
@@ -1691,9 +1694,9 @@ let _lastGuideTTSLang = 'ja-JP';
 
 // roomSettings を取得（GAS → localStorage の優先順でフォールバック）
 async function _fetchRoomSettings(){
-  // 1) GAS から最新を試みる
+  // 1) GAS から最新を試みる（軽量設定エンドポイント。roomSettings/roomsのみでguestDataを含まない）
   try{
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + Date.now());
+    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + Date.now());
     const data = await res.json();
     if(data.roomSettings && Object.keys(data.roomSettings).length > 0){
       try{

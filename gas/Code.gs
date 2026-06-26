@@ -36,19 +36,56 @@ function getRentalFile() {
   });
 }
 
-// ── GET：type=rental なら rental ファイル、それ以外は宿泊データ ──
+function jsonOut(str) {
+  return ContentService.createTextOutput(str).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── GET ──────────────────────────────────────────────────
+//  type=rental   : レンタルスペースファイル
+//  type=settings : 設定類のみ（巨大な guestData を含めない軽量レスポンス）
+//  type=search   : 予約ID一致レコードのみ（データ量に依存しない検索）
+//  それ以外      : 宿泊データ全体
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
     const type = params.type || 'hotel';
-    const file = type === 'rental' ? getRentalFile() : getHotelFile();
-    return ContentService
-      .createTextOutput(file.getBlob().getDataAsString())
-      .setMimeType(ContentService.MimeType.JSON);
+
+    if (type === 'rental') {
+      return jsonOut(getRentalFile().getBlob().getDataAsString());
+    }
+
+    // 軽量設定エンドポイント：宿泊者データが何件に増えてもサイズ一定
+    if (type === 'settings') {
+      const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
+      return jsonOut(JSON.stringify({
+        propertySettings: data.propertySettings || {},
+        roomSettings:     data.roomSettings     || {},
+        rooms:            data.rooms            || [],
+        updatedAt:        data.updatedAt        || ''
+      }));
+    }
+
+    // 予約ID検索エンドポイント：一致する予約レコードのみ返す
+    if (type === 'search') {
+      const id = String(params.id || '').trim();
+      const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
+      const guestData = data.guestData || {};
+      const matches = {};
+      if (id) {
+        Object.keys(guestData).forEach(k => {
+          const g = guestData[k];
+          if (!g) return;
+          const gid = g.reservationId || g.id;
+          if (gid && String(gid).trim() === id) matches[k] = g;
+        });
+      }
+      return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [] }));
+    }
+
+    // デフォルト：宿泊データ全体
+    return jsonOut(getHotelFile().getBlob().getDataAsString());
   } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ error: err.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonOut(JSON.stringify({ error: err.message }));
   }
 }
 
