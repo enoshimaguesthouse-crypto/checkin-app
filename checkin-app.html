@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -260,6 +260,35 @@ input.needs-input::placeholder { color:#d08a3a; }
 #passportInput { display:none; }
 
 /* ── BUTTONS ── */
+/* ── 契約確認（宿泊約款） ── */
+.agreement-text {
+  white-space:pre-wrap; word-break:break-word;
+  font-size:13px; line-height:1.9; color:var(--ink);
+  max-height:46vh; overflow-y:auto;
+  padding:14px 16px; background:var(--foam);
+  border:1px solid var(--border); border-radius:12px;
+  margin-bottom:18px; -webkit-overflow-scrolling:touch;
+}
+.agree-check {
+  display:flex; align-items:flex-start; gap:10px;
+  font-size:14px; font-weight:600; color:var(--ink);
+  cursor:pointer; padding:14px 16px;
+  background:var(--ocean-pale); border:1.5px solid var(--border);
+  border-radius:12px; line-height:1.6;
+}
+.agree-check input { width:22px; height:22px; flex:0 0 22px; margin-top:1px; accent-color:var(--ocean-deep); cursor:pointer; }
+.agree-sign-hint { font-size:13px; color:var(--gray); margin-bottom:8px; text-align:center; }
+.sign-pad-box {
+  border:1.5px dashed var(--ocean-mid); border-radius:12px;
+  background:#fff; overflow:hidden; touch-action:none;
+}
+.sign-pad { display:block; width:100%; height:200px; touch-action:none; cursor:crosshair; }
+.sign-clear-btn {
+  margin-top:10px; width:100%; padding:10px;
+  border:1.5px solid var(--border); background:#fff; color:var(--gray);
+  border-radius:10px; font-size:13px; font-family:inherit; cursor:pointer;
+}
+.sign-clear-btn:hover { border-color:var(--ocean-mid); color:var(--ocean-deep); }
 .btn-group { display:flex; gap:12px; margin-top:22px; }
 .btn-back {
   flex:0 0 88px; padding:14px; background:transparent;
@@ -427,6 +456,37 @@ input.needs-input::placeholder { color:#d08a3a; }
         <div class="lang-name">한국어</div>
         <div class="lang-sub">Korean</div>
       </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       SCREEN 0.5: 契約確認（宿泊約款）
+  ════════════════════════════════ -->
+  <div class="screen" id="screen-agreement">
+    <div class="header" style="padding:32px 0 16px;">
+      <div class="header-ja" id="agree-title">宿泊約款の確認</div>
+    </div>
+    <div class="card">
+      <div class="agreement-text" id="agreement-text"></div>
+
+      <!-- チェックボックス方式 -->
+      <label class="agree-check" id="agree-check-wrap" style="display:none;">
+        <input type="checkbox" id="agree-checkbox" onchange="updateAgreeNext()">
+        <span id="agree-check-label">内容を確認し、同意します</span>
+      </label>
+
+      <!-- 署名方式 -->
+      <div id="agree-sign-wrap" style="display:none;">
+        <div class="agree-sign-hint" id="agree-sign-hint">下の枠内にご署名ください</div>
+        <div class="sign-pad-box">
+          <canvas id="agree-sign-canvas" class="sign-pad"></canvas>
+        </div>
+        <button type="button" class="sign-clear-btn" id="agree-sign-clear" onclick="clearSignature()">🗑 消去 / Clear</button>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn-back" onclick="showScreen('screen-lang')" id="btn-back-agree">← 戻る</button>
+      <button class="btn-next" id="btn-agree-next" onclick="proceedFromAgreement()" disabled>次へ　→</button>
     </div>
   </div>
 
@@ -711,6 +771,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxy0Ta3OJU6rLqhH9jYkvi7
 const T = {
   ja: {
     title: 'チェックイン受付',
+    agreeTitle: '宿泊約款の確認', agreeCheckLabel: '内容を確認し、同意します', agreeSignHint: '下の枠内にご署名ください',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -740,6 +801,7 @@ const T = {
   },
   en: {
     title: 'Check-in',
+    agreeTitle: 'Accommodation Terms', agreeCheckLabel: 'I have read and agree to the terms', agreeSignHint: 'Please sign in the box below',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -769,6 +831,7 @@ const T = {
   },
   zh: {
     title: '办理入住',
+    agreeTitle: '住宿条款确认', agreeCheckLabel: '我已阅读并同意以上条款', agreeSignHint: '请在下方框内签名',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -798,6 +861,7 @@ const T = {
   },
   ko: {
     title: '체크인',
+    agreeTitle: '숙박약관 확인', agreeCheckLabel: '내용을 확인하고 동의합니다', agreeSignHint: '아래 칸에 서명해 주세요',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
@@ -835,14 +899,147 @@ let currentNat = 'jp';
 let passportDataUrl = null;
 let reservationData = null;
 
+// ── 契約確認（宿泊約款）state ──
+// 設定はcloudData.propertySettings.contractAgreementから取得（別保存ルートは作らない）
+let contractSettings = null; // {enabled,consentType,texts}
+// 予約ID未入力の段階で同意するため、一時ステートに保持しチェックイン完了時に名簿へ記録
+let agreement = { accepted:false, acceptedAt:'', language:'', method:'', signature:'' };
+
 // ═══════════════════════════════════════
 //  言語選択
 // ═══════════════════════════════════════
-function selectLang(l) {
+async function selectLang(l) {
   lang = l;
   document.body.className = l === 'zh' ? 'lang-zh' : l === 'ko' ? 'lang-ko' : '';
   applyLang();
+  // 契約確認設定を読み込み、利用ONなら予約ID入力の前に同意画面を挿入
+  const cs = await loadContractSettings();
+  if (cs && cs.enabled) {
+    showAgreementScreen();
+  } else {
+    showScreen('screen-search');
+  }
+}
+
+// ═══════════════════════════════════════
+//  契約確認（宿泊約款）
+// ═══════════════════════════════════════
+// cloudData.propertySettings.contractAgreement を取得（GAS→失敗時は無効扱い）
+async function loadContractSettings() {
+  if (contractSettings !== null) return contractSettings;
+  try {
+    const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + Date.now());
+    const data = await res.json();
+    contractSettings = (data.propertySettings && data.propertySettings.contractAgreement) || { enabled:false };
+  } catch(e) {
+    console.warn('契約確認設定の取得に失敗:', e);
+    contractSettings = { enabled:false };
+  }
+  return contractSettings;
+}
+
+function _nowIso() {
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function showAgreementScreen() {
+  const t = T[lang];
+  const cs = contractSettings || {};
+  const texts = cs.texts || {};
+  el('agree-title').textContent = t.agreeTitle;
+  // 選択言語の本文（無ければ日本語にフォールバック）。改行はCSS white-space:pre-wrap で保持
+  el('agreement-text').textContent = (texts[lang] || texts.ja || '').trim();
+
+  const method = (cs.consentType === 'signature') ? 'signature' : 'checkbox';
+  // 一時ステートをリセット
+  agreement = { accepted:false, acceptedAt:'', language:'', method:'', signature:'' };
+  el('btn-agree-next').disabled = true;
+
+  if (method === 'signature') {
+    el('agree-check-wrap').style.display = 'none';
+    el('agree-sign-wrap').style.display = '';
+    el('agree-sign-hint').textContent = t.agreeSignHint;
+    showScreen('screen-agreement');
+    // canvas はレイアウト確定後に初期化
+    setTimeout(initSignaturePad, 50);
+  } else {
+    el('agree-sign-wrap').style.display = 'none';
+    el('agree-check-wrap').style.display = '';
+    el('agree-checkbox').checked = false;
+    el('agree-check-label').textContent = t.agreeCheckLabel;
+    showScreen('screen-agreement');
+  }
+}
+
+function updateAgreeNext() {
+  const cs = contractSettings || {};
+  if (cs.consentType === 'signature') {
+    el('btn-agree-next').disabled = !_signatureHasInk;
+  } else {
+    el('btn-agree-next').disabled = !el('agree-checkbox').checked;
+  }
+}
+
+function proceedFromAgreement() {
+  const cs = contractSettings || {};
+  const method = (cs.consentType === 'signature') ? 'signature' : 'checkbox';
+  agreement.accepted = true;
+  agreement.acceptedAt = _nowIso();
+  agreement.language = lang;
+  agreement.method = method;
+  // 署名方式の場合のみ署名画像を保持（チェックイン完了署名とは独立して扱う）
+  agreement.signature = (method === 'signature' && _signatureCtx) ? el('agree-sign-canvas').toDataURL('image/png') : '';
   showScreen('screen-search');
+}
+
+// ── 署名パッド（チェックイン完了署名とは独立した Canvas）──
+let _signatureCtx = null;
+let _signatureHasInk = false;
+let _signDrawing = false;
+
+function initSignaturePad() {
+  const canvas = el('agree-sign-canvas');
+  if (!canvas) return;
+  // 表示サイズに合わせて解像度を設定（Retina対応）
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#0d2d3a';
+  _signatureCtx = ctx;
+  _signatureHasInk = false;
+
+  const pos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = (e) => { e.preventDefault(); _signDrawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const move = (e) => {
+    if (!_signDrawing) return;
+    e.preventDefault();
+    const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+    if (!_signatureHasInk) { _signatureHasInk = true; updateAgreeNext(); }
+  };
+  const end = (e) => { if(e) e.preventDefault(); _signDrawing = false; };
+
+  // 既存リスナーの重複登録を防ぐため、cloneして付け替え
+  canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
+  canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
+}
+
+function clearSignature() {
+  const canvas = el('agree-sign-canvas');
+  if (canvas && _signatureCtx) _signatureCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _signatureHasInk = false;
+  updateAgreeNext();
 }
 
 function applyLang() {
@@ -1367,6 +1564,17 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
     if(gid && String(gid).trim() === targetId){
       g.status = newStatus;
       g.checkedInAt = nowIso;
+      // ── 契約確認（宿泊約款）への同意記録 ──
+      // チェックイン完了署名とは独立したフィールドに保存（Canvasデータが競合・上書きされない）
+      if(agreement && agreement.accepted){
+        g.agreementAccepted = true;
+        g.agreementAcceptedAt = agreement.acceptedAt;
+        g.agreementLanguage = agreement.language;
+        g.agreementMethod = agreement.method;
+        if(agreement.method === 'signature' && agreement.signature){
+          g.agreementSignature = agreement.signature;
+        }
+      }
       // チェックインアプリで入力・確定した連絡先を最優先で同期（空でない場合のみ上書き）
       if(updatedGuestData && updatedGuestData.reservationId===targetId){
         if(updatedGuestData.email)   g.email   = updatedGuestData.email;
@@ -1773,6 +1981,12 @@ function restartApp() {
   reservationData = null;
   passportDataUrl = null;
   currentNat = 'jp';
+  // 契約確認の一時ステートと署名をリセット（設定 contractSettings はキャッシュ保持）
+  agreement = { accepted:false, acceptedAt:'', language:'', method:'', signature:'' };
+  _signatureHasInk = false; _signDrawing = false;
+  if(_signatureCtx){ const c=el('agree-sign-canvas'); if(c)_signatureCtx.clearRect(0,0,c.width,c.height); }
+  const agreeNext = el('btn-agree-next'); if(agreeNext) agreeNext.disabled = true;
+  const agreeChk = el('agree-checkbox'); if(agreeChk) agreeChk.checked = false;
   el('reservationId').value = '';
   el('resResult').style.display = 'none';
   el('resError').style.display = 'none';
