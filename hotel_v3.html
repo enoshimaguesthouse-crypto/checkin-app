@@ -5095,7 +5095,6 @@ function detectReservationChanges(ex,incoming){
   else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights) changes.push('\u6cca\u6570\u5909\u66f4');
   if(ex.data.guests!=null && incoming.guests!=null && Number(ex.data.guests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
   if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) changes.push('\u6599\u91d1\u5909\u66f4');
-  if((ex.data.note||'')!==(incoming.note||'')) changes.push('\u5099\u8003\u5909\u66f4');
   if((ex.data.phone||'')!==(incoming.phone||'')) changes.push('\u96fb\u8a71\u5909\u66f4');
   if((ex.data.email||'')!==(incoming.email||'')) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
   if((ex.data.address||'')!==(incoming.address||'')) changes.push('\u4f4f\u6240\u5909\u66f4');
@@ -5316,6 +5315,7 @@ function importCSVText(text){
     // ─── 予約ID 3分岐判定（部屋割当の前に実施）─────────────────
     // ★重要：自分自身の既存セルが「空室なし」原因にならないよう、
     //   部屋を検索する前に既存予約の重複・変更を判定する
+    let preservedNote=null; // CSV更新時にスタッフ手入力の備考を保護
     if(!isCharter && reservationId){
       const existing=findExistingReservationInfo(reservationId);
       if(existing){
@@ -5334,6 +5334,7 @@ function importCSVText(text){
         }
         // パターンC：変更あり → 既存セルを先に削除してから後続の部屋割当へ進む
         // （削除しておくことで、自分の古いセルが空室判定の邪魔にならない）
+        preservedNote=existing.data.note||''; // スタッフ手入力の備考を保存
         clearReservationCells(reservationId);
         updatedCount++;
         updatedList.push({name:guestName,reservationId,changes,status:'反映'});
@@ -5401,6 +5402,12 @@ function importCSVText(text){
     }
 
     // ─── guestData への書き込み ───────────────────────────
+    // 更新時はスタッフ手入力の備考を維持し、CSVのキーワードタグのみ追記
+    if(preservedNote!==null){
+      let merged=preservedNote;
+      (note||'').split(' ').filter(Boolean).forEach(tag=>{if(!merged.includes(tag))merged=merged?merged+' '+tag:tag;});
+      note=merged.trim();
+    }
     const gBase={
       name:guestName,
       site,pay:payMethod,price,nat:natGuessed,sex,cat,note,
