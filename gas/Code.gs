@@ -82,11 +82,41 @@ function doGet(e) {
       return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [] }));
     }
 
-    // デフォルト：宿泊データ全体
-    return jsonOut(getHotelFile().getBlob().getDataAsString());
+    // デフォルト：宿泊データ全体（ただし重いパスポート画像は除外して軽量化）
+    // 画像は type=search（予約編集を開いた時）でのみ取得する。
+    const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
+    stripPassportImages(data.guestData);
+    return jsonOut(JSON.stringify(data));
   } catch(err) {
     return jsonOut(JSON.stringify({ error: err.message }));
   }
+}
+
+// guestData内の guests[].passportImage を取り除く（メモリ上のみ・ファイルは変更しない）
+function stripPassportImages(guestData) {
+  if (!guestData) return;
+  Object.keys(guestData).forEach(k => {
+    const g = guestData[k];
+    if (g && Array.isArray(g.guests)) {
+      g.guests.forEach(x => { if (x && x.passportImage) delete x.passportImage; });
+    }
+  });
+}
+
+// 保存時に、payload側で欠落しているpassportImageを既存ファイルの値で補完（画像消失を防止）
+function mergePassportImages(incomingGuestData, existingGuestData) {
+  if (!incomingGuestData || !existingGuestData) return;
+  Object.keys(incomingGuestData).forEach(k => {
+    const ig = incomingGuestData[k];
+    const eg = existingGuestData[k];
+    if (ig && Array.isArray(ig.guests) && eg && Array.isArray(eg.guests)) {
+      ig.guests.forEach((guest, i) => {
+        if (guest && !guest.passportImage && eg.guests[i] && eg.guests[i].passportImage) {
+          guest.passportImage = eg.guests[i].passportImage;
+        }
+      });
+    }
+  });
 }
 
 // ── POST：payload.type=rental なら rental ファイルに保存 ──────
@@ -110,8 +140,15 @@ function doPost(e) {
 } else {
       // 宿泊データファイルに保存（rentalSpaceReservations は含めない）
       const file = getHotelFile();
+      // 既存ファイルのpassportImageを保持：起動時GETで画像を除外しているため、
+      // クライアントが画像なしで保存しても既存の画像が消えないようマージする。
+      const incomingGuestData = payload.guestData || {};
+      try {
+        const existing = JSON.parse(file.getBlob().getDataAsString());
+        mergePassportImages(incomingGuestData, existing.guestData || {});
+      } catch(mergeErr) { /* 既存読込失敗時はそのまま保存 */ }
       const newData = {
-  guestData:   payload.guestData   || {},
+  guestData:   incomingGuestData   || {},
   cancelList:  payload.cancelList  || [],
   parkData:    payload.parkData    || {},
   surfList:    payload.surfList    || [],
