@@ -458,7 +458,7 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
   background:var(--sunset-lt);border-left:2px solid var(--sunset);
   border-radius:2px;padding:1px 4px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  max-width:80px;
+  max-width:160px;
 }
 
 /* =====================================================
@@ -4014,7 +4014,7 @@ function renderReg(){
               +(cMeta.nat?natFlag(cMeta.nat):'')
               +timeChipC
               +nightsBadgeC
-              +(noteCleanC?`<span class="c-note">📌${noteCleanC.slice(0,10)}</span>`:'')
+              +(noteCleanC?`<span class="c-note">📌${noteCleanC.slice(0,30)}</span>`:'')
               +`</div>`
               +`</div></td>`;
           } else if(ri===0&&!isAnchorDay){
@@ -4141,7 +4141,7 @@ function renderReg(){
           row+=nightsBadge;
           // 備考：泊数の右に表示（駐車・サーフ除外）
           const noteClean=(g.note||'').replace(/🚙|🏄|駐車|parking|car |surf|サーフ/gi,'').trim();
-          if(noteClean)row+=`<span class="c-note">📌${noteClean.slice(0,10)}</span>`;
+          if(noteClean)row+=`<span class="c-note">📌${noteClean.slice(0,30)}</span>`;
           row+=`</div>`;
 
           row+=`</div></td>`;
@@ -6158,7 +6158,7 @@ async function rentalCloudLoad(silent=false){
 
 const RENTAL_SITE_CLASS={'直接':'rs-site-直接','スペースマーケット':'rs-site-スペースマーケット','インスタベース':'rs-site-インスタベース','カシカシ':'rs-site-カシカシ'};
 
-function rentalDateOf(r){ return (r.start||'').slice(0,10); } // YYYY-MM-DD
+function rentalDateOf(r){ return (r.start||'').slice(0,30); } // YYYY-MM-DD
 
 function getFilteredRentals(){
   const kw=(document.getElementById('rental-search')?.value||'').toLowerCase().trim();
