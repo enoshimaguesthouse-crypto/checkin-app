@@ -3870,7 +3870,13 @@ function renderReg(){
   const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
-  let html='<thead>';
+  // ── colgroup：table-layout:fixedと併用し全列幅を明示固定（予約有無で幅がばらつくのを防止）──
+  let html='<colgroup>';
+  html+=`<col style="width:${C1}px">`;   // グループ列
+  html+=`<col style="width:${C2}px">`;   // 部屋名列
+  for(let d=1;d<=days;d++) html+=`<col style="width:${DAY_W}px">`; // 各日付列を均一幅に
+  html+='</colgroup>';
+  html+='<thead>';
   // 日付行（sticky top:0）
   html+='<tr>';
   // 左上コーナー：3分割ナビ（今日の日付／今日ボタン／月移動）を1セルに集約
