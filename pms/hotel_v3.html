@@ -3870,7 +3870,7 @@ function renderReg(){
   const isMob=_sw<=768;
   const C1=isMob?24:60;  // グループ列幅(px)
   const C2=isMob?58:60;  // 部屋名列幅(px)
-  const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):86; // 2日分収まる幅
+  const DAY_W=isMob?Math.max(80,Math.floor((_sw-C1-C2)/2)):200; // PCは1列200px固定
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
   // ── colgroup：table-layout:fixedと併用し全列幅を明示固定（予約有無で幅がばらつくのを防止）──
