@@ -1930,7 +1930,6 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div style="display:flex;gap:4px;margin:12px 0 8px;flex-wrap:wrap;" id="rm-lang-tabs">
     <button type="button" class="rm-lang-tab active" data-lang="ja"  onclick="switchRoomLang('ja',this)">日本語</button>
     <button type="button" class="rm-lang-tab" data-lang="en"  onclick="switchRoomLang('en',this)">English</button>
-    <button type="button" class="rm-lang-tab" data-lang="zh-TW" onclick="switchRoomLang('zh-TW',this)">繁體中文</button>
     <button type="button" class="rm-lang-tab" data-lang="zh-CN" onclick="switchRoomLang('zh-CN',this)">简体中文</button>
     <button type="button" class="rm-lang-tab" data-lang="ko" onclick="switchRoomLang('ko',this)">한국어</button>
   </div>
@@ -6795,8 +6794,9 @@ function renderRooms(){
 // ── 部屋別多言語設定 roomSettings ──────────────────────────
 // { roomId: { phone, address, wifiSsid, wifiPass, keycode, languages:{ja:{roomName,guideText},...} } }
 let roomSettings = {};
-const ROOM_LANGS = ['ja','en','zh-TW','zh-CN','ko'];
-const ROOM_LANG_LABELS = {'ja':'日本語','en':'English','zh-TW':'繁體中文','zh-CN':'简体中文','ko':'한국어'};
+// チェックインアプリの対応言語に合わせ4言語（日本語・英語・簡体中文・韓国語）。繁體中文(zh-TW)は廃止
+const ROOM_LANGS = ['ja','en','zh-CN','ko'];
+const ROOM_LANG_LABELS = {'ja':'日本語','en':'English','zh-CN':'简体中文','ko':'한국어'};
 let _rmCurrentLang = 'ja';
 let _rmLangBuffer = {}; // 編集中の言語別バッファ
 
