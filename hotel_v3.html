@@ -758,6 +758,9 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 .gc.selected{outline:2.5px solid #e74c3c !important;outline-offset:1px;background:#fff0f0 !important;}
 /* 名簿テーブル thead sticky */
 #main-table{ table-layout:fixed; }
+/* セルのmin-content幅がcol指定を押し広げるのを無効化（予約有無で列幅がばらつく根本原因の対策）。
+   左固定列(.st/.st2)はインラインwidthを持つため除外。 */
+#main-table td:not(.st):not(.st2){ max-width:0; }
 #main-table thead th{
   position:sticky;
   background:var(--white);
