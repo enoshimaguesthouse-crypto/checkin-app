@@ -4252,7 +4252,7 @@ function renderReg(){
           const isTodayColE=(year===_ty&&month===_tm&&d===_td);
 
           
-          row+=`<td style="padding:0;${isTodayColE&&!bg?'background:#ffedd5;':bg?'background:'+bg:''};max-height:62px;" `
+          row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${isTodayColE&&!bg?'background:#ffedd5;':bg?'background:'+bg:''};max-height:62px;" `
             +`ondragover="event.preventDefault();this.classList.add('dt')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -4266,7 +4266,7 @@ function renderReg(){
         const _dw=gDow(year,month,d),_hl=isHoliday(year,month,d);
         const _pbg=_dw===0||_hl?'rgba(255,240,240,.45)':_dw===6?'rgba(240,247,255,.45)':'';
         const _pToday=(year===_ty&&month===_tm&&d===_td);
-        row+=`<td style="padding:0;${_pToday?'background:#ffedd5;':_pbg?'background:'+_pbg:''};max-height:62px;" `
+        row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${_pToday?'background:#ffedd5;':_pbg?'background:'+_pbg:''};max-height:62px;" `
           +`ondragover="event.preventDefault();this.classList.add('dt')" `
           +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
           +`ondrop="onDrop(event,${room.id},${d})">`
