@@ -480,6 +480,11 @@ td:hover .ec{color:var(--ocean);opacity:.5;}
   background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)!important;
   box-shadow:inset 7px 0 0 0 #059669!important;
 }
+/* 貸切がチェックイン済みの場合は通常予約と同じオレンジ配色に統一 */
+.gc.charter.ci{
+  background:linear-gradient(135deg,#fffbea 0%,#fef3c7 100%)!important;
+  box-shadow:inset 7px 0 0 0 #d97706!important;
+}
 .charter-banner{
   display:inline-flex;align-items:center;gap:3px;
   font-size:9px;font-weight:600;color:#065f46;
@@ -2077,6 +2082,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
       </div>
     </div>
     <div class="mr"><div class="fl"><label>備考</label><input id="cm2-note" placeholder="メモ"></div></div>
+    <div class="mr"><div class="fl"><label>ステータス</label><select id="cm2-status"><option value="reserved">予約済み</option><option value="checked_in">チェックイン済み</option></select></div></div>
     <div class="mr" style="padding-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="cm2-parking"> 🚗 駐車場（カレンダーに自動追加）</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="cm2-surf"> 🏄 サーフィン（リストに自動追加）</label>
@@ -4095,8 +4101,9 @@ function renderReg(){
             const payLabelC=isCashC?'💴現金':isStripeC?'Stripe':isBankC?'振込':'事前';
             const payColorC=isCashC?'var(--coral)':isStripeC?'#7c3aed':isBankC?'var(--seaglass)':'var(--ocean)';
             const payBgC=isCashC?'var(--coral-lt)':isStripeC?'#ede9fe':isBankC?'var(--seaglass-lt)':'var(--ocean-light)';
+            const cinC=isCheckedIn(cMeta.status); // 貸切のチェックイン済み判定
             const gcC=guestCountOf(cMeta);
-            const guestsBadgeC=`<span class="c-guests">${gcC}</span>`;
+            const guestsBadgeC=`<span class="c-guests${cinC?' ci':''}">${gcC}</span>`;
             const payChipC=`<span class="c-pay" style="color:${payColorC};background:${payBgC};">${payLabelC}</span>`;
             const priceChipC=cMeta.price
               ? isCashC
@@ -4121,14 +4128,15 @@ function renderReg(){
               +`ondragover="event.preventDefault();this.classList.add('dt')" `
               +`ondragleave="this.classList.remove('dt')" `
               +`ondrop="onDrop(event,${room.id},${d})">`
-              +`<div class="gc charter" `
+              +`<div class="gc charter${cinC?' ci':''}" `
               +`style="min-height:${rowspan*54}px;border-left:3px solid ${cBorder};background:${cBg};" `
-              +`onclick="event.stopPropagation();openCharterEdit('${cg}',${booking.startDay},${month})">`
+              +`onclick="event.stopPropagation();openCharterEdit('${cg}',${booking.startDay},${month})" `
+              +`oncontextmenu="event.preventDefault();toggleCharterCI('${cg}',${booking.startDay},${month})">`
               // 上段：🔒 + アイコン + 氏名 + 人数 + 支払 + 料金
               +`<div class="c-namerow">`
               +`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`
               +planIconsHtmlC
-              +`<span class="c-name" style="color:var(--ocean);">${cMeta.name||'貸切'}</span>`
+              +`<span class="c-name" style="color:${cinC?'#92400e':'var(--ocean)'};">${cMeta.name||'貸切'}</span>`
               +guestsBadgeC+payChipC+priceChipC
               +`</div>`
               // 下段：サイト + 性別 + 区分 + 国籍 + 時刻 + 泊数 + 備考
@@ -4524,6 +4532,41 @@ function toggleCI(k){
     notifiedReservationIds.add(String(g.reservationId));
   }
   showToast(newStatus==='checked_in'?`🩷 チェックイン済み`:'↩ 予約済みに戻しました');
+  renderReg();autoSave();
+}
+
+// 貸切のチェックイン状態トグル（右クリック）。通常予約の toggleCI と同じ思想で、
+// 貸切予約に属する全部屋×全泊の status / checkedInAt を一括更新し、即時再描画＋cloudSave。
+function toggleCharterCI(charterGroup, startDay, m){
+  if(currentRole==='reception')return;
+  startDay=parseInt(startDay); m=parseInt(m);
+  const targetRooms=rooms.filter(r=>{
+    if(charterGroup==='ANNEX')return r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー';
+    return r.group==='本館−個室'||r.group==='本館−男女混合ドミトリー';
+  });
+  if(!targetRooms.length)return;
+  const maxDays=gDays(2026,m);
+  // この貸切予約に属するキーを収集（startDay以降、次の貸切アンカー or 非貸切で停止）
+  const keys=[];
+  targetRooms.forEach(room=>{
+    for(let d=startDay;d<=maxDays;d++){
+      const g=guestData[gk(m,room.id,d)];
+      if(!g||!g.charter)break;
+      if(d>startDay&&g.charterAnchor)break;
+      keys.push(gk(m,room.id,d));
+    }
+  });
+  if(!keys.length)return;
+  // アンカー（先頭室の開始日）の現状から新ステータスを決定
+  const anchor=guestData[gk(m,targetRooms[0].id,startDay)];
+  const newStatus=isCheckedIn(anchor&&anchor.status)?'reserved':'checked_in';
+  const now=new Date(),p=n=>String(n).padStart(2,'0');
+  const checkedInAt=newStatus==='checked_in'
+    ?`${now.getFullYear()}-${p(now.getMonth()+1)}-${p(now.getDate())}T${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`:'';
+  keys.forEach(k=>{
+    if(guestData[k]){ guestData[k].status=newStatus; guestData[k].checkedInAt=checkedInAt; }
+  });
+  showToast(newStatus==='checked_in'?`🩷 貸切チェックイン済み`:'↩ 予約済みに戻しました');
   renderReg();autoSave();
 }
 function showToast(msg){
@@ -7780,6 +7823,7 @@ function openCharterNew(){
   document.getElementById('cm2-site').value='直接';
   document.getElementById('cm2-pay').value='事前決済';
   document.getElementById('cm2-note').value='';
+  document.getElementById('cm2-status').value='reserved';
   populateNat('cm2-nat','');
   document.getElementById('cm2-sex').value='';
   document.getElementById('cm2-note').value='';
@@ -7840,6 +7884,7 @@ function openCharterEdit(charterGroup, startDay, month){
   document.getElementById('cm2-site').value=meta?meta.site||'直接':'直接';
   document.getElementById('cm2-pay').value=meta?meta.pay||'事前決済':'事前決済';
   document.getElementById('cm2-note').value=meta?meta.note||'':'';
+  document.getElementById('cm2-status').value=isCheckedIn(meta&&meta.status)?'checked_in':'reserved';
   populateNat('cm2-nat', meta?meta.nat||'':'');
   document.getElementById('cm2-sex').value=meta?meta.sex||'':'';
   document.getElementById('cm2-note').value=meta?meta.note||'':'';
@@ -7888,6 +7933,12 @@ function saveCharter(){
   });
   const useParking=document.getElementById('cm2-parking').checked||hasParkKw(newNote);
   const useSurf=document.getElementById('cm2-surf').checked||hasSurfKw(newNote);
+  // ステータス（予約済み / チェックイン済み）。通常予約と同じ status / checkedInAt を持たせる
+  const newStatus=isCheckedIn(document.getElementById('cm2-status').value)?'checked_in':'reserved';
+  const _p=n=>String(n).padStart(2,'0');
+  const _nowD=new Date();
+  const newCheckedInAt=newStatus==='checked_in'
+    ?`${_nowD.getFullYear()}-${_p(_nowD.getMonth()+1)}-${_p(_nowD.getDate())}T${_p(_nowD.getHours())}:${_p(_nowD.getMinutes())}:${_p(_nowD.getSeconds())}`:'';
 
   // 編集時のみ旧データを削除（新規作成時はスキップ）
   if(editCharterStartDay!==null){
@@ -7901,7 +7952,7 @@ function saveCharter(){
   const gBase={
     name:newName, site:newSite, pay:newPay, price:newPrice,
     nat:newNat, sex:newSex, cat:newGroup==='ANNEX'?'ANNEX貸切':'本館貸切',
-    note:newNote, status:'reserved', guests:newGuests,
+    note:newNote, status:newStatus, checkedInAt:newCheckedInAt, guests:newGuests,
     arrivalTime:newArrival, parking:useParking,
     charter:true, charterGroup:newGroup,
   };
