@@ -584,6 +584,11 @@ input.needs-input::placeholder { color:#d08a3a; }
       <div class="res-error" id="resError"></div>
     </div>
 
+    <!-- 戻る（予約検索ページは常時表示） -->
+    <div class="btn-group">
+      <button class="btn-back" onclick="backFromSearch()" id="btn-back-search-top">← 戻る</button>
+    </div>
+
     <!-- 予約情報表示 -->
     <div id="resResult" style="display:none;">
       <div class="res-found">
@@ -599,7 +604,6 @@ input.needs-input::placeholder { color:#d08a3a; }
         </div>
       </div>
       <div class="btn-group">
-        <button class="btn-back" onclick="showScreen('screen-lang')" id="btn-back-lang">← 戻る</button>
         <button class="btn-next" id="btn-to-form" onclick="goToForm()">次へ　→</button>
       </div>
     </div>
@@ -810,6 +814,11 @@ input.needs-input::placeholder { color:#d08a3a; }
         </div>
       </div>
       <button id="btn-replay-voice" onclick="replayGuideVoice()" style="margin-top:12px;width:100%;padding:10px;border:1.5px solid #1a7a9a;background:#fff;color:#1a7a9a;border-radius:10px;font-size:13px;cursor:pointer;">🔊 音声をもう一度再生</button>
+    </div>
+
+    <!-- 戻る（完了画面：確認画面へ遡れる） -->
+    <div class="btn-group">
+      <button class="btn-back" onclick="showScreen('screen-confirm')" id="btn-back-complete">← 戻る</button>
     </div>
 
     <div style="text-align:center; margin-top:8px;">
@@ -1153,7 +1162,7 @@ function applyLang() {
   el('rl-guests').textContent = t.rlGuests;
   el('rl-site').textContent = t.rlSite;
   el('res-found-label').textContent = t.foundLabel;
-  el('btn-back-lang').textContent = t.backBtn;
+  el('btn-back-search-top').textContent = t.backBtn;
   el('btn-to-form').textContent = t.nextBtn;
   // フォーム（宿泊者ブロックは renderGuests() が言語別に描画するためここでは触れない）
   el('f-nat-title').textContent = t.guestsTitle;
@@ -1174,6 +1183,7 @@ function applyLang() {
   el('pin-label').textContent = t.pinLabel;
   el('room-note').textContent = t.roomNote;
   el('btn-restart').textContent = t.restartBtn;
+  el('btn-back-complete').textContent = t.backBtn;
 }
 
 function el(id) { return document.getElementById(id); }
@@ -1185,6 +1195,16 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// 予約検索画面の「戻る」：約款利用ONなら約款画面へ（状態・署名を保持したまま直接表示）、
+// OFFなら言語選択へ。バリデーションは行わず確実に戻る。
+function backFromSearch() {
+  if (contractSettings && contractSettings.enabled) {
+    showScreen('screen-agreement'); // showAgreementScreenは呼ばない＝同意/署名の状態を保持
+  } else {
+    showScreen('screen-lang');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1333,6 +1353,7 @@ async function searchReservation() {
       el('rv-guests').textContent = (r.guests || '—') + (lang==='ja'?' 名': lang==='ko'?' 명':' pax');
       el('rv-site').textContent  = r.site || '—';
       el('resResult').style.display = 'block';
+      _submissionReg = ''; // 新しい予約を検索したら登録番号をリセット
     } else {
       el('resError').textContent = T[lang].notFound;
       el('resError').style.display = 'block';
@@ -1662,9 +1683,12 @@ function validateAllGuests(){
 
 function goToForm() {
   renderGuests();
-  // 連絡先（予約から取得済みがあればプリセット）
-  fillField('phone', reservationData?reservationData.phone:'');
-  fillField('email', reservationData?reservationData.email:'');
+  // 連絡先（予約から取得済みがあればプリセット）。
+  // ※戻る→再進入時に入力済みの連絡先を消さないため、両方とも空の初回のみプリフィルする。
+  if(!el('phone').value.trim() && !el('email').value.trim()){
+    fillField('phone', reservationData?reservationData.phone:'');
+    fillField('email', reservationData?reservationData.email:'');
+  }
   // 連絡先入力でもNextボタンの活性を更新（一度だけバインド）
   ['phone','email'].forEach(id=>{const e=el(id); if(e&&!e._vbound){e._vbound=true; e.addEventListener('input',validateAllGuests);}});
   showScreen('screen-form');
@@ -1677,6 +1701,9 @@ function goToForm() {
 // ゲストが入力・確定したデータ（reservationIdと紐づけて名簿へ保存する想定）
 let updatedGuestData = {};
 let finalGuests = []; // 確定した宿泊者配列（保存データ構造）
+// チェックイン送信時の登録番号。完了画面から戻って再送信しても同一番号で上書き更新するため
+// 1予約セッション中は固定し、restartApp / 新規予約検索でリセットする。
+let _submissionReg = '';
 
 function v(id) { const e = el(id); return e ? e.value.trim() : ''; }
 
@@ -1833,10 +1860,14 @@ async function submitCheckin() {
   el('sendingText').textContent = T[lang].sending;
 
   const now = new Date();
-  const reg = 'CI-' + now.getFullYear()
-    + String(now.getMonth()+1).padStart(2,'0')
-    + String(now.getDate()).padStart(2,'0')
-    + '-' + String(Math.floor(Math.random()*9000)+1000);
+  // 登録番号はセッション中固定。完了画面から戻って再送信した場合も同一番号で更新（重複/エラー防止）。
+  if (!_submissionReg) {
+    _submissionReg = 'CI-' + now.getFullYear()
+      + String(now.getMonth()+1).padStart(2,'0')
+      + String(now.getDate()).padStart(2,'0')
+      + '-' + String(Math.floor(Math.random()*9000)+1000);
+  }
+  const reg = _submissionReg;
 
   const r = reservationData || {};
   // 確定済みの宿泊者配列（念のため再収集）
@@ -2220,6 +2251,7 @@ function restartApp() {
   if(typeof closeCamera==='function')closeCamera(); // カメラ起動中なら停止
   guestsList = [];
   finalGuests = [];
+  _submissionReg = '';
   _pendingPhotoIndex = null;
   const gc = el('guests-container'); if(gc) gc.innerHTML = '';
   const toConfirm = el('btn-to-confirm'); if(toConfirm) toConfirm.disabled = false;
