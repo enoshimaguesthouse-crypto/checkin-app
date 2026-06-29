@@ -727,11 +727,13 @@ input.needs-input::placeholder { color:#d08a3a; }
       <div class="contact-note" id="contact-note">📞 電話番号またはメールアドレスのどちらか一方をご入力ください</div>
       <div class="field-group">
         <label id="lbl-phone">電話番号</label>
-        <input type="tel" id="phone" placeholder="090-1234-5678" inputmode="tel">
+        <input type="tel" id="phone" placeholder="090-1234-5678" inputmode="tel" oninput="onContactInput()">
+        <span class="field-error" id="err-phone">電話番号を正しく入力してください。</span>
       </div>
       <div class="field-group">
         <label id="lbl-email">メールアドレス</label>
-        <input type="email" id="email" placeholder="example@email.com" inputmode="email">
+        <input type="email" id="email" placeholder="example@email.com" inputmode="email" oninput="onContactInput()">
+        <span class="field-error" id="err-email">メールアドレスを正しく入力してください。</span>
       </div>
       <div class="field-error" id="contactError" style="margin-top:-6px;">電話番号またはメールアドレスを入力してください</div>
     </div>
@@ -837,7 +839,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxy0Ta3OJU6rLqhH9jYkvi7
 const T = {
   ja: {
     title: 'チェックイン受付',
-    agreeTitle: '宿泊約款の確認', agreeCheckLabel: '内容を確認し、同意します', agreeSignHint: '下の枠内にご署名ください',
+    agreeTitle: '宿泊約款の確認', agreeCheckLabel: '宿泊約款に同意します', agreeScrollHint: '最後までスクロールすると同意できます', agreeSignHint: '下の枠内にご署名ください',
     guestsTitle:'宿泊者情報', guestLabel:'宿泊者', residentJp:'日本在住', residentForeign:'外国籍',
     familyNameLabel:'氏名（姓）', givenNameLabel:'氏名（名）', natLabel:'国籍',
     ppPhotoLabel:'パスポート写真', ppPending:'⚠ パスポートを撮影してください', ppDone:'✓ パスポート取得済み', takePhoto:'パスポートを撮影', retakePhoto2:'撮り直す',
@@ -854,6 +856,7 @@ const T = {
     contactTitle: '連絡先', contactNote: '📞 電話番号またはメールアドレスのどちらか一方をご入力ください',
     lblPhone: '電話番号', lblEmail: 'メールアドレス',
     contactError: '電話番号またはメールアドレスを入力してください',
+    errPhone: '電話番号を正しく入力してください。', errEmail: 'メールアドレスを正しく入力してください。', errRequired: '入力してください', errSelect: '選択してください',
     cameraBtn: 'パスポートを撮影', cameraHint: 'カメラでパスポートの顔写真ページを撮影してください',
     retakeBtn: '撮り直す',
     confirmTitle: '入力内容の確認', checkinBtn: 'チェックイン登録',
@@ -871,7 +874,7 @@ const T = {
   },
   en: {
     title: 'Check-in',
-    agreeTitle: 'Accommodation Terms', agreeCheckLabel: 'I have read and agree to the terms', agreeSignHint: 'Please sign in the box below',
+    agreeTitle: 'Accommodation Terms', agreeCheckLabel: 'I agree to the terms and conditions.', agreeScrollHint: 'Scroll to the bottom to agree.', agreeSignHint: 'Please sign in the box below',
     guestsTitle:'Guests', guestLabel:'Guest', residentJp:'Japan Resident', residentForeign:'Foreign National',
     familyNameLabel:'Family Name', givenNameLabel:'Given Name', natLabel:'Nationality',
     ppPhotoLabel:'Passport Photo', ppPending:'⚠ Please take a passport photo', ppDone:'✓ Passport captured', takePhoto:'Take Passport Photo', retakePhoto2:'Retake',
@@ -888,6 +891,7 @@ const T = {
     contactTitle: 'Contact', contactNote: '📞 Please enter either your phone number or email address.',
     lblPhone: 'Phone Number', lblEmail: 'Email Address',
     contactError: 'Please enter a phone number or email address.',
+    errPhone: 'Please enter a valid phone number.', errEmail: 'Please enter a valid email address.', errRequired: 'Please enter', errSelect: 'Please select',
     cameraBtn: 'Take Passport Photo', cameraHint: 'Please take a photo of your passport ID page.',
     retakeBtn: 'Retake',
     confirmTitle: 'Confirmation', checkinBtn: 'Complete Check-in',
@@ -905,7 +909,7 @@ const T = {
   },
   zh: {
     title: '办理入住',
-    agreeTitle: '住宿条款确认', agreeCheckLabel: '我已阅读并同意以上条款', agreeSignHint: '请在下方框内签名',
+    agreeTitle: '住宿条款确认', agreeCheckLabel: '我同意住宿条款。', agreeScrollHint: '滚动到底部以同意。', agreeSignHint: '请在下方框内签名',
     guestsTitle:'住宿人信息', guestLabel:'住宿人', residentJp:'日本居民', residentForeign:'外国人',
     familyNameLabel:'姓', givenNameLabel:'名', natLabel:'国籍',
     ppPhotoLabel:'护照照片', ppPending:'⚠ 请拍摄护照', ppDone:'✓ 护照已采集', takePhoto:'拍摄护照', retakePhoto2:'重新拍摄',
@@ -922,6 +926,7 @@ const T = {
     contactTitle: '联系方式', contactNote: '📞 请输入电话号码或电子邮件地址之一。',
     lblPhone: '电话号码', lblEmail: '电子邮件',
     contactError: '请输入电话号码或电子邮件地址。',
+    errPhone: '请输入正确的电话号码。', errEmail: '请输入正确的电子邮箱地址。', errRequired: '请输入', errSelect: '请选择',
     cameraBtn: '拍摄护照', cameraHint: '请用相机拍摄护照照片页。',
     retakeBtn: '重新拍摄',
     confirmTitle: '确认信息', checkinBtn: '完成入住',
@@ -939,7 +944,7 @@ const T = {
   },
   ko: {
     title: '체크인',
-    agreeTitle: '숙박약관 확인', agreeCheckLabel: '내용을 확인하고 동의합니다', agreeSignHint: '아래 칸에 서명해 주세요',
+    agreeTitle: '숙박약관 확인', agreeCheckLabel: '숙박 약관에 동의합니다.', agreeScrollHint: '끝까지 스크롤하면 동의할 수 있습니다.', agreeSignHint: '아래 칸에 서명해 주세요',
     guestsTitle:'투숙객 정보', guestLabel:'투숙객', residentJp:'일본 거주자', residentForeign:'외국인',
     familyNameLabel:'성(姓)', givenNameLabel:'이름(名)', natLabel:'국적',
     ppPhotoLabel:'여권 사진', ppPending:'⚠ 여권을 촬영해 주세요', ppDone:'✓ 여권 촬영 완료', takePhoto:'여권 촬영', retakePhoto2:'다시 촬영',
@@ -956,6 +961,7 @@ const T = {
     contactTitle: '연락처', contactNote: '📞 전화번호 또는 이메일 주소 중 하나를 입력해 주세요.',
     lblPhone: '전화번호', lblEmail: '이메일 주소',
     contactError: '전화번호 또는 이메일 주소를 입력해 주세요.',
+    errPhone: '올바른 전화번호를 입력하세요.', errEmail: '올바른 이메일 주소를 입력하세요.', errRequired: '입력해 주세요', errSelect: '선택해 주세요',
     cameraBtn: '여권 촬영', cameraHint: '카메라로 여권 사진 페이지를 촬영해 주세요.',
     retakeBtn: '다시 촬영',
     confirmTitle: '입력 내용 확인', checkinBtn: '체크인 등록',
@@ -1067,9 +1073,38 @@ function showAgreementScreen() {
     el('agree-sign-wrap').style.display = 'none';
     el('agree-check-wrap').style.display = '';
     el('agree-checkbox').checked = false;
-    el('agree-check-label').textContent = t.agreeCheckLabel;
     showScreen('screen-agreement');
+    _setupAgreementScroll();
   }
+}
+
+// 約款本文を最下部まで読むまでチェックボックスを無効化（スクロール不要なら最初から有効）。
+// 一度有効化したら上にスクロールしても無効へは戻さない。
+let _agreementScrolledToEnd = false;
+function _setupAgreementScroll() {
+  const t = T[lang];
+  const box = el('agreement-text');
+  const cb  = el('agree-checkbox');
+  const label = el('agree-check-label');
+  _agreementScrolledToEnd = false;
+  cb.checked = false;
+  cb.disabled = true;
+  label.textContent = t.agreeScrollHint;        // スクロール前の案内文
+  updateAgreeNext();
+  const enable = () => {
+    if (_agreementScrolledToEnd) return;
+    _agreementScrolledToEnd = true;
+    cb.disabled = false;
+    label.textContent = t.agreeCheckLabel;       // 同意文言に切替
+  };
+  const check = () => {
+    // スクロール不要（短文/大画面）なら最初から有効化
+    if (box.scrollHeight - box.clientHeight <= 10) { enable(); return; }
+    if (box.scrollTop + box.clientHeight >= box.scrollHeight - 10) enable();
+  };
+  box.onscroll = check;
+  // 本文確定後にレイアウトが固まってから初期判定
+  requestAnimationFrame(() => requestAnimationFrame(check));
 }
 
 function updateAgreeNext() {
@@ -1462,10 +1497,12 @@ function guestFieldsHtml(i){
       <div class="field-group">
         <label>${t.familyNameLabel} <span class="required-mark">*</span></label>
         <input type="text" id="g${i}-family" value="${_esc(g.familyName)}" oninput="onGuestInput(${i})">
+        <span class="field-error">${t.errRequired}</span>
       </div>
       <div class="field-group">
         <label>${t.givenNameLabel} <span class="required-mark">*</span></label>
         <input type="text" id="g${i}-given" value="${_esc(g.givenName)}" oninput="onGuestInput(${i})">
+        <span class="field-error">${t.errRequired}</span>
       </div>
     </div>`;
   if(g.residentType==='foreign'){
@@ -1475,6 +1512,7 @@ function guestFieldsHtml(i){
           <option value="">${lang==='ja'?'選択してください':lang==='ko'?'선택':lang==='zh'?'请选择':'Select'}</option>
           ${NATIONALITY_OPTIONS.map(o=>`<option${o===g.nationality?' selected':''}>${o}</option>`).join('')}
         </select>
+        <span class="field-error">${t.errSelect}</span>
       </div>
       <div class="field-group">
         <label>${t.ppPhotoLabel} <span class="required-mark">*</span></label>
@@ -1555,7 +1593,14 @@ function setGuestResident(i,type){
   validateAllGuests();
 }
 
-function onGuestInput(i){ syncGuestFromDom(i); validateAllGuests(); }
+function onGuestInput(i){
+  syncGuestFromDom(i);
+  // 入力で埋まった項目の赤エラーを即解除
+  const g=guestsList[i]||{};
+  const fam=el('g'+i+'-family'); if(fam&&g.familyName&&g.familyName.trim())fam.closest('.field-group')?.classList.remove('has-error');
+  const giv=el('g'+i+'-given'); if(giv&&g.givenName&&g.givenName.trim())giv.closest('.field-group')?.classList.remove('has-error');
+  const nt=el('g'+i+'-nat'); if(nt&&g.nationality&&g.nationality.trim())nt.closest('.field-group')?.classList.remove('has-error');
+}
 
 // ═══════════════════════════════════════
 //  パスポート撮影（宿泊者ごと・index安全）
@@ -1663,22 +1708,88 @@ function _resizeImageToDataUrl(file, cb){
   reader.readAsDataURL(file);
 }
 
-// 全宿泊者＋連絡先のバリデーション → Nextボタン活性制御
-function validateAllGuests(){
-  let ok=true;
+// ── 電話番号・メールアドレスのバリデーション補助 ──────────────
+// 全角の数字・記号・スペースを半角へ変換
+function _toHalfWidth(s){
+  return String(s==null?'':s)
+    .replace(/[０-９]/g, d=>String.fromCharCode(d.charCodeAt(0)-0xFEE0))
+    .replace(/[＋]/g,'+').replace(/[－ー―‐]/g,'-')
+    .replace(/[（]/g,'(').replace(/[）]/g,')')
+    .replace(/　/g,' ');
+}
+// 電話入力の許可文字（数字 + - 半角スペース 括弧）のみへ正規化＋トリム
+function _sanitizePhone(raw){
+  let s=_toHalfWidth(raw).replace(/[^0-9+\-() ]/g,'');
+  return s.replace(/\s{2,}/g,' ').replace(/^\s+/,'');
+}
+// 数字のみ抽出した桁数で判定（7〜16桁）。空はtrue（必須は別途存在チェック）
+function _isPhoneValid(raw){
+  const s=_toHalfWidth(raw).trim();
+  if(!s)return true;
+  const n=(s.match(/\d/g)||[]).length;
+  return n>=7 && n<=16;
+}
+// メール形式：@が1つ・前後1文字以上・ドメインに.あり・空白なし
+function _isEmailValid(raw){
+  const s=String(raw==null?'':raw).trim();
+  if(!s)return true;
+  if(/\s/.test(s))return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+// フォーム全体の妥当性チェック。show=trueのときは各項目にエラー表示を反映し、
+// 最初のエラー要素(firstInvalid)を返す（Next押下時のスクロール用）。
+function checkFormValidity(show){
+  let ok=true, firstInvalid=null;
+  const fail=(focusEl)=>{ ok=false; if(!firstInvalid)firstInvalid=focusEl||null; };
+  const setErr=(node, bad)=>{
+    const fg=node&&node.closest?node.closest('.field-group'):null;
+    if(fg&&show)fg.classList.toggle('has-error', !!bad);
+  };
   for(let i=0;i<guestsList.length;i++){
     syncGuestFromDom(i);
     const g=guestsList[i];
-    if(!g.familyName.trim()||!g.givenName.trim())ok=false;
+    const fam=el('g'+i+'-family'), giv=el('g'+i+'-given');
+    const famBad=!g.familyName.trim(), givBad=!g.givenName.trim();
+    setErr(fam,famBad); setErr(giv,givBad);
+    if(famBad)fail(fam); if(givBad)fail(giv);
     if(g.residentType==='foreign'){
-      if(!g.nationality||!g.nationality.trim())ok=false;
-      if(!g.passportImage)ok=false;
+      const nt=el('g'+i+'-nat');
+      const natBad=!(g.nationality&&g.nationality.trim());
+      setErr(nt,natBad); if(natBad)fail(nt);
+      const ppBad=!g.passportImage;
+      const ppNode=el('g'+i+'-pp');
+      if(ppNode&&show)ppNode.closest('.field-group')?.classList.toggle('has-error', !!ppBad);
+      if(ppBad)fail(el('g'+i+'-pp'));
     }
   }
-  const phone=el('phone').value.trim(), email=el('email').value.trim();
-  if(!phone&&!email)ok=false;
-  const btn=el('btn-to-confirm'); if(btn)btn.disabled=!ok;
-  return ok;
+  // 連絡先：どちらか一方は必須。入力された側は形式チェック。
+  const phoneEl=el('phone'), emailEl=el('email');
+  const phoneRaw=phoneEl.value, emailRaw=emailEl.value;
+  const phonePresent=phoneRaw.trim(), emailPresent=emailRaw.trim();
+  const phoneBad= !!phonePresent && !_isPhoneValid(phoneRaw);
+  const emailBad= !!emailPresent && !_isEmailValid(emailRaw);
+  setErr(phoneEl, phoneBad); setErr(emailEl, emailBad);
+  const nonePresent = !phonePresent && !emailPresent;
+  if(el('contactError'))el('contactError').style.display=(show&&nonePresent)?'block':'none';
+  if(phoneBad)fail(phoneEl);
+  if(emailBad)fail(emailEl);
+  if(nonePresent)fail(phoneEl);
+  return {ok, firstInvalid};
+}
+
+// 互換用：以前の呼び出し（live）はエラー非表示で妥当性のみ算出。Nextボタンは常時クリック可能。
+function validateAllGuests(){ return checkFormValidity(false).ok; }
+
+// 連絡先入力中：電話は許可文字へ正規化し、修正されたエラーは即解除する
+function onContactInput(){
+  const p=el('phone');
+  if(p){ const sv=_sanitizePhone(p.value); if(sv!==p.value)p.value=sv; }
+  const pg=el('phone').closest('.field-group');
+  if(pg&&pg.classList.contains('has-error') && _isPhoneValid(el('phone').value)) pg.classList.remove('has-error');
+  const eg=el('email').closest('.field-group');
+  if(eg&&eg.classList.contains('has-error') && _isEmailValid(el('email').value)) eg.classList.remove('has-error');
+  if((el('phone').value.trim()||el('email').value.trim()) && el('contactError')) el('contactError').style.display='none';
 }
 
 function goToForm() {
@@ -1689,10 +1800,8 @@ function goToForm() {
     fillField('phone', reservationData?reservationData.phone:'');
     fillField('email', reservationData?reservationData.email:'');
   }
-  // 連絡先入力でもNextボタンの活性を更新（一度だけバインド）
-  ['phone','email'].forEach(id=>{const e=el(id); if(e&&!e._vbound){e._vbound=true; e.addEventListener('input',validateAllGuests);}});
+  // 連絡先の入力中処理は input欄の oninput="onContactInput()" で実施
   showScreen('screen-form');
-  validateAllGuests();
 }
 
 // ═══════════════════════════════════════
@@ -1752,7 +1861,15 @@ function collectUpdatedGuestData(){
 }
 
 function goToConfirm() {
-  if (!validateAllGuests()) return;   // 全宿泊者＋連絡先が必須を満たさなければ進めない
+  // 必須項目・電話・メールを検証。NGなら該当項目へスクロール＆フォーカスし遷移ブロック。
+  const res = checkFormValidity(true);
+  if (!res.ok) {
+    if (res.firstInvalid) {
+      try { res.firstInvalid.scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){}
+      setTimeout(()=>{ try{ res.firstInvalid.focus({preventScroll:true}); }catch(e){} }, 300);
+    }
+    return;
+  }
   collectGuests();
   collectUpdatedGuestData();
   buildConfirmTable();
