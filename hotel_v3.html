@@ -2030,7 +2030,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 <!-- 貸切編集モーダル -->
 <div class="mbg" id="charter-modal" onclick="if(event.target===this)closeM('charter-modal')">
 <div class="modal" onclick="event.stopPropagation()">
-  <h3 id="cm2-title">貸切 編集</h3>
+  <h3 id="cm2-title">貸切 詳細</h3>
   <!-- 編集フォーム -->
   <div id="cm2-form">
     <div class="mr mr2">
@@ -4768,7 +4768,7 @@ function openAddAt(rid,day){
 }
 function openEdit(k){
   const g=guestData[k];if(!g||g.cont)return;
-  editKey=k;document.getElementById('modal-title').textContent='予約編集';document.getElementById('del-btn').style.display='block';
+  editKey=k;document.getElementById('modal-title').textContent='予約詳細';document.getElementById('del-btn').style.display='block';
   document.getElementById('f-name').value=g.name||'';
   // チェックイン日：guestDataのキー(month:roomId:day)からmonthを逆引き
   const editM=editKey?parseKey(editKey).m:parseInt(document.getElementById('sel-month').value);
@@ -7871,7 +7871,7 @@ function openCharterEdit(charterGroup, startDay, month){
     }
   }
 
-  document.getElementById('cm2-title').textContent=`貸切 編集（${charterGroup}）`;
+  document.getElementById('cm2-title').textContent=`貸切 詳細（${charterGroup}）`;
   document.getElementById('cm2-group').value=charterGroup;
   // 日付をYYYY-MM-DD形式でセット
   const y2=2026;
