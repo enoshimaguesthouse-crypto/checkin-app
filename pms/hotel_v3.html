@@ -61,8 +61,9 @@ body{
 /* =====================================================
    レイアウト
    ===================================================== */
-.layout{display:flex;min-height:100vh;}
-.main{flex:1;min-width:0;padding:1.5rem;}
+/* レイアウト：画面全体を100vh固定にし、サイドバーは固定・メインのみスクロール */
+.layout{display:flex;height:100vh;height:100dvh;overflow:hidden;}
+.main{flex:1;min-width:0;padding:1.5rem;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .page{display:none;}.page.active{display:block;}
 #page-cleaning.active{display:block;height:auto;overflow:visible;}
 .topbar{flex-shrink:0;}
