@@ -272,13 +272,10 @@ function _mailLoad_(){ return JSON.parse(getHotelFile().getBlob().getDataAsStrin
 function _mailSave_(data){ getHotelFile().setContent(JSON.stringify(data)); }
 function _msCfg_(data){ return ((data.propertySettings||{}).mailSettings)||{}; }
 
-// 言語判定：チェックイン時に保存した言語 → 国籍 → 既定ja
+// 言語判定：宿泊者名が日本語（ひらがな/カタカナ/漢字）を含めば日本語、それ以外は英語
 function _mailLang_(g){
-  var l=(g&&g.agreementLanguage)||'';
-  if(l==='ja'||l==='en'||l==='zh'||l==='ko')return l;
-  var nat=String((g&&g.nat)||'').trim();
-  if(!nat||nat==='日本'||nat==='Japan'||nat==='日本国')return 'ja';
-  return 'en';
+  var name=String((g&&g.name)||'');
+  return /[぀-ヿ㐀-䶿一-鿿豈-﫿]/.test(name) ? 'ja' : 'en';
 }
 function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
 function _roomNo_(data,roomId){ var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0]; return r?(r.no||String(roomId)):String(roomId); }
