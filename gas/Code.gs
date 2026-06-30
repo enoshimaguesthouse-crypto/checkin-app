@@ -377,6 +377,12 @@ function primeMailFlags(){
   return '既存予約 '+n+' 件に送信済みフラグを付与しました（今後の新規・期日到来分のみ送信されます）';
 }
 
+// ── テスト用ラッパー（GASエディタの「実行」から選んで実行。引数不要）──
+function test_checkinCodeMail(){ var r=sendTestMailToSelf('checkinCode'); Logger.log(r); return r; }
+function test_reservationCreatedMail(){ var r=sendTestMailToSelf('reservationCreated'); Logger.log(r); return r; }
+function test_checkinMail(){ var r=sendTestMailToSelf('checkin'); Logger.log(r); return r; }
+function test_checkoutMail(){ var r=sendTestMailToSelf('checkout'); Logger.log(r); return r; }
+
 // 自分宛テスト送信：各メール種別を所有者アドレスへ（実ゲストには送らない）
 function sendTestMailToSelf(mailKey, lang){
   var data=_mailLoad_(); var ms=_msCfg_(data); var cfg=ms[mailKey];
