@@ -887,6 +887,9 @@ input.needs-input::placeholder { color:#d08a3a; }
       <button class="btn-back" onclick="showScreen('screen-confirm')" id="btn-back-complete">← 戻る</button>
     </div>
 
+    <!-- バックグラウンド送信の状態表示（非ブロッキング） -->
+    <div id="sync-status" style="text-align:center; font-size:11px; color:var(--gray); margin-top:10px; min-height:15px;"></div>
+
     <div style="text-align:center; margin-top:8px;">
       <button class="btn-restart" id="btn-restart" onclick="restartApp()">最初に戻る（次のお客様）</button>
     </div>
@@ -922,6 +925,7 @@ const T = {
     contactError: '電話番号またはメールアドレスを入力してください',
     errPhone: '電話番号を正しく入力してください。', errEmail: 'メールアドレスを正しく入力してください。', errRequired: '入力してください', errSelect: '選択してください',
     qrScanLabel: 'QRコードをスキャン', qrOr: 'または / OR', qrTitle: 'QRコードを枠内に合わせてください', qrErrCamera: 'カメラを利用できません。予約IDを入力してください。', qrErrInvalid: '無効なQRコードです。予約IDを手動で入力してください。',
+    syncing: '同期中…', synced: '同期完了', syncFail: '同期に失敗しました（自動再試行）',
     cameraBtn: 'パスポートを撮影', cameraHint: 'カメラでパスポートの顔写真ページを撮影してください',
     retakeBtn: '撮り直す',
     confirmTitle: '入力内容の確認', checkinBtn: 'チェックイン登録',
@@ -958,6 +962,7 @@ const T = {
     contactError: 'Please enter a phone number or email address.',
     errPhone: 'Please enter a valid phone number.', errEmail: 'Please enter a valid email address.', errRequired: 'Please enter', errSelect: 'Please select',
     qrScanLabel: 'Scan QR Code', qrOr: 'OR', qrTitle: 'Please align the QR code within the frame.', qrErrCamera: 'Camera unavailable. Please enter your reservation ID.', qrErrInvalid: 'Invalid QR code. Please enter your reservation ID manually.',
+    syncing: 'Syncing…', synced: 'Synced', syncFail: 'Sync failed (retrying)',
     cameraBtn: 'Take Passport Photo', cameraHint: 'Please take a photo of your passport ID page.',
     retakeBtn: 'Retake',
     confirmTitle: 'Confirmation', checkinBtn: 'Complete Check-in',
@@ -994,6 +999,7 @@ const T = {
     contactError: '请输入电话号码或电子邮件地址。',
     errPhone: '请输入正确的电话号码。', errEmail: '请输入正确的电子邮箱地址。', errRequired: '请输入', errSelect: '请选择',
     qrScanLabel: '扫描二维码', qrOr: '或 / OR', qrTitle: '请将二维码对准框内。', qrErrCamera: '无法使用相机。请输入预订ID。', qrErrInvalid: '无效的二维码。请手动输入预订ID。',
+    syncing: '同步中…', synced: '同步完成', syncFail: '同步失败（重试中）',
     cameraBtn: '拍摄护照', cameraHint: '请用相机拍摄护照照片页。',
     retakeBtn: '重新拍摄',
     confirmTitle: '确认信息', checkinBtn: '完成入住',
@@ -1030,6 +1036,7 @@ const T = {
     contactError: '전화번호 또는 이메일 주소를 입력해 주세요.',
     errPhone: '올바른 전화번호를 입력하세요.', errEmail: '올바른 이메일 주소를 입력하세요.', errRequired: '입력해 주세요', errSelect: '선택해 주세요',
     qrScanLabel: 'QR코드 스캔', qrOr: '또는 / OR', qrTitle: 'QR 코드를 프레임 안에 맞춰주세요.', qrErrCamera: '카메라를 사용할 수 없습니다. 예약 ID를 입력해 주세요.', qrErrInvalid: '잘못된 QR코드입니다. 예약 ID를 직접 입력해 주세요.',
+    syncing: '동기화 중…', synced: '동기화 완료', syncFail: '동기화 실패 (재시도 중)',
     cameraBtn: '여권 촬영', cameraHint: '카메라로 여권 사진 페이지를 촬영해 주세요.',
     retakeBtn: '다시 촬영',
     confirmTitle: '입력 내용 확인', checkinBtn: '체크인 등록',
@@ -2153,9 +2160,6 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
 }
 
 async function submitCheckin() {
-  el('sendingOverlay').classList.add('active');
-  el('sendingText').textContent = T[lang].sending;
-
   const now = new Date();
   // 登録番号はセッション中固定。完了画面から戻って再送信した場合も同一番号で更新（重複/エラー防止）。
   if (!_submissionReg) {
@@ -2165,56 +2169,14 @@ async function submitCheckin() {
       + '-' + String(Math.floor(Math.random()*9000)+1000);
   }
   const reg = _submissionReg;
-
   const r = reservationData || {};
   // 確定済みの宿泊者配列（念のため再収集）
   if(!finalGuests.length) collectGuests();
 
-  // 宿泊者ごとに名簿レコード（saveRecord）＋パスポート写真（savePhoto）を送信
-  const sends = [];
-  finalGuests.forEach((g, i) => {
-    const regNo = reg + '-' + (i+1);   // 宿泊者ごとに一意の登録番号
-    const formData = {
-      action: 'saveRecord',
-      registrationNo: regNo,
-      natType:     g.residentType === 'jp' ? '日本在住' : '外国人',
-      name:        (g.familyName + ' ' + g.givenName).trim(),
-      prefecture:  '',
-      address:     '',
-      nationality: g.residentType === 'jp' ? '日本' : (g.nationality || ''),
-      passportNo:  g.passportNumber || '',   // OCR前提。手入力は廃止
-      phone:       i===0 ? v('phone') : '',  // 連絡先は代表者のみ
-      email:       i===0 ? v('email') : '',
-      checkinDate:  r.checkin  || '',
-      checkoutDate: r.checkout || '',
-      reservationId: r.reservationId || '',
-      roomId:       r.roomId   || '',
-      site:         r.site     || '',
-      guestIndex:   i+1
-    };
-    sends.push(fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(formData) }));
-    if (g.residentType === 'foreign' && g.passportImage) {
-      sends.push(fetch(GAS_URL, {
-        method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'savePhoto', registrationNo:regNo, passportPhoto:g.passportImage })
-      }));
-    }
-  });
+  // ── 送信はバックグラウンドで実行（完了画面を先に出して体感待ち時間をほぼゼロに）──
+  _fireCheckinSends(reg, r);
 
-  try {
-    await Promise.all(sends);
-  } catch(e) {}
-
-  // ── 宿泊者名簿（Google Drive JSON）へチェックイン状態を反映 ──
-  try {
-    await updateHotelRegistryStatus(r.reservationId, 'checked_in');
-  } catch(e) {
-    console.error('宿泊者名簿への反映に失敗:', e);
-  }
-
-  el('sendingOverlay').classList.remove('active');
-
-  // 完了画面を設定
+  // ── 完了画面を即時表示 ──
   const t = T[lang];
   el('complete-title').textContent = t.completeTitle;
   el('complete-sub').textContent = t.completeSub;
@@ -2222,14 +2184,66 @@ async function submitCheckin() {
   el('pin-label').textContent = t.pinLabel;
   el('room-note').textContent = t.roomNote;
   el('btn-restart').textContent = t.restartBtn;
-
-  const roomNo = r.roomNo || String(r.roomId || '—');
-  el('room-number-display').textContent = roomNo;
-
+  el('room-number-display').textContent = r.roomNo || String(r.roomId || '—');
   showScreen('screen-complete');
 
-  // 部屋別設定（roomSettings）を取得して案内文・Wi-Fi・暗証番号を反映
+  // 部屋別設定（roomSettings：暗証番号・Wi-Fi・案内文）を取得して反映
   await applyRoomGuide(r.roomId);
+}
+
+// チェックインの各種送信をバックグラウンドで発火（完了画面の表示はブロックしない）
+function _fireCheckinSends(reg, r){
+  _setSyncStatus('syncing');
+  // 1) 名簿レコード(saveRecord) ＋ パスポート写真(savePhoto)：no-cors fire&forget（ドライブ控えは維持）
+  finalGuests.forEach((g, i) => {
+    const regNo = reg + '-' + (i+1);
+    const formData = {
+      action: 'saveRecord', registrationNo: regNo,
+      natType:     g.residentType === 'jp' ? '日本在住' : '外国人',
+      name:        (g.familyName + ' ' + g.givenName).trim(),
+      prefecture:  '', address: '',
+      nationality: g.residentType === 'jp' ? '日本' : (g.nationality || ''),
+      passportNo:  g.passportNumber || '',
+      phone:       i===0 ? v('phone') : '',
+      email:       i===0 ? v('email') : '',
+      checkinDate:  r.checkin  || '', checkoutDate: r.checkout || '',
+      reservationId: r.reservationId || '', roomId: r.roomId || '', site: r.site || '', guestIndex: i+1
+    };
+    fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(formData) }).catch(()=>{});
+    if (g.residentType === 'foreign' && g.passportImage) {
+      fetch(GAS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'savePhoto', registrationNo:regNo, passportPhoto:g.passportImage }) }).catch(()=>{});
+    }
+  });
+  // 2) 宿泊データJSONへチェックイン反映（重要：失敗時は自動リトライ）
+  _sendCheckinUpdateWithRetry(r.reservationId, 'checked_in', 2);
+}
+
+async function _sendCheckinUpdateWithRetry(reservationId, status, retries){
+  try{
+    await updateHotelRegistryStatus(reservationId, status);
+    _setSyncStatus('synced');
+  }catch(e){
+    if(retries>0){
+      setTimeout(()=>_sendCheckinUpdateWithRetry(reservationId, status, retries-1), 1800);
+    }else{
+      console.error('チェックイン反映に失敗:', e);
+      _setSyncStatus('fail');
+    }
+  }
+}
+
+// 完了画面のバックグラウンド同期インジケータ（非ブロッキング）
+function _setSyncStatus(state){
+  const box = el('sync-status'); if(!box) return;
+  const t = T[lang] || {};
+  if(state==='syncing'){ box.textContent = '☁ ' + (t.syncing || '同期中…'); box.style.color = 'var(--gray)'; }
+  else if(state==='synced'){
+    box.textContent = '✓ ' + (t.synced || '同期完了'); box.style.color = '#1a7a9a';
+    setTimeout(()=>{ const b=el('sync-status'); if(b) b.textContent=''; }, 2500);
+  } else {
+    box.textContent = '⚠ ' + (t.syncFail || '同期に失敗しました（自動再試行）'); box.style.color = '#c0392b';
+  }
 }
 
 // 選択言語 → roomSettings言語キー / TTS言語コード
