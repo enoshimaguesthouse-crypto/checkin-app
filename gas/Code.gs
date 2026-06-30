@@ -396,6 +396,42 @@ function sendTestMailToSelf(mailKey, lang){
   return 'テスト送信: '+mailKey+' → '+_mailOwner_()+' / '+JSON.stringify(res);
 }
 
+// 診断：なぜ送られないかを調べる（GASエディタから実行し、実行ログ/戻り値を確認）
+function diagnoseMail(){
+  var L=[];
+  var props=PropertiesService.getScriptProperties();
+  L.push('MAIL_AUTOSEND = '+(props.getProperty('MAIL_AUTOSEND')||'(未設定=送信されません)'));
+  var trigs=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()==='runAutoMails';});
+  L.push('runAutoMails トリガー = '+trigs.length+' 件'+(trigs.length?'':'（未設置）'));
+  L.push('送信元(所有者) = '+_mailOwner_());
+  var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
+  if(!ms||!Object.keys(ms).length)L.push('⚠ mailSettings がありません（物件情報＞自動メール配信設定で保存してください）');
+  MAIL_KEYS.forEach(function(mk){
+    var c=ms[mk]||{};
+    var subj=(c.subject&&(c.subject.ja||c.subject.en))||'';
+    var body=(c.body&&(c.body.ja||c.body.en))||'';
+    L.push('['+mk+'] enabled='+(!!c.enabled)+' / 件名あり='+(!!subj)+' / 本文あり='+(!!body));
+  });
+  var now=new Date(), todayMs=_dayStart_(now);
+  var anchors=0, withEmail=0, future=0, sentRC=0, dueRC=0, sampleNoEmail=[];
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k]; if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
+    anchors++;
+    var hasEmail=!!(g.email||'').trim(); if(hasEmail)withEmail++;
+    var ci=_keyToDate_(k); var fut=ci&&_dayStart_(ci)>=todayMs; if(fut)future++;
+    if(g.mailSent&&g.mailSent.reservationCreated)sentRC++;
+    if(ms.reservationCreated&&ms.reservationCreated.enabled&&hasEmail&&!(g.mailSent&&g.mailSent.reservationCreated)&&fut)dueRC++;
+    if(!hasEmail&&fut&&sampleNoEmail.length<3)sampleNoEmail.push((g.name||'?')+'/ID'+(g.reservationId||'-'));
+  });
+  L.push('予約(アンカー)総数='+anchors+' / メールアドレス有='+withEmail+' / 未来チェックイン='+future);
+  L.push('reservationCreated 既送信フラグ='+sentRC+' / いま送信対象になり得る='+dueRC);
+  if(sampleNoEmail.length)L.push('※メール無しの未来予約例: '+sampleNoEmail.join(', '));
+  var out=L.join('\n'); Logger.log(out); return out;
+}
+
+// 手動で今すぐ自動送信を1回実行（MAIL_AUTOSEND=on のときのみ送信）
+function runAutoMailsNow(){ var n=runAutoMails(); Logger.log('runAutoMailsNow: '+n+' 通'); return n; }
+
 // トリガー本体：期日が来た予約に自動送信（既定OFF）
 function runAutoMails(){
   var props=PropertiesService.getScriptProperties();
