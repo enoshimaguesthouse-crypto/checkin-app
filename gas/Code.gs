@@ -374,7 +374,8 @@ function primeMailFlags(){
     g.mailSent=g.mailSent||{}; MAIL_KEYS.forEach(function(mk){ if(!g.mailSent[mk])g.mailSent[mk]=stamp; }); n++;
   });
   _mailSave_(data);
-  return '既存予約 '+n+' 件に送信済みフラグを付与しました（今後の新規・期日到来分のみ送信されます）';
+  PropertiesService.getScriptProperties().setProperty('MAIL_PRIMED','yes'); // 安全ロック解除
+  return '既存予約 '+n+' 件に送信済みフラグを付与しました（安全ロック解除。今後の新規・期日到来分のみ送信されます）';
 }
 
 // ── テスト用ラッパー（GASエディタの「実行」から選んで実行。引数不要）──
@@ -401,6 +402,7 @@ function diagnoseMail(){
   var L=[];
   var props=PropertiesService.getScriptProperties();
   L.push('MAIL_AUTOSEND = '+(props.getProperty('MAIL_AUTOSEND')||'(未設定=送信されません)'));
+  L.push('MAIL_PRIMED = '+(props.getProperty('MAIL_PRIMED')||'(未=primeMailFlags未実行のため送信ロック中)'));
   var trigs=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()==='runAutoMails';});
   L.push('runAutoMails トリガー = '+trigs.length+' 件'+(trigs.length?'':'（未設置）'));
   L.push('送信元(所有者) = '+_mailOwner_());
@@ -436,6 +438,8 @@ function runAutoMailsNow(){ var n=runAutoMails(); Logger.log('runAutoMailsNow: '
 function runAutoMails(){
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return; }
+  // 安全ロック：primeMailFlags() を一度も実行していない場合は送信しない（既存予約への一斉送信を防止）
+  if(props.getProperty('MAIL_PRIMED')!=='yes'){ Logger.log('runAutoMails: 中止（先に primeMailFlags() を実行してください）'); return 0; }
   var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
   var now=new Date(); var todayMs=_dayStart_(now); var nowMin=now.getHours()*60+now.getMinutes();
   var sent=0;
