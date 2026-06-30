@@ -1875,6 +1875,19 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="mr"><div class="fl"><label>住所</label><input id="f-address" placeholder="神奈川県鎌倉市○○1-2-3"></div></div>
   <!-- チェックイン済みのパスポート写真（開いた時にtype=searchで遅延取得） -->
   <div class="mr" id="f-passports-row" style="display:none;"><div class="fl" style="width:100%;"><label>パスポート写真（チェックイン済み）</label><div id="f-passports" style="display:flex;flex-wrap:wrap;gap:10px;"></div></div></div>
+  <!-- チェックイン用QRコード（予約IDから生成したURL。画像は外部APIで描画し保存はURLのみ） -->
+  <div class="mr" id="f-qr-row" style="display:none;"><div class="fl" style="width:100%;"><label>チェックイン用QRコード</label>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <img id="f-qr-img" alt="QR" style="width:130px;height:130px;border:1px solid var(--sand-border);border-radius:8px;background:#fff;">
+      <div style="min-width:0;flex:1;">
+        <a id="f-qr-link" href="#" target="_blank" rel="noopener" style="font-size:12px;color:#185FA5;word-break:break-all;text-decoration:none;"></a>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button type="button" class="btn btn-xs" onclick="copyCheckinUrl()">🔗 URLをコピー</button>
+          <button type="button" class="btn btn-xs" onclick="openCheckinQrTab()">⤢ QRを別タブで開く</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
   <div class="mr"><div class="fl"><label>備考</label><input id="f-note" placeholder="備考・メモ"></div></div>
   <div class="mr" style="margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">
     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
@@ -4759,6 +4772,7 @@ function openAdd(){
   document.getElementById('f-lower').checked=false;
   PLAN_RULES.forEach(r=>{if(r.checkboxId){const el=document.getElementById(r.checkboxId);if(el)el.checked=false;}});
   const ppRow=document.getElementById('f-passports-row'); if(ppRow)ppRow.style.display='none'; // 追加時はパスポート欄を隠す
+  const qrRow=document.getElementById('f-qr-row'); if(qrRow)qrRow.style.display='none'; // 追加時はQR欄を隠す（保存後に表示）
   populateNat('f-nat','日本');populateRS(-1);document.getElementById('modal').classList.add('open');
 }
 function openAddAt(rid,day){
@@ -4799,8 +4813,33 @@ function openEdit(k){
   document.getElementById('f-address').value=g.address||'';
   document.getElementById('f-email').value=g.email||'';
   populateNat('f-nat',g.nat||'日本');populateRS(g.roomId);document.getElementById('modal').classList.add('open');
+  // チェックイン用QRコードを表示（保存済みURL優先、無ければ予約IDから生成）
+  renderCheckinQr(g);
   // パスポート写真を遅延取得（起動データには画像を含めず、開いた予約の分だけ取得）
   loadPassportPhotos(g.reservationId);
+}
+
+// 予約詳細のQR表示。checkinUrlは保存済み優先・無ければ予約IDから生成。画像は外部APIで描画。
+let _currentCheckinUrl='';
+function renderCheckinQr(g){
+  const row=document.getElementById('f-qr-row');
+  if(!row)return;
+  const url=(g&&g.checkinUrl)||(g&&g.reservationId?generateCheckinUrl(g.reservationId):'');
+  _currentCheckinUrl=url||'';
+  if(!url){ row.style.display='none'; return; }
+  document.getElementById('f-qr-img').src='https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data='+encodeURIComponent(url);
+  const link=document.getElementById('f-qr-link');
+  link.textContent=url; link.href=url;
+  row.style.display='';
+}
+function copyCheckinUrl(){
+  if(!_currentCheckinUrl)return;
+  (navigator.clipboard?navigator.clipboard.writeText(_currentCheckinUrl):Promise.reject())
+    .then(()=>showToast('🔗 チェックインURLをコピーしました'))
+    .catch(()=>{ const ta=document.createElement('textarea');ta.value=_currentCheckinUrl;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');showToast('🔗 チェックインURLをコピーしました');}catch(e){}document.body.removeChild(ta); });
+}
+function openCheckinQrTab(){
+  if(_currentCheckinUrl)window.open('https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data='+encodeURIComponent(_currentCheckinUrl),'_blank');
 }
 function populateRS(sid){document.getElementById('f-room').innerHTML=rooms.map(r=>`<option value="${r.id}"${r.id===sid?' selected':''}>${r.no} (${r.type})</option>`).join('');}
 
@@ -4881,7 +4920,7 @@ function saveGuest(){
     sex:document.getElementById('f-sex').value,
     cat:document.getElementById('f-cat').value,
     note:finalNote,arrivalTime,status,roomId:rid,day,parking:useParking,guests,
-    charter:prevCharter,reservationId,lowerBunk,
+    charter:prevCharter,reservationId,checkinUrl:generateCheckinUrl(reservationId),lowerBunk,
     // 電話番号・住所：フォームから取得
     phone:String(document.getElementById('f-phone')?.value||'').trim(),
     address:String(document.getElementById('f-address')?.value||'').trim(),
@@ -5281,7 +5320,7 @@ function importAirhostCSV(text){
       phone,address,email,
       status:'reserved',roomId:rid,day:cd,guests:guestCount,
       arrivalTime:'',charter:false,charterGroup:null,
-      reservationId,
+      reservationId,checkinUrl:generateCheckinUrl(reservationId),
     };
 
     // 全nights分書き込み
@@ -5640,7 +5679,7 @@ function importCSVText(text){
       status:'reserved',roomId:rid,day:cd,guests:guestCount,
       arrivalTime,charter:isCharter,
       charterGroup:isCharter?(isAnnexCharter?'ANNEX':'本館'):null,
-      reservationId,
+      reservationId,checkinUrl:generateCheckinUrl(reservationId),
     };
 
     if(isCharter&&charterGroupRooms.length>0){
@@ -5839,7 +5878,7 @@ function saveManualAssign(){
     phone:'',address:'',email:'',
     status:'reserved',roomId:rid,day:u.checkinDay,guests:u.guests||1,
     arrivalTime:'',charter:false,charterGroup:null,
-    reservationId:u.reservationId||'',
+    reservationId:u.reservationId||'',checkinUrl:generateCheckinUrl(u.reservationId||''),
   };
   for(let n=0;n<(u.nights||1);n++){
     const {y:ny,m:nm,d:nd}=addDays(u.checkinMonth,u.checkinDay,n,u.checkinYear);
@@ -7261,6 +7300,16 @@ function snDrop(e,targetId){
 // ============================================================
 // ▼ GASデプロイ後にURLをここへ貼り付けてください
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxRIQQy4vygxy0NM9QlBBqwYUQucNmlwJI7TuIsCSwTkAkW7q585aO0qcLO0cjUIUpwnw/exec';
+
+// ── チェックイン用URL（QR）生成 ──────────────────────────────
+// 画像ではなくURL文字列のみを cloudData(guestData) 内に保存し肥大化を防ぐ。
+// メール送信等でも流用できるよう共通関数として切り出し。
+const CHECKIN_APP_BASE_URL = 'https://enoshimaguesthouse-crypto.github.io/checkin-app/checkin-app.html';
+function generateCheckinUrl(reservationId){
+  const id=String(reservationId||'').trim();
+  if(!id)return '';
+  return CHECKIN_APP_BASE_URL + '?reservationId=' + encodeURIComponent(id);
+}
 
 let cloudUpdatedAt = null;   // サーバーの最終更新時刻
 let pollingTimer   = null;   // ポーリングタイマー
