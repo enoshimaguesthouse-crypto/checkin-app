@@ -3857,7 +3857,8 @@ function uploadAttachmentToDrive(file){
     reader.onload=async()=>{
       try{
         const b64=String(reader.result).split(',')[1]||'';
-        const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+        // Content-Typeヘッダは付けない（application/jsonだとCORSプリフライトでApps Scriptが失敗するため）
+        const r=await fetch(GAS_URL,{method:'POST',
           body:JSON.stringify({type:'uploadAttachment', name:file.name, mimeType:file.type||'application/octet-stream', dataBase64:b64})});
         const j=await r.json();
         if(j&&j.id)resolve(j); else reject(new Error(j&&j.error||'no id'));
