@@ -457,6 +457,44 @@ function listSentMails(){
   return text; // タブ区切り（コピペでスプレッドシート貼付可）
 }
 
+// Gmailの「送信済み」から実際に送られたメールを一覧化（mailSentフラグが消えても確実）。
+// 直近2日の送信済みを対象に、送信日時・宛先・件名を出力。
+function listSentFromGmail(){
+  var owner=_mailOwner_();
+  var threads=GmailApp.search('in:sent newer_than:2d', 0, 300);
+  var rows=[];
+  threads.forEach(function(th){
+    th.getMessages().forEach(function(m){
+      var from=String(m.getFrom()||'');
+      if(from.indexOf(owner)<0)return; // 自分が送ったメッセージのみ
+      rows.push({ when:Utilities.formatDate(m.getDate(),'Asia/Tokyo','yyyy-MM-dd HH:mm'), to:m.getTo()||'', subject:m.getSubject()||'' });
+    });
+  });
+  rows.sort(function(a,b){ return a.when<b.when?-1:1; });
+  var lines=['送信日時\t宛先\t件名'];
+  rows.forEach(function(r){ lines.push(r.when+'\t'+r.to+'\t'+r.subject); });
+  var text=lines.join('\n');
+  Logger.log('送信済み '+rows.length+' 件（直近2日）\n'+text);
+  return text;
+}
+
+// Gmail送信済みをスプレッドシートに書き出してURLを返す
+function exportSentFromGmailToSheet(){
+  var owner=_mailOwner_();
+  var threads=GmailApp.search('in:sent newer_than:2d', 0, 300);
+  var rows=[['送信日時','宛先','件名']];
+  threads.forEach(function(th){
+    th.getMessages().forEach(function(m){
+      if(String(m.getFrom()||'').indexOf(owner)<0)return;
+      rows.push([Utilities.formatDate(m.getDate(),'Asia/Tokyo','yyyy-MM-dd HH:mm'), m.getTo()||'', m.getSubject()||'']);
+    });
+  });
+  var ss=SpreadsheetApp.create('Gmail送信済み一覧 '+new Date().toISOString().slice(0,16));
+  ss.getActiveSheet().getRange(1,1,rows.length,3).setValues(rows);
+  Logger.log('送信済み '+(rows.length-1)+' 件 → '+ss.getUrl());
+  return ss.getUrl();
+}
+
 // 実送信一覧をスプレッドシートに書き出してURLを返す（任意・確認しやすい）
 function exportSentMailsToSheet(){
   var data=_mailLoad_(); var gd=data.guestData||{};
