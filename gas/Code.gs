@@ -434,6 +434,47 @@ function diagnoseMail(){
 // 手動で今すぐ自動送信を1回実行（MAIL_AUTOSEND=on のときのみ送信）
 function runAutoMailsNow(){ var n=runAutoMails(); Logger.log('runAutoMailsNow: '+n+' 通'); return n; }
 
+// 実際に送信された予約の一覧（mailSentがISO日時=実送信。primed:は除外）。お詫び対応用。
+function listSentMails(){
+  var data=_mailLoad_(); var gd=data.guestData||{};
+  var rows=[];
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k]; if(!g||!g.mailSent)return;
+    MAIL_KEYS.forEach(function(mk){
+      var v=g.mailSent[mk];
+      // ISO日時で始まるものだけが実送信（'primed:'や'skip:'は対象外）
+      if(v && /^\d{4}-\d{2}-\d{2}T/.test(String(v))){
+        rows.push({ sentAt:v, type:mk, name:g.name||'', reservationId:g.reservationId||'', email:g.email||'', lang:_mailLang_(g) });
+      }
+    });
+  });
+  rows.sort(function(a,b){ return a.sentAt<b.sentAt?-1:1; });
+  // 読みやすいテキストも作る
+  var lines=['送信日時\t種別\t代表者名\t予約ID\tメール\t言語'];
+  rows.forEach(function(r){ lines.push(r.sentAt+'\t'+r.type+'\t'+r.name+'\t'+r.reservationId+'\t'+r.email+'\t'+r.lang); });
+  var text=lines.join('\n');
+  Logger.log('実送信 '+rows.length+' 件\n'+text);
+  return text; // タブ区切り（コピペでスプレッドシート貼付可）
+}
+
+// 実送信一覧をスプレッドシートに書き出してURLを返す（任意・確認しやすい）
+function exportSentMailsToSheet(){
+  var data=_mailLoad_(); var gd=data.guestData||{};
+  var rows=[['送信日時','種別','代表者名','予約ID','メール','言語']];
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k]; if(!g||!g.mailSent)return;
+    MAIL_KEYS.forEach(function(mk){
+      var v=g.mailSent[mk];
+      if(v && /^\d{4}-\d{2}-\d{2}T/.test(String(v))) rows.push([v,mk,g.name||'',g.reservationId||'',g.email||'',_mailLang_(g)]);
+    });
+  });
+  var ss=SpreadsheetApp.create('自動メール 実送信一覧 '+new Date().toISOString().slice(0,16));
+  var sh=ss.getActiveSheet(); sh.getRange(1,1,rows.length,6).setValues(rows);
+  var url=ss.getUrl();
+  Logger.log('実送信 '+(rows.length-1)+' 件 → '+url);
+  return url;
+}
+
 // トリガー本体：期日が来た予約に自動送信（既定OFF）
 function runAutoMails(){
   var props=PropertiesService.getScriptProperties();
