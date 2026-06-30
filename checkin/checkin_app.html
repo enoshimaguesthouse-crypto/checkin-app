@@ -2121,67 +2121,35 @@ function buildConfirmTable() {
 async function updateHotelRegistryStatus(reservationId, newStatus){
   if(!reservationId) return;
   const targetId = String(reservationId).trim();
-  // 1) 最新の全データを取得
-  const res = await fetch(HOTEL_DATA_GAS_URL + '?t=' + Date.now());
-  const data = await res.json();
-  const guestData = data.guestData || {};
-
-  // 2) 予約IDが一致する全レコード（連泊・人数展開含む）を更新
   const nowIso = (() => {
     const d = new Date();
     const p = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
   })();
-  // 連泊の画像重複保存を避けるため、画像付きはアンカー（最も早い泊）1件のみに保存。
-  // 他の泊レコードには画像を除いた軽量配列を保存（人数表示等は維持）。
-  const _keyDateNum = k => { const p=String(k).split(':'); return (parseInt(p[0])||0)*100 + (parseInt(p[2])||0); };
-  const matchingKeys = Object.keys(guestData).filter(k => {
-    const g = guestData[k]; const gid = g && (g.reservationId || g.id);
-    return gid && String(gid).trim() === targetId;
-  }).sort((a,b)=>_keyDateNum(a)-_keyDateNum(b));
-  const anchorKey = matchingKeys[0];
-  const finalGuestsLight = (Array.isArray(finalGuests)?finalGuests:[]).map(g=>{ const {passportImage, ...rest}=g; return rest; });
-
-  let updated = 0;
-  Object.keys(guestData).forEach(k => {
-    const g = guestData[k];
-    if(!g) return;
-    const gid = g.reservationId || g.id;
-    if(gid && String(gid).trim() === targetId){
-      g.status = newStatus;
-      g.checkedInAt = nowIso;
-      // ── 契約確認（宿泊約款）への同意記録 ──
-      // チェックイン完了署名とは独立したフィールドに保存（Canvasデータが競合・上書きされない）
-      if(agreement && agreement.accepted){
-        g.agreementAccepted = true;
-        g.agreementAcceptedAt = agreement.acceptedAt;
-        g.agreementLanguage = agreement.language;
-        g.agreementMethod = agreement.method;
-        if(agreement.method === 'signature' && agreement.signature){
-          g.agreementSignature = agreement.signature;
-        }
-      }
-      // チェックインアプリで入力・確定した連絡先を最優先で同期（空でない場合のみ上書き）
-      if(updatedGuestData && updatedGuestData.reservationId===targetId){
-        if(updatedGuestData.email)   g.email   = updatedGuestData.email;
-        if(updatedGuestData.phone)   g.phone   = updatedGuestData.phone;
-      }
-      // ── 全宿泊者情報（配列）を記録：画像はアンカー1件のみ、他は画像なし ──
-      if(Array.isArray(finalGuests) && finalGuests.length){
-        g.guests = (k===anchorKey) ? finalGuests : finalGuestsLight;
-      }
-      updated++;
-    }
-  });
-  console.log(`宿泊者名簿ステータス更新: ID=${targetId}, 件数=${updated}, status=${newStatus}, at=${nowIso}`);
-  if(updated === 0) return;
-
-  // 3) 全データを書き戻し（宿泊者名簿GASは全体上書き方式）
-  data.guestData = guestData;
-  await fetch(HOTEL_DATA_GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
+  // ── 部分更新エンドポイント（type=checkinUpdate）へ「差分＋写真」のみ送信 ──
+  // 旧方式（全DBをDL→写真埋込→全DLをUL）を廃止し、送信量を大幅削減。
+  // アンカー集約や軽量化はサーバー(GAS)側で実施するため、ここでは finalGuests を
+  // そのまま渡す（画像はアンカー1件のみ保存される）。
+  const payload = {
+    type: 'checkinUpdate',
+    reservationId: targetId,
+    status: newStatus,
+    checkedInAt: nowIso,
+    guests: Array.isArray(finalGuests) ? finalGuests : [],
+    agreement: (agreement && agreement.accepted) ? {
+      accepted: true,
+      acceptedAt: agreement.acceptedAt || '',
+      language: agreement.language || '',
+      method: agreement.method || '',
+      signature: agreement.signature || ''
+    } : null,
+    contact: {
+      phone: (updatedGuestData && updatedGuestData.reservationId===targetId) ? (updatedGuestData.phone||'') : '',
+      email: (updatedGuestData && updatedGuestData.reservationId===targetId) ? (updatedGuestData.email||'') : ''
+    },
+    updatedBy: 'checkin-app'
+  };
+  await fetch(HOTEL_DATA_GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 async function submitCheckin() {

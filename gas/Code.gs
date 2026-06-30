@@ -137,8 +137,60 @@ function doPost(e) {
         .createTextOutput(JSON.stringify({ status:'ok', type:'rental', updatedAt:newData.updatedAt }))
         .setMimeType(ContentService.MimeType.JSON);
 
-} else {
+    } else if (payload.type === 'checkinUpdate') {
+      // ── チェックイン確定の「部分更新」：予約ID一致レコードだけをサーバー側で更新 ──
+      // 全DBのダウンロード/再アップロードを回避し、クライアントは差分＋写真のみ送信。
+      const file = getHotelFile();
+      const data = JSON.parse(file.getBlob().getDataAsString());
+      const guestData = data.guestData || {};
+      const targetId = String(payload.reservationId || '').trim();
+      if (!targetId) {
+        return jsonOut(JSON.stringify({ error: 'checkinUpdate: no reservationId' }));
+      }
+      const status   = payload.status || 'checked_in';
+      const nowIso   = payload.checkedInAt || new Date().toISOString();
+      const agreement = payload.agreement || null;
+      const contact   = payload.contact || {};
+      const finalGuests = Array.isArray(payload.guests) ? payload.guests : [];
+      // 連泊の画像重複を避けるため、画像付きはアンカー1件のみ。他は画像なし。
+      const finalGuestsLight = finalGuests.map(function(g){
+        var c = {}; for (var kk in g) { if (kk !== 'passportImage') c[kk] = g[kk]; } return c;
+      });
+      const keyDateNum = function(k){ var p=String(k).split(':'); return (parseInt(p[0])||0)*100 + (parseInt(p[2])||0); };
+      const matchingKeys = Object.keys(guestData).filter(function(k){
+        var g=guestData[k]; var gid=g&&(g.reservationId||g.id); return gid && String(gid).trim()===targetId;
+      }).sort(function(a,b){ return keyDateNum(a)-keyDateNum(b); });
+      const anchorKey = matchingKeys[0];
+      var updated = 0;
+      matchingKeys.forEach(function(k){
+        var g = guestData[k]; if(!g) return;
+        g.status = status;
+        g.checkedInAt = nowIso;
+        if (agreement && agreement.accepted) {
+          g.agreementAccepted = true;
+          g.agreementAcceptedAt = agreement.acceptedAt || '';
+          g.agreementLanguage = agreement.language || '';
+          g.agreementMethod = agreement.method || '';
+          if (agreement.method === 'signature' && agreement.signature) g.agreementSignature = agreement.signature;
+        }
+        if (contact.email) g.email = contact.email;
+        if (contact.phone) g.phone = contact.phone;
+        if (finalGuests.length) {
+          g.guests = (k === anchorKey) ? finalGuests : finalGuestsLight;
+        }
+        updated++;
+      });
+      data.updatedAt = new Date().toISOString();
+      data.updatedBy = payload.updatedBy || 'checkin-app';
+      file.setContent(JSON.stringify(data));
+      return jsonOut(JSON.stringify({ status:'ok', type:'checkinUpdate', updated: updated }));
+
+    } else {
       // 宿泊データファイルに保存（rentalSpaceReservations は含めない）
+      // 防御ガード：guestData が未指定のPOSTでは絶対に全体を空で上書きしない（誤爆・データ消失防止）。
+      if (payload.guestData === undefined || payload.guestData === null) {
+        return jsonOut(JSON.stringify({ error: 'guestData missing; save skipped to prevent data loss' }));
+      }
       const file = getHotelFile();
       // 既存ファイルのpassportImageを保持：起動時GETで画像を除外しているため、
       // クライアントが画像なしで保存しても既存の画像が消えないようマージする。
