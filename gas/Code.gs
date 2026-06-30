@@ -11,6 +11,14 @@ function getFolder() {
   return folders.hasNext() ? folders.next() : DriveApp.createFolder(FOLDER_NAME);
 }
 
+// 自動メール添付ファイル用フォルダ（実体はDrive保存・cloudDataにはIDのみ）
+const MAIL_ATTACH_FOLDER = 'メール添付ファイル';
+function getMailAttachFolder() {
+  const parent = getFolder();
+  const it = parent.getFoldersByName(MAIL_ATTACH_FOLDER);
+  return it.hasNext() ? it.next() : parent.createFolder(MAIL_ATTACH_FOLDER);
+}
+
 function getOrCreateFile(fileName, emptyContent) {
   const files = DriveApp.getFilesByName(fileName);
   if (files.hasNext()) return files.next();
@@ -136,6 +144,21 @@ function doPost(e) {
       return ContentService
         .createTextOutput(JSON.stringify({ status:'ok', type:'rental', updatedAt:newData.updatedAt }))
         .setMimeType(ContentService.MimeType.JSON);
+
+    } else if (payload.type === 'uploadAttachment') {
+      // メール添付ファイルをDriveに保存し、cloudDataに格納するファイルID等を返す。
+      // 実体はDrive、JSONにはIDのみ（Base64を保存しない設計）。
+      const b64 = payload.dataBase64 || '';
+      if (!b64) return jsonOut(JSON.stringify({ error: 'no file data' }));
+      const name = payload.name || ('attachment_' + Date.now());
+      const mime = payload.mimeType || 'application/octet-stream';
+      const blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, name);
+      const f = getMailAttachFolder().createFile(blob);
+      return jsonOut(JSON.stringify({
+        status: 'ok', type: 'uploadAttachment',
+        id: f.getId(), name: f.getName(),
+        url: 'https://drive.google.com/file/d/' + f.getId() + '/view'
+      }));
 
     } else if (payload.type === 'checkinUpdate') {
       // ── チェックイン確定の「部分更新」：予約ID一致レコードだけをサーバー側で更新 ──
