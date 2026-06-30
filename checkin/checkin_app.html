@@ -376,6 +376,15 @@ input.needs-input::placeholder { color:#d08a3a; }
 }
 .btn-search:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,108,140,0.4); }
 .btn-search:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+/* QRスキャン用ボタン・区切り */
+.qr-divider { display:flex; align-items:center; gap:10px; margin:16px 0 4px; color:var(--gray); font-size:12px; }
+.qr-divider::before, .qr-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.btn-qr-scan {
+  width:100%; padding:13px; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;
+  background:#fff; color:var(--ocean-deep); border:1.6px solid var(--ocean-mid); border-radius:12px;
+  font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.25s ease;
+}
+.btn-qr-scan:hover { background:var(--ocean-pale); transform:translateY(-1px); }
 
 /* ── SENDING ── */
 .sending-overlay {
@@ -448,6 +457,8 @@ input.needs-input::placeholder { color:#d08a3a; }
   .step-dot { width:34px; height:34px; font-size:14px; }
 }
 </style>
+<!-- QRコード読み取り用の軽量ライブラリ（カメラスキャン用） -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
 
@@ -473,6 +484,18 @@ input.needs-input::placeholder { color:#d08a3a; }
   <div class="cam-actions">
     <button type="button" class="cam-btn cam-cancel" id="cam-cancel-btn" onclick="closeCamera()">キャンセル</button>
     <button type="button" class="cam-btn cam-shutter" id="cam-shutter-btn" onclick="capturePassport()">● 撮影</button>
+  </div>
+</div>
+
+<!-- QRコードスキャン用オーバーレイ（カメラで予約QRを読み取り自動チェックイン） -->
+<div class="cam-overlay" id="qrOverlay">
+  <div class="cam-title" id="qr-title">QRコードをスキャンしてください</div>
+  <div class="cam-stage">
+    <video id="qr-video" class="cam-video" style="transform:none;" playsinline autoplay muted></video>
+  </div>
+  <div class="cam-error" id="qr-error"></div>
+  <div class="cam-actions">
+    <button type="button" class="cam-btn cam-cancel" id="qr-cancel-btn" onclick="closeQrScanner()">キャンセル</button>
   </div>
 </div>
 
@@ -581,6 +604,11 @@ input.needs-input::placeholder { color:#d08a3a; }
           onkeydown="if(event.key==='Enter') searchReservation()">
       </div>
       <button class="btn-search" id="btn-search" onclick="searchReservation()">🔍　検索</button>
+      <div class="qr-divider" id="qr-or"><span>または / OR</span></div>
+      <button class="btn-qr-scan" id="btn-qr-scan" onclick="openQrScanner()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="21" y2="14"/><line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="18" y2="21"/></svg>
+        <span id="btn-qr-scan-label">QRコードをスキャン</span>
+      </button>
       <div class="res-error" id="resError"></div>
     </div>
 
@@ -857,6 +885,7 @@ const T = {
     lblPhone: '電話番号', lblEmail: 'メールアドレス',
     contactError: '電話番号またはメールアドレスを入力してください',
     errPhone: '電話番号を正しく入力してください。', errEmail: 'メールアドレスを正しく入力してください。', errRequired: '入力してください', errSelect: '選択してください',
+    qrScanLabel: 'QRコードをスキャン', qrOr: 'または / OR', qrTitle: '予約QRコードを枠に合わせてください', qrErrCamera: 'カメラを起動できませんでした。予約IDを手動で入力してください。', qrErrInvalid: '無効なQRコードです。予約IDを手動で入力してください。',
     cameraBtn: 'パスポートを撮影', cameraHint: 'カメラでパスポートの顔写真ページを撮影してください',
     retakeBtn: '撮り直す',
     confirmTitle: '入力内容の確認', checkinBtn: 'チェックイン登録',
@@ -892,6 +921,7 @@ const T = {
     lblPhone: 'Phone Number', lblEmail: 'Email Address',
     contactError: 'Please enter a phone number or email address.',
     errPhone: 'Please enter a valid phone number.', errEmail: 'Please enter a valid email address.', errRequired: 'Please enter', errSelect: 'Please select',
+    qrScanLabel: 'Scan QR Code', qrOr: 'OR', qrTitle: 'Align your reservation QR code', qrErrCamera: 'Could not start the camera. Please enter your reservation ID manually.', qrErrInvalid: 'Invalid QR code. Please enter your reservation ID manually.',
     cameraBtn: 'Take Passport Photo', cameraHint: 'Please take a photo of your passport ID page.',
     retakeBtn: 'Retake',
     confirmTitle: 'Confirmation', checkinBtn: 'Complete Check-in',
@@ -927,6 +957,7 @@ const T = {
     lblPhone: '电话号码', lblEmail: '电子邮件',
     contactError: '请输入电话号码或电子邮件地址。',
     errPhone: '请输入正确的电话号码。', errEmail: '请输入正确的电子邮箱地址。', errRequired: '请输入', errSelect: '请选择',
+    qrScanLabel: '扫描二维码', qrOr: '或 / OR', qrTitle: '请将预订二维码对准框内', qrErrCamera: '无法启动相机。请手动输入预订ID。', qrErrInvalid: '无效的二维码。请手动输入预订ID。',
     cameraBtn: '拍摄护照', cameraHint: '请用相机拍摄护照照片页。',
     retakeBtn: '重新拍摄',
     confirmTitle: '确认信息', checkinBtn: '完成入住',
@@ -962,6 +993,7 @@ const T = {
     lblPhone: '전화번호', lblEmail: '이메일 주소',
     contactError: '전화번호 또는 이메일 주소를 입력해 주세요.',
     errPhone: '올바른 전화번호를 입력하세요.', errEmail: '올바른 이메일 주소를 입력하세요.', errRequired: '입력해 주세요', errSelect: '선택해 주세요',
+    qrScanLabel: 'QR코드 스캔', qrOr: '또는 / OR', qrTitle: '예약 QR코드를 프레임에 맞춰 주세요', qrErrCamera: '카메라를 시작할 수 없습니다. 예약 ID를 직접 입력해 주세요.', qrErrInvalid: '잘못된 QR코드입니다. 예약 ID를 직접 입력해 주세요.',
     cameraBtn: '여권 촬영', cameraHint: '카메라로 여권 사진 페이지를 촬영해 주세요.',
     retakeBtn: '다시 촬영',
     confirmTitle: '입력 내용 확인', checkinBtn: '체크인 등록',
@@ -1192,6 +1224,8 @@ function applyLang() {
   el('lbl-resid').textContent = t.searchLabel;
   el('reservationId').placeholder = t.searchPlaceholder;
   el('btn-search').textContent = t.searchBtn;
+  if(el('btn-qr-scan-label')) el('btn-qr-scan-label').textContent = t.qrScanLabel;
+  if(el('qr-or')) el('qr-or').innerHTML = '<span>'+t.qrOr+'</span>';
   el('rl-name').textContent = t.rlName;
   el('rl-dates').textContent = t.rlDates;
   el('rl-guests').textContent = t.rlGuests;
@@ -1230,6 +1264,8 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo({top:0, behavior:'smooth'});
+  // 予約検索画面に到達したらURLパラメータの自動検索を試行（初回のみ）
+  if (id === 'screen-search') setTimeout(_maybeAutoSearchFromUrl, 0);
 }
 
 // 予約検索画面の「戻る」：約款利用ONなら約款画面へ（状態・署名を保持したまま直接表示）、
@@ -1283,6 +1319,108 @@ function _gkToDate(key){
   const m = parseInt(parts[0]), d = parseInt(parts[2]);
   if (isNaN(m) || isNaN(d)) return null;
   return `2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════
+//  予約QRスキャン / URLパラメータ自動検索
+// ═══════════════════════════════════════
+let _qrStream=null, _qrRAF=null, _qrCanvas=null, _qrScanning=false;
+let _urlReservationId='';
+let _urlAutoSearched=false;
+// 起動時にURLパラメータ ?reservationId=xxx を取得
+(function(){ try{ const p=new URLSearchParams(location.search); const id=(p.get('reservationId')||'').replace(/\D/g,''); if(id)_urlReservationId=id; }catch(e){} })();
+
+// QR/URL文字列から reservationId を抽出（?reservationId=xxx・数字のみ・テキスト内数字に対応）
+function extractReservationId(text){
+  if(!text)return '';
+  const s=String(text).trim();
+  const m=s.match(/[?&]reservationId=([^&\s]+)/i);
+  if(m)return decodeURIComponent(m[1]).replace(/\D/g,'');
+  if(/^\d{1,8}$/.test(s))return s;
+  const d=s.match(/\d{3,8}/);
+  return d?d[0]:'';
+}
+
+// 検索画面表示時：URLパラメータがあれば自動入力して検索（ゲストのスマホ起動用）
+function _maybeAutoSearchFromUrl(){
+  if(_urlAutoSearched||!_urlReservationId)return;
+  _urlAutoSearched=true;
+  el('reservationId').value=_urlReservationId;
+  searchReservation();
+}
+
+async function openQrScanner(){
+  const t=T[lang]||{};
+  el('qr-title').textContent=t.qrTitle||'QRコードをスキャンしてください';
+  el('qr-cancel-btn').textContent=t.camCancel||'キャンセル';
+  el('qr-error').textContent='';
+  if(typeof jsQR!=='function'){
+    el('resError').textContent=t.qrErrInvalid||'QRを読み取れません。予約IDを手動で入力してください。';
+    el('resError').style.display='block';
+    el('reservationId').focus();
+    return;
+  }
+  el('qrOverlay').classList.add('active');
+  const video=el('qr-video');
+  try{
+    // タブレット背面カメラ優先。不可ならインカメラ→任意の順でフォールバック
+    _qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+  }catch(e1){
+    try{ _qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); }
+    catch(e2){
+      try{ _qrStream=await navigator.mediaDevices.getUserMedia({video:true}); }
+      catch(e3){
+        // 権限拒否・カメラ不可 → 手動入力へ誘導
+        closeQrScanner();
+        el('resError').textContent=t.qrErrCamera||'カメラを起動できませんでした。予約IDを手動で入力してください。';
+        el('resError').style.display='block';
+        el('reservationId').focus();
+        return;
+      }
+    }
+  }
+  video.srcObject=_qrStream;
+  try{ await video.play(); }catch(e){}
+  _qrScanning=true;
+  _qrCanvas=_qrCanvas||document.createElement('canvas');
+  _qrScanLoop();
+}
+
+function _qrScanLoop(){
+  if(!_qrScanning)return;
+  const video=el('qr-video');
+  if(video&&video.readyState>=video.HAVE_ENOUGH_DATA){
+    const w=video.videoWidth,h=video.videoHeight;
+    if(w&&h){
+      _qrCanvas.width=w; _qrCanvas.height=h;
+      const ctx=_qrCanvas.getContext('2d',{willReadFrequently:true});
+      ctx.drawImage(video,0,0,w,h);
+      let img=null; try{ img=ctx.getImageData(0,0,w,h); }catch(e){}
+      if(img){
+        const code=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
+        if(code&&code.data){
+          const id=extractReservationId(code.data);
+          if(id){ _onQrDecoded(id); return; }
+          el('qr-error').textContent=(T[lang]&&T[lang].qrErrInvalid)||'無効なQRコードです';
+        }
+      }
+    }
+  }
+  _qrRAF=requestAnimationFrame(_qrScanLoop);
+}
+
+function _onQrDecoded(id){
+  closeQrScanner();
+  el('reservationId').value=id;
+  searchReservation();   // 既存の検索処理を実行（見つからなければ resError 表示で手動入力へ）
+}
+
+function closeQrScanner(){
+  _qrScanning=false;
+  if(_qrRAF){ cancelAnimationFrame(_qrRAF); _qrRAF=null; }
+  if(_qrStream){ _qrStream.getTracks().forEach(tr=>tr.stop()); _qrStream=null; }
+  const v=el('qr-video'); if(v)v.srcObject=null;
+  el('qrOverlay').classList.remove('active');
 }
 
 async function searchReservation() {
@@ -2366,6 +2504,7 @@ function restartApp() {
   currentNat = 'jp';
   // 多客入力ステートをリセット
   if(typeof closeCamera==='function')closeCamera(); // カメラ起動中なら停止
+  if(typeof closeQrScanner==='function')closeQrScanner(); // QRスキャナ起動中なら停止
   guestsList = [];
   finalGuests = [];
   _submissionReg = '';
