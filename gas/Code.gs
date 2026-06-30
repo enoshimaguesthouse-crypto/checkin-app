@@ -440,6 +440,9 @@ function runAutoMails(){
 
 // 有効化/無効化と定期トリガー設置（GASエディタから手動実行）
 function setAutosend(on){ PropertiesService.getScriptProperties().setProperty('MAIL_AUTOSEND', on?'on':'off'); return 'MAIL_AUTOSEND='+(on?'on':'off'); }
+// 引数なしラッパー（GASエディタの「実行」用）
+function autosend_ON(){ var r=setAutosend(true); Logger.log(r); return r; }
+function autosend_OFF(){ var r=setAutosend(false); Logger.log(r); return r; }
 function installMailTrigger(){
   removeMailTrigger();
   ScriptApp.newTrigger('runAutoMails').timeBased().everyMinutes(30).create();
