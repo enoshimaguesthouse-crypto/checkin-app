@@ -256,3 +256,193 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+// ============================================================
+//  自動メール送信（第2段階）  ※実ゲストへの誤送信を防ぐ安全設計
+//   - 既定では自動送信は無効（Script Property MAIL_AUTOSEND='on' で有効化）
+//   - 有効化前に primeMailFlags() で既存予約を「送信済み」にして過去分の一斉送信を防止
+//   - sendTestMailToSelf() で自分宛にプレビュー送信可能
+//   - 1回の実行あたり MAIL_SEND_CAP 通までに制限（暴走防止）
+// ============================================================
+const MAIL_KEYS = ['reservationCreated','checkinCode','checkin','checkout'];
+const MAIL_SEND_CAP = 40;
+
+function _mailOwner_(){ try { return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail(); } catch(e){ return Session.getEffectiveUser().getEmail(); } }
+function _mailLoad_(){ return JSON.parse(getHotelFile().getBlob().getDataAsString()); }
+function _mailSave_(data){ getHotelFile().setContent(JSON.stringify(data)); }
+function _msCfg_(data){ return ((data.propertySettings||{}).mailSettings)||{}; }
+
+// 言語判定：チェックイン時に保存した言語 → 国籍 → 既定ja
+function _mailLang_(g){
+  var l=(g&&g.agreementLanguage)||'';
+  if(l==='ja'||l==='en'||l==='zh'||l==='ko')return l;
+  var nat=String((g&&g.nat)||'').trim();
+  if(!nat||nat==='日本'||nat==='Japan'||nat==='日本国')return 'ja';
+  return 'en';
+}
+function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
+function _roomNo_(data,roomId){ var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0]; return r?(r.no||String(roomId)):String(roomId); }
+function _roomLangObj_(data,roomId,lang){ var rs=(data.roomSettings||{})[roomId]; if(!rs)return {}; var L=rs.languages||{}; return L[_roomLangKey_(lang)]||L.ja||{}; }
+function _keycode_(data,roomId){ var rs=(data.roomSettings||{})[roomId]; return rs?(rs.keycode||''):''; }
+
+// キー "m:roomId:d"（年なし）→ 今日に最も近い年で Date を構築
+function _keyToDate_(key){
+  var p=String(key).split(':'); var m=parseInt(p[0]), d=parseInt(p[2]);
+  if(isNaN(m)||isNaN(d))return null;
+  var now=new Date(); var y=now.getFullYear();
+  var dt=new Date(y,m-1,d);
+  var diff=(dt-now)/(1000*60*60*24);
+  if(diff<-45)dt=new Date(y+1,m-1,d); else if(diff>320)dt=new Date(y-1,m-1,d);
+  return dt;
+}
+function _fmtDate_(dt){ if(!dt)return ''; var p=function(n){return String(n).padStart(2,'0');}; return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); }
+function _dayStart_(dt){ return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()).getTime(); }
+
+// アンカー（予約開始）レコードから泊数を数えてチェックアウト日を算出
+function _checkoutDate_(guestData, key, g){
+  var p=String(key).split(':'); var m=parseInt(p[0]), roomId=p[1], d=parseInt(p[2]);
+  var nights=1;
+  while(true){
+    var nk=m+':'+roomId+':'+(d+nights);
+    var ng=guestData[nk];
+    if(!ng)break;
+    if(ng.charter&&ng.charterAnchor)break;
+    if(!ng.cont&&!ng.charter)break;
+    nights++;
+    if(nights>60)break;
+  }
+  var ci=_keyToDate_(key); if(!ci)return null;
+  return new Date(ci.getFullYear(),ci.getMonth(),ci.getDate()+nights);
+}
+
+// 差し込みキーワード置換
+function _mailRender_(text, ctx){
+  if(!text)return '';
+  return String(text).replace(/\[([^\]]+)\]/g, function(_,kw){ return (ctx[kw]!==undefined&&ctx[kw]!==null)?String(ctx[kw]):('['+kw+']'); });
+}
+function _mailCtx_(data, key, g, lang){
+  var roomId=String(key).split(':')[1];
+  var ci=_keyToDate_(key), co=_checkoutDate_(data.guestData||{}, key, g);
+  var Lo=_roomLangObj_(data,roomId,lang);
+  var url=g.checkinUrl || (g.reservationId? ('https://enoshimaguesthouse-crypto.github.io/checkin-app/checkin-app.html?reservationId='+encodeURIComponent(g.reservationId)) : '');
+  return {
+    '代表者名': g.name||'',
+    '予約番号': g.reservationId||'',
+    '部屋番号': _roomNo_(data,roomId),
+    '鍵番号': _keycode_(data,roomId),
+    'チェックインコード': _keycode_(data,roomId),
+    '物件名': Lo.roomName||'',
+    '入室案内': Lo.guideText||'',
+    'チェックインURL': url,
+    'チェックイン日': _fmtDate_(ci),
+    'チェックアウト日': _fmtDate_(co)
+  };
+}
+
+// 添付（Drive ID→Blob）。失敗は黙ってスキップ。
+function _mailAttachBlobs_(cfg, lang){
+  var out=[]; var list=(cfg.attachments&&cfg.attachments[lang])||[];
+  list.forEach(function(a){ try{ if(a&&a.id)out.push(DriveApp.getFileById(a.id).getBlob()); }catch(e){} });
+  return out;
+}
+// チェックインURLのQR画像Blob（外部API）
+function _mailQrBlob_(url){
+  try{ if(!url)return null;
+    var resp=UrlFetchApp.fetch('https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data='+encodeURIComponent(url));
+    return resp.getBlob().setName('checkin_qr.png');
+  }catch(e){ return null; }
+}
+
+// 1通組み立て＆送信（toが空なら送らない）
+function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
+  opts=opts||{};
+  var lang=_mailLang_(g);
+  var to=opts.forceTo || (g.email||'').trim();
+  if(!to)return {skipped:'no-email'};
+  var ctx=_mailCtx_(data, gkey, g, lang);
+  var subject=_mailRender_((cfg.subject&&cfg.subject[lang])||cfg.subject&&cfg.subject.ja||'', ctx);
+  var body=_mailRender_((cfg.body&&cfg.body[lang])||cfg.body&&cfg.body.ja||'', ctx);
+  var atts=_mailAttachBlobs_(cfg, lang);
+  if(mailKey==='checkinCode' && cfg.qr){ var qb=_mailQrBlob_(ctx['チェックインURL']); if(qb)atts.push(qb); }
+  if(opts.dryRun)return {to:to,subject:subject,bodyLen:body.length,attachments:atts.length,lang:lang};
+  GmailApp.sendEmail(to, subject||'(no subject)', body, { attachments:atts, name:'江ノ島ゲストハウス134' });
+  return {sent:true,to:to};
+}
+
+// 既存予約を「送信済み」として記録（過去分の一斉送信を防止）。有効化の直前に1回実行。
+function primeMailFlags(){
+  var data=_mailLoad_(); var gd=data.guestData||{}; var n=0; var stamp='primed:'+new Date().toISOString();
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k]; if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
+    g.mailSent=g.mailSent||{}; MAIL_KEYS.forEach(function(mk){ if(!g.mailSent[mk])g.mailSent[mk]=stamp; }); n++;
+  });
+  _mailSave_(data);
+  return '既存予約 '+n+' 件に送信済みフラグを付与しました（今後の新規・期日到来分のみ送信されます）';
+}
+
+// 自分宛テスト送信：各メール種別を所有者アドレスへ（実ゲストには送らない）
+function sendTestMailToSelf(mailKey, lang){
+  var data=_mailLoad_(); var ms=_msCfg_(data); var cfg=ms[mailKey];
+  if(!cfg)return 'メール種別が見つかりません: '+mailKey;
+  var gd=data.guestData||{};
+  // emailを持つ実予約を1件サンプルに（無ければダミー）
+  var sample=null, skey=null;
+  Object.keys(gd).some(function(k){ var g=gd[k]; if(g&&!g.cont&&(g.email||g.reservationId)){ sample=g; skey=k; return true; } return false; });
+  if(!sample){ sample={name:'テスト 太郎',reservationId:'00000',email:_mailOwner_(),nat:'日本'}; skey=(new Date().getMonth()+1)+':0:1'; gd[skey]=sample; }
+  var res=_mailSendOne_(data, mailKey, sample, skey, mailKey, cfg, {forceTo:_mailOwner_()});
+  return 'テスト送信: '+mailKey+' → '+_mailOwner_()+' / '+JSON.stringify(res);
+}
+
+// トリガー本体：期日が来た予約に自動送信（既定OFF）
+function runAutoMails(){
+  var props=PropertiesService.getScriptProperties();
+  if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return; }
+  var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
+  var now=new Date(); var todayMs=_dayStart_(now); var nowMin=now.getHours()*60+now.getMinutes();
+  var sent=0;
+  var keys=Object.keys(gd);
+  for(var i=0;i<keys.length;i++){
+    if(sent>=MAIL_SEND_CAP)break;
+    var k=keys[i], g=gd[k];
+    if(!g||g.cont)continue; if(g.charter&&!g.charterAnchor)continue;
+    if(!(g.email||'').trim())continue;
+    g.mailSent=g.mailSent||{};
+    var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
+    for(var t=0;t<MAIL_KEYS.length;t++){
+      if(sent>=MAIL_SEND_CAP)break;
+      var mk=MAIL_KEYS[t]; var cfg=ms[mk];
+      if(!cfg||!cfg.enabled)continue;
+      if(g.mailSent[mk])continue;
+      var due=false;
+      if(mk==='reservationCreated'){ if(ciMs!==null && ciMs>=todayMs)due=true; }
+      else if(mk==='checkinCode'){
+        if(ciMs!==null){ var daysUntil=Math.round((ciMs-todayMs)/86400000);
+          var st=(cfg.sendTime||'09:00').split(':'); var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
+          if(daysUntil===(parseInt(cfg.sendDaysBefore)||3) && nowMin>=stMin)due=true; }
+      }
+      else if(mk==='checkin'){ if(g.status==='checked_in'||g.status==='checkedin')due=true; }
+      else if(mk==='checkout'){ var co=_checkoutDate_(gd,k,g); if(co&&_dayStart_(co)===todayMs)due=true; }
+      if(!due)continue;
+      try{
+        var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
+        if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
+        else { g.mailSent[mk]='skip:'+(r&&r.skipped||'?'); }
+      }catch(e){ Logger.log('send error '+mk+' '+k+': '+e); }
+    }
+  }
+  if(sent>0)_mailSave_(data);
+  Logger.log('runAutoMails: 送信 '+sent+' 通');
+  return sent;
+}
+
+// 有効化/無効化と定期トリガー設置（GASエディタから手動実行）
+function setAutosend(on){ PropertiesService.getScriptProperties().setProperty('MAIL_AUTOSEND', on?'on':'off'); return 'MAIL_AUTOSEND='+(on?'on':'off'); }
+function installMailTrigger(){
+  removeMailTrigger();
+  ScriptApp.newTrigger('runAutoMails').timeBased().everyMinutes(30).create();
+  return '30分間隔の自動送信トリガーを設置しました';
+}
+function removeMailTrigger(){
+  var n=0; ScriptApp.getProjectTriggers().forEach(function(t){ if(t.getHandlerFunction()==='runAutoMails'){ ScriptApp.deleteTrigger(t); n++; } });
+  return '既存トリガー '+n+' 件を削除しました';
+}
