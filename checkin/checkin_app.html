@@ -438,6 +438,8 @@ input.needs-input::placeholder { color:#d08a3a; }
   opacity:0; transition:opacity .25s, transform .25s;
 }
 /* 読取成功：枠と四隅を緑（Success）へ。中央に✓を表示 */
+/* パスポート用：横長の枠（顔写真ページに合わせる） */
+.pp-frame { width:min(86%, 380px); aspect-ratio:3/2; }
 .qr-frame.success { border-color:#22c55e; box-shadow:0 0 0 9999px rgba(0,0,0,0.5), 0 0 0 3px #22c55e inset; }
 .qr-frame.success .qr-corner { border-color:#22c55e; }
 .qr-frame.success .qr-check { opacity:1; transform:translate(-50%,-50%) scale(1); }
@@ -499,9 +501,14 @@ input.needs-input::placeholder { color:#d08a3a; }
 
 <!-- パスポート撮影カメラ（インカメラ・ミラープレビュー） -->
 <div class="cam-overlay" id="camOverlay">
-  <div class="cam-title" id="cam-title">パスポートを撮影</div>
-  <div class="cam-stage">
+  <div class="cam-title" id="cam-title">パスポートを枠内に合わせてください</div>
+  <div class="cam-stage qr-stage">
     <video id="cam-video" class="cam-video" playsinline autoplay muted></video>
+    <!-- パスポート用ガイド枠（box-shadowくり抜き＋四隅L字） -->
+    <div class="qr-frame pp-frame" id="pp-frame">
+      <span class="qr-corner tl"></span><span class="qr-corner tr"></span>
+      <span class="qr-corner bl"></span><span class="qr-corner br"></span>
+    </div>
   </div>
   <div class="cam-error" id="cam-error"></div>
   <div class="cam-actions">
@@ -900,7 +907,7 @@ const T = {
     guestsTitle:'宿泊者情報', guestLabel:'宿泊者', residentJp:'日本在住', residentForeign:'外国籍',
     familyNameLabel:'氏名（姓）', givenNameLabel:'氏名（名）', natLabel:'国籍',
     ppPhotoLabel:'パスポート写真', ppPending:'⚠ パスポートを撮影してください', ppDone:'✓ パスポート取得済み', takePhoto:'パスポートを撮影', retakePhoto2:'撮り直す',
-    camTitle:'パスポートを撮影', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
+    camTitle:'パスポートを枠内に合わせてください', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -936,7 +943,7 @@ const T = {
     guestsTitle:'Guests', guestLabel:'Guest', residentJp:'Japan Resident', residentForeign:'Foreign National',
     familyNameLabel:'Family Name', givenNameLabel:'Given Name', natLabel:'Nationality',
     ppPhotoLabel:'Passport Photo', ppPending:'⚠ Please take a passport photo', ppDone:'✓ Passport captured', takePhoto:'Take Passport Photo', retakePhoto2:'Retake',
-    camTitle:'Take Passport Photo', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
+    camTitle:'Please align your passport within the frame.', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -972,7 +979,7 @@ const T = {
     guestsTitle:'住宿人信息', guestLabel:'住宿人', residentJp:'日本居民', residentForeign:'外国人',
     familyNameLabel:'姓', givenNameLabel:'名', natLabel:'国籍',
     ppPhotoLabel:'护照照片', ppPending:'⚠ 请拍摄护照', ppDone:'✓ 护照已采集', takePhoto:'拍摄护照', retakePhoto2:'重新拍摄',
-    camTitle:'拍摄护照', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
+    camTitle:'请将护照对准框内。', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -1008,7 +1015,7 @@ const T = {
     guestsTitle:'투숙객 정보', guestLabel:'투숙객', residentJp:'일본 거주자', residentForeign:'외국인',
     familyNameLabel:'성(姓)', givenNameLabel:'이름(名)', natLabel:'국적',
     ppPhotoLabel:'여권 사진', ppPending:'⚠ 여권을 촬영해 주세요', ppDone:'✓ 여권 촬영 완료', takePhoto:'여권 촬영', retakePhoto2:'다시 촬영',
-    camTitle:'여권 촬영', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
+    camTitle:'여권을 프레임 안에 맞춰주세요.', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
