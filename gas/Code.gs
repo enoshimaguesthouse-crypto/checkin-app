@@ -160,6 +160,43 @@ function doPost(e) {
         url: 'https://drive.google.com/file/d/' + f.getId() + '/view'
       }));
 
+    } else if (payload.type === 'mailPreview') {
+      // メールプレビュー：実際に送信する完成データを返す（送信はしない）
+      var prevData=_mailLoad_(); var prevGd=prevData.guestData||{};
+      var prevResId=String(payload.reservationId||'').trim();
+      var prevMailKey=String(payload.mailKey||'');
+      var prevGkey=null, prevG=null;
+      Object.keys(prevGd).some(function(k){ var r=prevGd[k]; if(r&&!r.cont&&String(r.reservationId||'').trim()===prevResId){prevGkey=k;prevG=r;return true;} return false; });
+      if(!prevG) return jsonOut(JSON.stringify({error:'reservation not found'}));
+      var prevMs=_msCfg_(prevData); var prevCfg=prevMs[prevMailKey];
+      if(!prevCfg) return jsonOut(JSON.stringify({error:'mail type not configured: '+prevMailKey}));
+      var prevLang=payload.lang||_mailLang_(prevG);
+      var prevCtx=_mailCtx_(prevData, prevGkey, prevG, prevLang);
+      var prevSubj=_mailRender_((prevCfg.subject&&prevCfg.subject[prevLang])||(prevCfg.subject&&prevCfg.subject.ja)||'', prevCtx);
+      var prevBody=_mailRender_((prevCfg.body&&prevCfg.body[prevLang])||(prevCfg.body&&prevCfg.body.ja)||'', prevCtx);
+      var prevAttList=((prevCfg.attachments&&prevCfg.attachments[prevLang])||[]).map(function(a){return{name:a.name||'',id:a.id||''};});
+      var prevQrUrl=(prevMailKey==='checkinCode'&&prevCfg.qr)?prevCtx['チェックインURL']:null;
+      return jsonOut(JSON.stringify({status:'ok',type:'mailPreview',to:prevG.email||'',lang:prevLang,subject:prevSubj,body:prevBody,attachments:prevAttList,qrUrl:prevQrUrl||null}));
+
+    } else if (payload.type === 'sendMail') {
+      // 手動メール送信：1通送信してmailHistoryを保存
+      var sndData=_mailLoad_(); var sndGd=sndData.guestData||{};
+      var sndResId=String(payload.reservationId||'').trim();
+      var sndMailKey=String(payload.mailKey||'');
+      var sndGkey=null, sndG=null;
+      Object.keys(sndGd).some(function(k){ var r=sndGd[k]; if(r&&!r.cont&&String(r.reservationId||'').trim()===sndResId){sndGkey=k;sndG=r;return true;} return false; });
+      if(!sndG) return jsonOut(JSON.stringify({error:'reservation not found'}));
+      if(!(sndG.email||'').trim()) return jsonOut(JSON.stringify({error:'no email address'}));
+      var sndMs=_msCfg_(sndData); var sndCfg=sndMs[sndMailKey];
+      if(!sndCfg) return jsonOut(JSON.stringify({error:'mail type not configured: '+sndMailKey}));
+      var sndOpts={}; if(payload.lang)sndOpts.lang=payload.lang;
+      var sndResult=_mailSendOne_(sndData, sndMailKey, sndG, sndGkey, sndMailKey, sndCfg, sndOpts);
+      if(!sndResult||!sndResult.sent) return jsonOut(JSON.stringify({error:'send failed',detail:JSON.stringify(sndResult)}));
+      var sndNow=new Date().toISOString();
+      sndG.mailHistory=sndG.mailHistory||{}; sndG.mailHistory[sndMailKey]=sndNow;
+      _mailSave_(sndData);
+      return jsonOut(JSON.stringify({status:'ok',type:'sendMail',to:sndResult.to,sentAt:sndNow}));
+
     } else if (payload.type === 'checkinUpdate') {
       // ── チェックイン確定の「部分更新」：予約ID一致レコードだけをサーバー側で更新 ──
       // 全DBのダウンロード/再アップロードを回避し、クライアントは差分＋写真のみ送信。
@@ -353,7 +390,7 @@ function _mailQrBlob_(url){
 // 1通組み立て＆送信（toが空なら送らない）
 function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
   opts=opts||{};
-  var lang=_mailLang_(g);
+  var lang=opts.lang || _mailLang_(g);  // opts.lang で言語上書き可能
   var to=opts.forceTo || (g.email||'').trim();
   if(!to)return {skipped:'no-email'};
   var ctx=_mailCtx_(data, gkey, g, lang);
@@ -513,11 +550,14 @@ function exportSentMailsToSheet(){
   return url;
 }
 
-// トリガー本体：期日が来た予約に自動送信（既定OFF）
+// トリガー本体：自動送信（現在は手動再開指示があるまで完全停止）
 function runAutoMails(){
+  // ★ 自動送信を完全停止。再開時はこの return 0 を削除し、primeMailFlags()→autosend_ON()→installMailTrigger() の順で実施。
+  Logger.log('runAutoMails: 自動送信は停止中です（手動再開まで無効）');
+  return 0;
+  /* eslint-disable no-unreachable */
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return; }
-  // 安全ロック：primeMailFlags() を一度も実行していない場合は送信しない（既存予約への一斉送信を防止）
   if(props.getProperty('MAIL_PRIMED')!=='yes'){ Logger.log('runAutoMails: 中止（先に primeMailFlags() を実行してください）'); return 0; }
   var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
   var now=new Date(); var todayMs=_dayStart_(now); var nowMin=now.getHours()*60+now.getMinutes();
