@@ -2072,16 +2072,25 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 <div class="mbg" id="room-modal" onclick="if(event.target===this)closeM('room-modal')">
 <div class="modal" style="width:min(560px,96vw);max-height:88vh;overflow-y:auto;">
   <h3 id="rm-title">部屋追加</h3>
-  <div class="mr mr2"><div class="fl"><label>部屋番号</label><input id="rm-no" type="text" placeholder="例: 3-A, 101, B" maxlength="10"></div><div class="fl"><label>定員</label><input id="rm-cap" type="number" placeholder="2" min="1"></div></div>
-  <div class="mr"><div class="fl"><label>部屋タイプ名</label><input id="rm-type" placeholder="洋室（ダブル）"></div></div>
-  <div class="mr"><div class="fl"><label>カラー</label><select id="rm-color"><option value="#185FA5">ブルー</option><option value="#0F6E56">グリーン</option><option value="#854F0B">アンバー</option><option value="#993556">ピンク</option><option value="#534AB7">パープル</option><option value="#5F5E5A">グレー</option></select></div></div>
 
-  <!-- 基本情報（共通：全言語で同一） -->
-  <div style="border-top:1px solid var(--sand-border);margin:14px 0 10px;padding-top:12px;font-size:12px;font-weight:700;color:#888;letter-spacing:.05em;">基本情報（多言語）</div>
-  <div class="mr mr2"><div class="fl"><label>鍵番号 / 暗証番号</label><input id="rm-keycode" placeholder="1234"></div><div class="fl"><label>電話番号</label><input id="rm-phone" placeholder="0467-xx-xxxx"></div></div>
+  <!-- 【施設情報】建物単位で共通の情報（メール差し込みで使用） -->
+  <div style="margin:4px 0 10px;padding:4px 10px;background:var(--ocean-light);border-radius:6px;font-size:12px;font-weight:700;color:var(--ocean);letter-spacing:.05em;">🏠 施設情報</div>
+  <div class="mr mr2"><div class="fl"><label>物件名</label><input id="rm-facilityname" placeholder="江の島ゲストハウス134"></div><div class="fl"><label>玄関：暗証番号</label><input id="rm-keycode" placeholder="8855＊"></div></div>
+  <div class="mr mr2"><div class="fl"><label>住所</label><input id="rm-address" placeholder="藤沢市片瀬海岸2-15-15"></div><div class="fl"><label>電話番号</label><input id="rm-phone" placeholder="0467-xx-xxxx"></div></div>
   <div class="mr mr2"><div class="fl"><label>Wi-Fi SSID</label><input id="rm-wifissid" placeholder="HG134_ANNEX_D"></div><div class="fl"><label>Wi-Fi パスワード</label><input id="rm-wifipass" placeholder="password123"></div></div>
-  <div class="mr"><div class="fl"><label>住所</label><input id="rm-address" placeholder="藤沢市片瀬海岸2-15-15"></div></div>
+  <div class="mr"><div class="fl"><label>チェックイン方法の詳細（URL添付）</label><input id="rm-checkinurl" placeholder="https://drive.google.com/file/d/..."></div></div>
 
+  <!-- 【お部屋情報】部屋単位の情報 -->
+  <div style="margin:16px 0 10px;padding:4px 10px;background:var(--seaglass-lt);border-radius:6px;font-size:12px;font-weight:700;color:#2b7a6a;letter-spacing:.05em;">🚪 お部屋情報</div>
+  <div class="mr mr2"><div class="fl"><label>部屋タイプ名</label><input id="rm-type" placeholder="洋室（ダブル）"></div><div class="fl"><label>定員</label><input id="rm-cap" type="number" placeholder="2" min="1"></div></div>
+  <div class="mr mr2"><div class="fl"><label>部屋番号</label><input id="rm-no" type="text" placeholder="例: 3-A, 101, B" maxlength="10"></div><div class="fl"><label>部屋：暗証番号</label><input id="rm-roomcode" placeholder="1234"></div></div>
+  <div class="mr"><div class="fl"><label>カラー</label><select id="rm-color"><option value="#185FA5">ブルー</option><option value="#0F6E56">グリーン</option><option value="#854F0B">アンバー</option><option value="#993556">ピンク</option><option value="#534AB7">パープル</option><option value="#5F5E5A">グレー</option></select></div></div>
+  <div class="mr"><div class="fl"><label>備考１（連泊のお願い・荷物預け 等）</label><textarea id="rm-note1" rows="2" placeholder="メール差し込み [備考1] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
+  <div class="mr"><div class="fl"><label>備考２</label><textarea id="rm-note2" rows="2" placeholder="メール差し込み [備考2] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
+  <div class="mr"><div class="fl"><label>備考３</label><textarea id="rm-note3" rows="2" placeholder="メール差し込み [備考3] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
+
+  <!-- 【タブレット表示】多言語 -->
+  <div style="margin:16px 0 10px;padding:4px 10px;background:var(--sand-mid);border-radius:6px;font-size:12px;font-weight:700;color:#888;letter-spacing:.05em;">📱 タブレット表示</div>
   <!-- 言語タブ -->
   <div style="display:flex;gap:4px;margin:12px 0 8px;flex-wrap:wrap;" id="rm-lang-tabs">
     <button type="button" class="rm-lang-tab active" data-lang="ja"  onclick="switchRoomLang('ja',this)">日本語</button>
@@ -3765,7 +3774,7 @@ const MAIL_TYPES=[
   {key:'checkout',           label:'チェックアウト時'},
 ];
 // 差し込みキーワード（送信時にGAS側で実値へ置換する想定のトークン）
-const MAIL_KEYWORDS=['代表者名','予約番号','部屋番号','鍵番号','物件名','チェックインURL','チェックインコード','チェックイン日','チェックアウト日','入室案内'];
+const MAIL_KEYWORDS=['代表者名','予約番号','施設名','物件名','部屋番号','玄関暗証番号','部屋暗証番号','鍵番号','チェックインコード','電話番号','住所','WiFiSSID','WiFiパスワード','チェックイン案内URL','チェックインURL','チェックイン日','チェックアウト日','入室案内','備考1','備考2','備考3'];
 const MAIL_ATTACH_MAX=5*1024*1024; // 1ファイル5MB
 let _mailDraft=null, _mailCur={type:'reservationCreated', lang:'ja'};
 
@@ -7388,8 +7397,11 @@ function loadRoomSettingsLS(){
 
 function _ensureRoomSetting(id){
   if(!roomSettings[id]){
-    roomSettings[id]={phone:'',address:'',wifiSsid:'',wifiPass:'',keycode:'',languages:{},media:[]};
+    roomSettings[id]={facilityName:'',phone:'',address:'',wifiSsid:'',wifiPass:'',keycode:'',checkinGuideUrl:'',roomCode:'',note1:'',note2:'',note3:'',languages:{},media:[]};
   }
+  // 既存データへの新フィールド補完（後方互換）
+  const _s=roomSettings[id];
+  ['facilityName','checkinGuideUrl','roomCode','note1','note2','note3'].forEach(f=>{ if(_s[f]===undefined)_s[f]=''; });
   if(!Array.isArray(roomSettings[id].media))roomSettings[id].media=[];
   ROOM_LANGS.forEach(l=>{
     if(!roomSettings[id].languages[l])roomSettings[id].languages[l]={roomName:'',guideText:''};
@@ -7493,11 +7505,17 @@ function switchRoomLang(lang, btn){
 
 function _loadRoomSettingToForm(id){
   const s=_ensureRoomSetting(id);
+  document.getElementById('rm-facilityname').value=s.facilityName||'';
   document.getElementById('rm-keycode').value=s.keycode||'';
   document.getElementById('rm-phone').value=s.phone||'';
   document.getElementById('rm-wifissid').value=s.wifiSsid||'';
   document.getElementById('rm-wifipass').value=s.wifiPass||'';
   document.getElementById('rm-address').value=s.address||'';
+  document.getElementById('rm-checkinurl').value=s.checkinGuideUrl||'';
+  document.getElementById('rm-roomcode').value=s.roomCode||'';
+  document.getElementById('rm-note1').value=s.note1||'';
+  document.getElementById('rm-note2').value=s.note2||'';
+  document.getElementById('rm-note3').value=s.note3||'';
   // 言語バッファを初期化
   _rmLangBuffer={};
   ROOM_LANGS.forEach(l=>{
@@ -7518,7 +7536,7 @@ function _loadRoomSettingToForm(id){
 }
 
 function _clearRoomSettingForm(){
-  ['rm-keycode','rm-phone','rm-wifissid','rm-wifipass','rm-address','rm-roomname-lang','rm-guidetext-lang'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['rm-facilityname','rm-keycode','rm-phone','rm-wifissid','rm-wifipass','rm-address','rm-checkinurl','rm-roomcode','rm-note1','rm-note2','rm-note3','rm-roomname-lang','rm-guidetext-lang'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   _rmLangBuffer={};ROOM_LANGS.forEach(l=>_rmLangBuffer[l]={roomName:'',guideText:''});
   _rmCurrentLang='ja';
   document.querySelectorAll('.rm-lang-tab').forEach(t=>t.classList.toggle('active',t.dataset.lang==='ja'));
@@ -7540,11 +7558,17 @@ function saveRoom(){
     guideText:document.getElementById('rm-guidetext-lang').value
   };
   const s=_ensureRoomSetting(targetId);
+  s.facilityName=document.getElementById('rm-facilityname').value.trim();
   s.keycode=document.getElementById('rm-keycode').value.trim();
   s.phone=document.getElementById('rm-phone').value.trim();
   s.wifiSsid=document.getElementById('rm-wifissid').value.trim();
   s.wifiPass=document.getElementById('rm-wifipass').value.trim();
   s.address=document.getElementById('rm-address').value.trim();
+  s.checkinGuideUrl=document.getElementById('rm-checkinurl').value.trim();
+  s.roomCode=document.getElementById('rm-roomcode').value.trim();
+  s.note1=document.getElementById('rm-note1').value.trim();
+  s.note2=document.getElementById('rm-note2').value.trim();
+  s.note3=document.getElementById('rm-note3').value.trim();
   ROOM_LANGS.forEach(l=>{
     s.languages[l]={roomName:(_rmLangBuffer[l]?.roomName||'').trim(),guideText:(_rmLangBuffer[l]?.guideText||'').trim()};
   });

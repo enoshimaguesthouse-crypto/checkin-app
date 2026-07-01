@@ -358,15 +358,28 @@ function _mailCtx_(data, key, g, lang){
   var roomId=String(key).split(':')[1];
   var ci=_keyToDate_(key), co=_checkoutDate_(data.guestData||{}, key, g);
   var Lo=_roomLangObj_(data,roomId,lang);
+  var rs=(data.roomSettings||{})[roomId]||{};   // 部屋設定（施設情報・備考など建物単位の情報）
   var url=g.checkinUrl || (g.reservationId? ('https://enoshimaguesthouse-crypto.github.io/checkin-app/checkin-app.html?reservationId='+encodeURIComponent(g.reservationId)) : '');
   return {
     '代表者名': g.name||'',
     '予約番号': g.reservationId||'',
     '部屋番号': _roomNo_(data,roomId),
+    // 玄関暗証番号（=keycode）：既存の[鍵番号][チェックインコード]と同一値で後方互換を維持
     '鍵番号': _keycode_(data,roomId),
     'チェックインコード': _keycode_(data,roomId),
+    '玄関暗証番号': _keycode_(data,roomId),
+    '部屋暗証番号': rs.roomCode||'',
+    '施設名': rs.facilityName||'',
     '物件名': Lo.roomName||'',
+    '電話番号': rs.phone||'',
+    '住所': rs.address||'',
+    'WiFiSSID': rs.wifiSsid||'',
+    'WiFiパスワード': rs.wifiPass||'',
+    'チェックイン案内URL': rs.checkinGuideUrl||'',
     '入室案内': Lo.guideText||'',
+    '備考1': rs.note1||'',
+    '備考2': rs.note2||'',
+    '備考3': rs.note3||'',
     'チェックインURL': url,
     'チェックイン日': _fmtDate_(ci),
     'チェックアウト日': _fmtDate_(co)
