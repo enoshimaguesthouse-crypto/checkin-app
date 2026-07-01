@@ -2323,8 +2323,9 @@ async function applyRoomGuide(roomId){
       el('room-number-display').textContent = displayRoomNo;
     }
 
-    // 暗証番号
-    const pinNo = (settings && settings.keycode) ? settings.keycode : '—';
+    // 暗証番号（部屋の暗証番号 roomCode を優先。無ければ従来の keycode にフォールバック）
+    const pinNo = (settings && settings.roomCode) ? settings.roomCode
+                : (settings && settings.keycode) ? settings.keycode : '—';
     el('pin-display').textContent = pinNo;
 
     if(!settings){
