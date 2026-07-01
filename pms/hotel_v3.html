@@ -3759,8 +3759,8 @@ function saveContractSettings(){
 //  自動メール配信設定
 // ══════════════════════════════════════════════════════════
 const MAIL_TYPES=[
-  {key:'reservationCreated', label:'予約作成時'},
-  {key:'checkinCode',        label:'チェックインコード送信', code:true},
+  {key:'reservationCreated', label:'予約確定時'},
+  {key:'checkinCode',        label:'QR・予約ID送信', code:true},
   {key:'checkin',            label:'チェックイン時'},
   {key:'checkout',           label:'チェックアウト時'},
 ];
@@ -5182,10 +5182,8 @@ function populateRS(sid){document.getElementById('f-room').innerHTML=rooms.map(r
 
 // ── 手動メール送信パネル ─────────────────────────────────────────
 const MAIL_TYPE_LABELS = {
-  reservationCreated: '予約作成メール',
-  checkinCode:        'チェックインコード',
-  checkin:            'チェックイン時メール',
-  checkout:           'チェックアウト時メール'
+  reservationCreated: '予約確定時',
+  checkinCode:        'QR・予約ID送信'
 };
 let _mailPreviewCtx = null; // {mailKey, lang, reservationId, to}
 
