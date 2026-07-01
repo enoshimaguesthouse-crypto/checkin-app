@@ -5731,6 +5731,7 @@ function importAirhostCSV(text){
   );
 
   let imported=0,skipped=0,cancelled=0;
+  const monthCounts={};
 
   for(let ri=1;ri<lines.length;ri++){
     const cols=parseCSVLine(lines[ri]);
@@ -5798,9 +5799,11 @@ function importAirhostCSV(text){
       guestData[gk(nm,rid,nd,ny)]={...gBase,day:nd,price:n===0?price:null,cont:n>0};
     }
     imported++;
+    monthCounts[cm]=(monthCounts[cm]||0)+1;
   }
 
-  const msg=`✅ Airhost: ${imported}件取込 / ${skipped}件重複スキップ${cancelled?` / キャンセル${cancelled}件除外`:''}`;
+  const monthSummary=Object.entries(monthCounts).sort((a,b)=>a[0]-b[0]).map(([m,c])=>`${m}月:${c}件`).join('、');
+  const msg=`✅ Airhost: ${imported}件取込${monthSummary?`（${monthSummary}）`:''} / ${skipped}件重複スキップ${cancelled?` / キャンセル${cancelled}件除外`:''}`;
   const resultEl=document.getElementById('import-result');
   if(resultEl)resultEl.innerHTML=`<div class="import-ok">${msg}</div>`;
   showToast(msg);
