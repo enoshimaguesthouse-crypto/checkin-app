@@ -2666,8 +2666,11 @@ function addDays(m,d,n,y){
 // yは既定でDISP_YEAR。月のオーバーフロー/アンダーフローは年へ繰り上げ/繰り下げ。
 function gk(m,r,d,y){
   y=(y==null?DISP_YEAR:y);
-  while(m>12){m-=12;y++;}
-  while(m<1){m+=12;y--;}
+  // 月・日のオーバーフロー/アンダーフローを実カレンダーで正規化。
+  // 例: gk(6,r,31) → 7/1 → "7:r:1"（月跨ぎ連泊のキー不整合を防止）。
+  // 有効な日付はDateで恒等変換されるため、既存の全呼び出しに影響なし。
+  const dt=new Date(y,m-1,d);
+  y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate();
   return y===2026 ? `${m}:${r}:${d}` : `${y}:${m}:${r}:${d}`;
 }
 // データキーを解析（後方互換）：3要素=2026(m:r:d)、4要素=(y:m:r:d)
@@ -5430,7 +5433,8 @@ function saveGuest(){
   const editOccupiedKeys=new Set();
   if(editKey){
     const og=guestData[editKey];
-    if(og){const on=findN(og.roomId,og.day,month);for(let n=0;n<on;n++)editOccupiedKeys.add(gk(month,og.roomId,og.day+n));}
+    // 月跨ぎ対応：findAllKeysで全泊分（翌月含む）のキーを取得し、旧セルを漏れなく除外・削除対象に
+    if(og){findAllKeys(og.roomId,month,og.day).forEach(({k})=>editOccupiedKeys.add(k));}
   }
   for(let n=0;n<nights;n++){
     const ck=gk(month,rid,day+n);
@@ -5444,7 +5448,11 @@ function saveGuest(){
   // 既存予約を削除（編集時・衝突なし確認後）
   editOccupiedKeys.forEach(k=>delete guestData[k]);
 
-  for(let n=0;n<nights;n++)guestData[gk(month,rid,day+n)]={..._preserve,...base,day:day+n,price:n===0?base.price:null,cont:n>0};
+  // 月跨ぎ対応：各泊の実カレンダー日付(y,m,d)を算出してキー・dayフィールドを正しく設定（CSV取込と同一ロジックへ統一）
+  for(let n=0;n<nights;n++){
+    const {y:ny,m:nm,d:nd}=addDays(month,day,n);
+    guestData[gk(nm,rid,nd,ny)]={..._preserve,...base,roomId:rid,day:nd,price:n===0?base.price:null,cont:n>0};
+  }
 
   // 駐車場：チェックONなら追加、OFFなら自動登録分を削除
   if(useParking){
@@ -5494,9 +5502,9 @@ function deleteGuest(){
   if(!g)return;
   saveHistory();
   const month=parseInt(document.getElementById('sel-month').value);
-  const n=findN(g.roomId,g.day,month);
   syncDeleteRelated(g,month);
-  for(let i=0;i<n;i++)delete guestData[gk(month,g.roomId,g.day+i)];
+  // 月跨ぎ対応：findAllKeysで全泊分（翌月含む）のキーを削除
+  findAllKeys(g.roomId,month,g.day).forEach(({k})=>delete guestData[k]);
   closeM('modal');renderReg();autoSave();
 }
 function exportCSV(){
