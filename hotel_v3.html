@@ -2021,6 +2021,50 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     <button class="btn" onclick="closeM('modal')">キャンセル</button>
     <button class="btn btn-blue" onclick="saveGuest()">保存</button>
   </div>
+  <!-- 手動メール送信パネル（予約詳細のみ表示） -->
+  <div id="f-mail-panel" style="display:none;">
+    <div style="border-top:2px solid var(--sand-border);margin-top:20px;padding-top:14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;margin-bottom:8px;">📧 メール送信</div>
+      <div id="f-mail-rows"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- メール送信プレビューモーダル -->
+<div class="mbg" id="mail-preview-modal" onclick="if(event.target===this)closeM('mail-preview-modal')">
+<div class="mbox" onclick="event.stopPropagation()" style="width:min(620px,94vw);padding:1.5rem;background:var(--white);border-radius:var(--radius-md);position:relative;">
+  <h3 id="mpm-title" style="margin-bottom:16px;">メール送信プレビュー</h3>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;gap:8px;align-items:center;background:var(--sand);border-radius:8px;padding:8px 12px;">
+      <span style="font-size:11.5px;color:var(--muted);width:64px;flex-shrink:0;font-weight:600;">送信先</span>
+      <span id="mpm-to" style="font-size:13px;font-weight:700;word-break:break-all;color:var(--ocean);"></span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;padding:4px 12px;">
+      <span style="font-size:11.5px;color:var(--muted);width:64px;flex-shrink:0;font-weight:600;">言語</span>
+      <span id="mpm-lang" style="font-size:13px;"></span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:baseline;padding:4px 12px;">
+      <span style="font-size:11.5px;color:var(--muted);width:64px;flex-shrink:0;font-weight:600;">件名</span>
+      <span id="mpm-subject" style="font-size:13px;font-weight:700;word-break:break-all;"></span>
+    </div>
+    <div style="padding:4px 0;">
+      <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px;padding:0 12px;">本文</div>
+      <pre id="mpm-body" style="font-size:12px;font-family:inherit;white-space:pre-wrap;word-break:break-word;background:var(--sand);border:1px solid var(--sand-border);border-radius:8px;padding:12px;max-height:260px;overflow-y:auto;margin:0;"></pre>
+    </div>
+    <div id="mpm-attach-row" style="display:none;padding:4px 12px;">
+      <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px;">添付ファイル</div>
+      <div id="mpm-attachments" style="display:flex;flex-wrap:wrap;gap:6px;font-size:12px;"></div>
+    </div>
+    <div id="mpm-qr-row" style="display:none;padding:4px 12px;">
+      <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px;">QRコード（チェックインURL）</div>
+      <img id="mpm-qr-img" alt="QR" style="width:120px;height:120px;border:1px solid var(--sand-border);border-radius:8px;background:#fff;">
+    </div>
+  </div>
+  <div class="mbt" style="margin-top:16px;">
+    <button class="btn" onclick="closeM('mail-preview-modal')">閉じる</button>
+    <button class="btn btn-blue" id="mpm-send-btn" onclick="confirmAndSendMail()">この内容で送信</button>
+  </div>
 </div>
 </div>
 
@@ -5059,6 +5103,7 @@ function openAdd(){
   PLAN_RULES.forEach(r=>{if(r.checkboxId){const el=document.getElementById(r.checkboxId);if(el)el.checked=false;}});
   const ppRow=document.getElementById('f-passports-row'); if(ppRow)ppRow.style.display='none'; // 追加時はパスポート欄を隠す
   const qrRow=document.getElementById('f-qr-row'); if(qrRow)qrRow.style.display='none'; // 追加時はQR欄を隠す（保存後に表示）
+  const mailPanel=document.getElementById('f-mail-panel'); if(mailPanel)mailPanel.style.display='none'; // 追加時はメール欄を隠す
   populateNat('f-nat','日本');populateRS(-1);document.getElementById('modal').classList.add('open');
 }
 function openAddAt(rid,day){
@@ -5103,6 +5148,8 @@ function openEdit(k){
   renderCheckinQr(g);
   // パスポート写真を遅延取得（起動データには画像を含めず、開いた予約の分だけ取得）
   loadPassportPhotos(g.reservationId);
+  // 手動メール送信パネルを更新
+  renderMailPanel(g);
 }
 
 // 予約詳細のQR表示。checkinUrlは保存済み優先・無ければ予約IDから生成。画像は外部APIで描画。
@@ -5128,6 +5175,126 @@ function openCheckinQrTab(){
   if(_currentCheckinUrl)window.open('https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data='+encodeURIComponent(_currentCheckinUrl),'_blank');
 }
 function populateRS(sid){document.getElementById('f-room').innerHTML=rooms.map(r=>`<option value="${r.id}"${r.id===sid?' selected':''}>${r.no} (${r.type})</option>`).join('');}
+
+// ── 手動メール送信パネル ─────────────────────────────────────────
+const MAIL_TYPE_LABELS = {
+  reservationCreated: '予約作成メール',
+  checkinCode:        'チェックインコード',
+  checkin:            'チェックイン時メール',
+  checkout:           'チェックアウト時メール'
+};
+let _mailPreviewCtx = null; // {mailKey, lang, reservationId, to}
+
+function _fmtMailDt(iso){
+  try{
+    const d=new Date(iso);
+    const p=n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }catch(e){return iso;}
+}
+
+function renderMailPanel(g){
+  const panel=document.getElementById('f-mail-panel');
+  if(!panel)return;
+  if(!g||!g.reservationId){panel.style.display='none';return;}
+  const email=(g.email||'').trim();
+  const history=g.mailHistory||{};
+  const ms=(propertySettings&&propertySettings.mailSettings)||{};
+  let rowsHtml='';
+  if(!email){
+    rowsHtml+='<div style="font-size:11px;color:#c0392b;margin-bottom:8px;">⚠ メールアドレスが登録されていません</div>';
+  }
+  Object.keys(MAIL_TYPE_LABELS).forEach(key=>{
+    const label=MAIL_TYPE_LABELS[key];
+    const lastStr=history[key]?_fmtMailDt(history[key]):'なし';
+    const noEmail=!email;
+    const disAttr=noEmail?'disabled':'';
+    rowsHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--sand-border);">
+      <div>
+        <div style="font-size:12px;font-weight:600;">${label}</div>
+        <div style="font-size:11px;color:var(--muted);">前回送信：${lastStr}</div>
+      </div>
+      <button class="btn btn-xs btn-blue" ${disAttr} style="white-space:nowrap;flex-shrink:0;" onclick="openMailPreview('${key}',this)">送信</button>
+    </div>`;
+  });
+  document.getElementById('f-mail-rows').innerHTML=rowsHtml;
+  panel.style.display='';
+}
+
+async function openMailPreview(mailKey, btn){
+  const g=guestData[editKey];
+  if(!g||!g.reservationId)return;
+  const origText=btn?btn.textContent:'';
+  if(btn){btn.textContent='読込中…';btn.disabled=true;}
+  try{
+    const res=await fetch(GAS_URL,{method:'POST',
+      body:JSON.stringify({type:'mailPreview',reservationId:g.reservationId,mailKey})});
+    const data=await res.json();
+    if(data.error){alert('プレビュー取得エラー:\n'+data.error);return;}
+    _mailPreviewCtx={mailKey,lang:data.lang,reservationId:g.reservationId,to:data.to};
+    document.getElementById('mpm-title').textContent=MAIL_TYPE_LABELS[mailKey]+' プレビュー';
+    document.getElementById('mpm-to').textContent=data.to||'(未登録)';
+    document.getElementById('mpm-lang').textContent=data.lang==='ja'?'🇯🇵 日本語':'🌐 English';
+    document.getElementById('mpm-subject').textContent=data.subject||'';
+    document.getElementById('mpm-body').textContent=data.body||'';
+    // 添付ファイル
+    const attEl=document.getElementById('mpm-attachments');
+    const attRow=document.getElementById('mpm-attach-row');
+    if(data.attachments&&data.attachments.length){
+      attEl.innerHTML=data.attachments.map(a=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--sand);border:1px solid var(--sand-border);border-radius:6px;padding:3px 8px;">📎 ${a.name}</span>`).join('');
+      attRow.style.display='';
+    }else{attRow.style.display='none';}
+    // QRコード
+    const qrRow=document.getElementById('mpm-qr-row');
+    if(data.qrUrl){
+      document.getElementById('mpm-qr-img').src='https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data='+encodeURIComponent(data.qrUrl);
+      qrRow.style.display='';
+    }else{qrRow.style.display='none';}
+    const sendBtn=document.getElementById('mpm-send-btn');
+    sendBtn.textContent='この内容で送信';sendBtn.disabled=false;
+    document.getElementById('mail-preview-modal').classList.add('open');
+  }catch(e){
+    alert('プレビュー取得に失敗しました:\n'+e.message);
+  }finally{
+    if(btn){btn.textContent=origText;btn.disabled=!!(!(guestData[editKey]&&(guestData[editKey].email||'').trim()));}
+  }
+}
+
+function confirmAndSendMail(){
+  if(!_mailPreviewCtx)return;
+  const {mailKey,lang,reservationId,to}=_mailPreviewCtx;
+  const label=MAIL_TYPE_LABELS[mailKey]||mailKey;
+  if(!confirm(`送信先: ${to}\n「${label}」を送信します。よろしいですか？`))return;
+  _doSendMail(mailKey,lang,reservationId);
+}
+
+async function _doSendMail(mailKey,lang,reservationId){
+  const sendBtn=document.getElementById('mpm-send-btn');
+  sendBtn.textContent='Sending…';sendBtn.disabled=true;
+  try{
+    const res=await fetch(GAS_URL,{method:'POST',
+      body:JSON.stringify({type:'sendMail',reservationId,mailKey,lang})});
+    const data=await res.json();
+    if(data.error){
+      alert('送信エラー:\n'+data.error);
+      sendBtn.textContent='この内容で送信';sendBtn.disabled=false;
+      return;
+    }
+    showToast('📧 送信完了: '+data.to);
+    closeM('mail-preview-modal');
+    // ローカルのmailHistoryを更新してパネルを再描画
+    const g=guestData[editKey];
+    if(g){
+      g.mailHistory=g.mailHistory||{};
+      g.mailHistory[mailKey]=data.sentAt||new Date().toISOString();
+      renderMailPanel(g);
+      cloudSave(); // cloudDataへ反映してDriveと同期
+    }
+  }catch(e){
+    alert('送信に失敗しました:\n'+e.message);
+    sendBtn.textContent='この内容で送信';sendBtn.disabled=false;
+  }
+}
 
 // データURLを新規タブで開く（大きな画像でも確実に表示）
 function openDataUrl(dataUrl){
