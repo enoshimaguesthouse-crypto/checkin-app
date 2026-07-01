@@ -415,10 +415,10 @@ function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
     // 全体背景：CSSグラデーションは使わず、行ごとのbgcolor属性で「海→波打ち際→砂浜」を表現
     // （bgcolor属性はOutlook/Gmail/Yahoo/Apple Mailすべてで確実に効くため、gradientより安全）
     +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">'
-    // 深海カラーのヘッダーバー（波アイコン＋施設名、白文字）
+    // 深海カラーのヘッダーバー（施設名、白文字）
     +'<tr><td align="center" bgcolor="#1a5276" style="background-color:#1a5276;padding:22px 12px;">'
       +'<div style="font-size:20px;font-weight:700;color:#ffffff;font-family:Arial,Helvetica,sans-serif;letter-spacing:1px;">'
-        +'🌊 江ノ島ゲストハウス134'
+        +'江ノ島ゲストハウス134'
       +'</div>'
     +'</td></tr>'
     // 海泡カラーの帯：QR・予約IDカードを中央配置
@@ -449,7 +449,7 @@ function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
       +'</table>'
     +'</td></tr>'
     +'<tr><td align="center" style="background-color:#fdfaf5;padding:8px 12px 20px;">'
-      +'<div style="font-size:11px;color:#7f8c8d;font-family:Arial,Helvetica,sans-serif;">🏖 Enoshima Guesthouse 134</div>'
+      +'<div style="font-size:11px;color:#7f8c8d;font-family:Arial,Helvetica,sans-serif;">Enoshima Guesthouse 134</div>'
     +'</td></tr>'
     +'</table>';
 }
