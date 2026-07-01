@@ -407,13 +407,24 @@ function _plainToHtml_(text){
 // QR＋予約IDカード＋既存本文を1通のHTMLメールとして組み立てる。
 // テーブルレイアウト＋インラインCSSのみ使用（Gmail/Yahoo/Outlook/Apple Mail対応）。
 // QR画像はcid参照（inlineImagesでGmailApp.sendEmailに渡す）。
+// 配色：PMS本体と同じ「湘南ビーチハウス」トーン（--ocean #1a5276 / --ocean-light #d6eaf8 / --sand #fdfaf5）。
 function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
   var L = MAIL_QR_CARD_LABELS_[lang] || MAIL_QR_CARD_LABELS_.ja;
   var bodyHtml = _plainToHtml_(bodyPlain);
   return ''
-    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;padding:24px 12px;">'
-    +'<tr><td align="center">'
-      +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:420px;background-color:#ffffff;border:1px solid #E5E7EB;border-radius:12px;">'
+    // 全体背景：CSSグラデーションは使わず、行ごとのbgcolor属性で「海→波打ち際→砂浜」を表現
+    // （bgcolor属性はOutlook/Gmail/Yahoo/Apple Mailすべてで確実に効くため、gradientより安全）
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">'
+    // 深海カラーのヘッダーバー（波アイコン＋施設名、白文字）
+    +'<tr><td align="center" bgcolor="#1a5276" style="background-color:#1a5276;padding:22px 12px;">'
+      +'<div style="font-size:20px;font-weight:700;color:#ffffff;font-family:Arial,Helvetica,sans-serif;letter-spacing:1px;">'
+        +'🌊 江ノ島ゲストハウス134'
+      +'</div>'
+    +'</td></tr>'
+    // 海泡カラーの帯：QR・予約IDカードを中央配置
+    +'<tr><td align="center" bgcolor="#d6eaf8" style="background-color:#d6eaf8;padding:24px 12px;">'
+      +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:420px;background-color:#ffffff;border:1px solid #BFE1F2;border-radius:12px;">'
+        +'<tr><td style="background-color:#45b39d;height:6px;line-height:6px;font-size:0;border-radius:12px 12px 0 0;">&nbsp;</td></tr>'
         +'<tr><td align="center" style="padding:24px;">'
           // QRコード：親tdに強制白背景（ダークモードでの反転・視認性低下を防止）
           +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
@@ -421,21 +432,24 @@ function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
               +'<img src="cid:'+cid+'" width="260" alt="QR" style="display:block;width:70%;max-width:260px;height:auto;background-color:#ffffff;border:0;">'
             +'</td>'
           +'</tr></table>'
-          +'<div style="font-size:13px;color:#6B7280;font-family:Arial,Helvetica,sans-serif;margin-bottom:20px;">'+_escapeHtml_(L.qr)+'</div>'
-          // 予約ID：薄いグレー背景＋枠線で強調
+          +'<div style="font-size:13px;color:#2c3e50;font-family:Arial,Helvetica,sans-serif;margin-bottom:20px;">'+_escapeHtml_(L.qr)+'</div>'
+          // 予約ID：海泡色（ocean-light）背景＋枠線で強調
           +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
-            +'<td align="center" bgcolor="#F3F4F6" style="background-color:#F3F4F6;border:1px solid #E5E7EB;border-radius:8px;padding:14px 10px;">'
-              +'<div style="font-size:12px;color:#6B7280;font-family:Arial,Helvetica,sans-serif;margin-bottom:4px;">'+_escapeHtml_(L.id)+'</div>'
-              +'<div style="font-size:34px;font-weight:700;letter-spacing:4px;color:#111827;font-family:Arial,Helvetica,sans-serif;">'+_escapeHtml_(resId)+'</div>'
+            +'<td align="center" bgcolor="#d6eaf8" style="background-color:#d6eaf8;border:1px solid #9CCDEA;border-radius:8px;padding:14px 10px;">'
+              +'<div style="font-size:12px;color:#1a5276;font-family:Arial,Helvetica,sans-serif;margin-bottom:4px;">'+_escapeHtml_(L.id)+'</div>'
+              +'<div style="font-size:34px;font-weight:700;letter-spacing:4px;color:#1a5276;font-family:Arial,Helvetica,sans-serif;">'+_escapeHtml_(resId)+'</div>'
             +'</td>'
           +'</tr></table>'
         +'</td></tr>'
       +'</table>'
     +'</td></tr>'
-    +'<tr><td align="center" style="padding:20px 12px 0;">'
+    +'<tr><td align="center" style="padding:0 12px 4px;background-color:#fdfaf5;">'
       +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">'
-        +'<tr><td style="font-size:14px;line-height:1.7;color:#111827;font-family:Arial,Helvetica,sans-serif;text-align:left;">'+bodyHtml+'</td></tr>'
+        +'<tr><td style="font-size:14px;line-height:1.7;color:#2c3e50;font-family:Arial,Helvetica,sans-serif;text-align:left;padding-top:20px;">'+bodyHtml+'</td></tr>'
       +'</table>'
+    +'</td></tr>'
+    +'<tr><td align="center" style="background-color:#fdfaf5;padding:8px 12px 20px;">'
+      +'<div style="font-size:11px;color:#7f8c8d;font-family:Arial,Helvetica,sans-serif;">🏖 Enoshima Guesthouse 134</div>'
     +'</td></tr>'
     +'</table>';
 }
