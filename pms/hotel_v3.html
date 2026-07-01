@@ -2921,18 +2921,18 @@ function generateCleaningList(){
 
   // rooms配列順（宿泊名簿と同一）でスキャン
   rooms.forEach(room=>{
+    const keyBefore=(n)=>{const{y,m:pm,d:pd}=addDays(m,d,-n);return gk(pm,room.id,pd,y);};
     const todayKey=gk(m,room.id,d);
-    const yestKey=d>1?gk(m,room.id,d-1):null;
+    const yestKey=keyBefore(1);
     const todayG=guestData[todayKey];
-    const yestG=yestKey?guestData[yestKey]:null;
+    const yestG=guestData[yestKey];
 
     // ── チェックアウト判定：昨日宿泊（cont含む）& 今日は別人orなし ──
     // yestG が cont:true の場合でも、その連泊チェーンのアンカーを取得して判定
     let yestAnchor=yestG;
     if(yestG&&yestG.cont){
       for(let i=2;i<=31;i++){
-        const pk=d-i>=1?gk(m,room.id,d-i):null;
-        if(!pk)break;
+        const pk=keyBefore(i);
         const pg=guestData[pk];
         if(!pg||pg.name!==yestG.name)break;
         if(!pg.cont){yestAnchor=pg;break;}
@@ -2942,8 +2942,8 @@ function generateCleaningList(){
        &&(!todayG||todayG.name!==yestAnchor.name)){
       let nights=1;
       for(let i=2;i<=31;i++){
-        const pk=d-i>=1?gk(m,room.id,d-i):null;
-        if(pk&&guestData[pk]&&guestData[pk].name===yestAnchor.name)nights++;
+        const pk=keyBefore(i);
+        if(guestData[pk]&&guestData[pk].name===yestAnchor.name)nights++;
         else break;
       }
       const hasNextBooking=!!(todayG&&todayG.status!=='cancelled');
@@ -2964,8 +2964,7 @@ function generateCleaningList(){
     if(todayG&&todayG.cont){
       // アンカー（cont:false）を過去方向に探す
       for(let i=1;i<=31;i++){
-        const pk=d-i>=1?gk(m,room.id,d-i):null;
-        if(!pk)break;
+        const pk=keyBefore(i);
         const pg=guestData[pk];
         if(!pg)break;
         if(!pg.cont){effectiveTodayG=pg;break;}
@@ -2978,8 +2977,8 @@ function generateCleaningList(){
         // 連泊開始日から泊数計算
         let nights=1;
         for(let i=1;i<=31;i++){
-          const pk=d-i>=1?gk(m,room.id,d-i):null;
-          if(pk&&guestData[pk]&&guestData[pk].name===effectiveTodayG.name)nights++;
+          const pk=keyBefore(i);
+          if(guestData[pk]&&guestData[pk].name===effectiveTodayG.name)nights++;
           else break;
         }
         newMap.set(room.id+'_stay',{
@@ -3068,6 +3067,8 @@ function renderCleaning(){
   if(orderedEntries.length===0){
     document.getElementById('cleaning-cards').innerHTML=
       '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;">表示する部屋がありません。「🔄 リスト生成」を押してください。</div>';
+    // 清掃リストが0件でも、当月の重点清掃項目プレビューは表示する（早期returnで隠れないように）
+    if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
     return;
   }
 
