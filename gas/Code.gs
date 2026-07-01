@@ -379,12 +379,65 @@ function _mailAttachBlobs_(cfg, lang){
   list.forEach(function(a){ try{ if(a&&a.id)out.push(DriveApp.getFileById(a.id).getBlob()); }catch(e){} });
   return out;
 }
-// チェックインURLのQR画像Blob（外部API）
+// チェックインURLのQR画像Blob（外部API・生成ロジックは変更なし）
 function _mailQrBlob_(url){
   try{ if(!url)return null;
     var resp=UrlFetchApp.fetch('https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data='+encodeURIComponent(url));
     return resp.getBlob().setName('checkin_qr.png');
   }catch(e){ return null; }
+}
+
+// ── チェックインコード送信メール：QR・予約IDをファーストビューに配置するHTMLカード ──
+// ラベルの多言語対応（mailSettingsの言語キー ja/en/zh/ko に対応）
+var MAIL_QR_CARD_LABELS_ = {
+  ja: { qr:'チェックインQRコード', id:'予約ID' },
+  en: { qr:'Check-in QR Code',   id:'Check-in Code' },
+  zh: { qr:'入住二维码',          id:'入住代码' },
+  ko: { qr:'체크인 QR 코드',      id:'체크인 코드' }
+};
+function _escapeHtml_(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// 既存のプレーンテキスト本文はそのまま、改行のみ<br>に変換して続ける（本文内容・変数は変更しない）
+function _plainToHtml_(text){
+  return _escapeHtml_(text).replace(/\r\n|\r|\n/g,'<br>');
+}
+// QR＋予約IDカード＋既存本文を1通のHTMLメールとして組み立てる。
+// テーブルレイアウト＋インラインCSSのみ使用（Gmail/Yahoo/Outlook/Apple Mail対応）。
+// QR画像はcid参照（inlineImagesでGmailApp.sendEmailに渡す）。
+function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
+  var L = MAIL_QR_CARD_LABELS_[lang] || MAIL_QR_CARD_LABELS_.ja;
+  var bodyHtml = _plainToHtml_(bodyPlain);
+  return ''
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f4f6;padding:24px 12px;">'
+    +'<tr><td align="center">'
+      +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:420px;background-color:#ffffff;border:1px solid #E5E7EB;border-radius:12px;">'
+        +'<tr><td align="center" style="padding:24px;">'
+          // QRコード：親tdに強制白背景（ダークモードでの反転・視認性低下を防止）
+          +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
+            +'<td align="center" bgcolor="#ffffff" style="background-color:#ffffff;padding:0 0 16px 0;">'
+              +'<img src="cid:'+cid+'" width="260" alt="QR" style="display:block;width:70%;max-width:260px;height:auto;background-color:#ffffff;border:0;">'
+            +'</td>'
+          +'</tr></table>'
+          +'<div style="font-size:13px;color:#6B7280;font-family:Arial,Helvetica,sans-serif;margin-bottom:20px;">'+_escapeHtml_(L.qr)+'</div>'
+          // 予約ID：薄いグレー背景＋枠線で強調
+          +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
+            +'<td align="center" bgcolor="#F3F4F6" style="background-color:#F3F4F6;border:1px solid #E5E7EB;border-radius:8px;padding:14px 10px;">'
+              +'<div style="font-size:12px;color:#6B7280;font-family:Arial,Helvetica,sans-serif;margin-bottom:4px;">'+_escapeHtml_(L.id)+'</div>'
+              +'<div style="font-size:34px;font-weight:700;letter-spacing:4px;color:#111827;font-family:Arial,Helvetica,sans-serif;">'+_escapeHtml_(resId)+'</div>'
+            +'</td>'
+          +'</tr></table>'
+        +'</td></tr>'
+      +'</table>'
+    +'</td></tr>'
+    +'<tr><td align="center" style="padding:20px 12px 0;">'
+      +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">'
+        +'<tr><td style="font-size:14px;line-height:1.7;color:#111827;font-family:Arial,Helvetica,sans-serif;text-align:left;">'+bodyHtml+'</td></tr>'
+      +'</table>'
+    +'</td></tr>'
+    +'</table>';
 }
 
 // 1通組み立て＆送信（toが空なら送らない）
@@ -397,9 +450,21 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
   var subject=_mailRender_((cfg.subject&&cfg.subject[lang])||cfg.subject&&cfg.subject.ja||'', ctx);
   var body=_mailRender_((cfg.body&&cfg.body[lang])||cfg.body&&cfg.body.ja||'', ctx);
   var atts=_mailAttachBlobs_(cfg, lang);
-  if(mailKey==='checkinCode' && cfg.qr){ var qb=_mailQrBlob_(ctx['チェックインURL']); if(qb)atts.push(qb); }
-  if(opts.dryRun)return {to:to,subject:subject,bodyLen:body.length,attachments:atts.length,lang:lang};
-  GmailApp.sendEmail(to, subject||'(no subject)', body, { attachments:atts, name:'江ノ島ゲストハウス134' });
+  // チェックインコード送信メールのみ：QRをcidインライン画像にしてQR＋予約IDのカードをファーストビューに配置
+  var htmlBody=null, inlineImages=null;
+  if(mailKey==='checkinCode' && cfg.qr){
+    var qb=_mailQrBlob_(ctx['チェックインURL']);
+    if(qb){
+      var cid='qr_code_'+(g.reservationId||gkey);
+      inlineImages={}; inlineImages[cid]=qb;
+      htmlBody=_mailQrCardHtml_(cid, ctx['予約番号']||g.reservationId||'', lang, body);
+    }
+    // QR取得失敗時はhtmlBody=nullのままプレーンテキストのみ送信（既存のフォールバック挙動を維持）
+  }
+  if(opts.dryRun)return {to:to,subject:subject,bodyLen:body.length,attachments:atts.length,lang:lang,htmlBody:!!htmlBody};
+  var mailOptions={ attachments:atts, name:'江ノ島ゲストハウス134' };
+  if(htmlBody){ mailOptions.htmlBody=htmlBody; mailOptions.inlineImages=inlineImages; }
+  GmailApp.sendEmail(to, subject||'(no subject)', body, mailOptions);
   return {sent:true,to:to};
 }
 
