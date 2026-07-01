@@ -5211,7 +5211,7 @@ function renderMailPanel(g){
     const lastStr=history[key]?_fmtMailDt(history[key]):'なし';
     const noEmail=!email;
     const disAttr=noEmail?'disabled':'';
-    rowsHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--sand-border);">
+    rowsHtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;">
       <div>
         <div style="font-size:12px;font-weight:600;">${label}</div>
         <div style="font-size:11px;color:var(--muted);">前回送信：${lastStr}</div>
