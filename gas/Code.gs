@@ -316,6 +316,7 @@ function _mailLang_(g){
 }
 function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
 function _roomNo_(data,roomId){ var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0]; return r?(r.no||String(roomId)):String(roomId); }
+function _roomType_(data,roomId){ var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0]; return r?(r.type||''):''; }
 function _roomLangObj_(data,roomId,lang){ var rs=(data.roomSettings||{})[roomId]; if(!rs)return {}; var L=rs.languages||{}; return L[_roomLangKey_(lang)]||L.ja||{}; }
 function _keycode_(data,roomId){ var rs=(data.roomSettings||{})[roomId]; return rs?(rs.keycode||''):''; }
 
@@ -361,8 +362,12 @@ function _mailCtx_(data, key, g, lang){
   var rs=(data.roomSettings||{})[roomId]||{};   // 部屋設定（施設情報・備考など建物単位の情報）
   var url=g.checkinUrl || (g.reservationId? ('https://enoshimaguesthouse-crypto.github.io/checkin-app/checkin-app.html?reservationId='+encodeURIComponent(g.reservationId)) : '');
   return {
+    // 氏名・予約IDが正式名称。代表者名・予約番号は旧テンプレート互換のため同値を残す
+    '氏名': g.name||'',
     '代表者名': g.name||'',
+    '予約ID': g.reservationId||'',
     '予約番号': g.reservationId||'',
+    '部屋タイプ名': _roomType_(data,roomId),
     '部屋番号': _roomNo_(data,roomId),
     // 玄関暗証番号（=keycode）：既存の[鍵番号][チェックインコード]と同一値で後方互換を維持
     '鍵番号': _keycode_(data,roomId),
