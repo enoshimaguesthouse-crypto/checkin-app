@@ -73,7 +73,7 @@ body::before {
 }
 .app-wrapper {
   position:relative; z-index:1;
-  max-width:680px; margin:0 auto; padding:0 20px 60px;
+  max-width:720px; margin:0 auto; padding:0 24px 80px;
 }
 
 /* ── SCREENS ── */
@@ -378,7 +378,7 @@ input.needs-input::placeholder { color:#d08a3a; }
 .btn-search:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
 
 /* ── ENTRY CARDS（予約ID入力 / QRスキャン：同サイズ2枚を横並び） ── */
-.entry-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch; }
+.entry-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch; margin-bottom:8px; }
 .entry-card {
   background:white; border:1.5px solid var(--border); border-radius:18px;
   padding:24px 20px; box-shadow:0 10px 30px rgba(15,108,140,0.08);
@@ -506,6 +506,34 @@ input.needs-input::placeholder { color:#d08a3a; }
   .step-line { width:32px; }
   .step-label { width:60px; }
   .step-dot { width:34px; height:34px; font-size:14px; }
+}
+
+/* ── タブレット最適化（自動チェックイン端末を想定：余白・タッチ領域・文字を拡大） ── */
+@media(min-width:600px){
+  .header { padding:52px 0 32px; }
+  .header-ja { font-size:28px; }
+  .progress-container { margin-bottom:32px; }
+  .step-dot { width:46px; height:46px; font-size:18px; }
+  .step-line { width:56px; }
+  .step-label { font-size:11px; width:96px; }
+  /* カード全般：内側余白と下マージンを拡大して間延びを防ぎつつ視認性UP */
+  .card { padding:34px 38px; margin-bottom:24px; }
+  .entry-grid { gap:24px; margin-bottom:12px; }
+  .entry-card { padding:32px 26px; }
+  .entry-icon { width:64px; height:64px; margin-bottom:16px; }
+  .entry-title { font-size:17px; margin-bottom:20px; }
+  /* 入力欄・ボタン：指で押しやすい高さに */
+  input[type="text"], input[type="tel"], input[type="email"], input[type="date"], input[type="number"], select {
+    font-size:17px; padding:15px 16px;
+  }
+  .btn-search, .btn-next, .btn-submit, .btn-back { padding:17px; font-size:16px; }
+  .btn-group { gap:16px; margin-top:28px; }
+  .res-found { padding:24px 26px; }
+  .res-value { font-size:15px; }
+  #resResult { margin-top:24px; }
+  .guest-block { padding:22px 20px; margin-bottom:20px; }
+  .field-group { margin-bottom:18px; }
+  .agreement-text { max-height:52vh; font-size:14px; padding:18px 20px; }
 }
 </style>
 <!-- QRコード読み取り用の軽量ライブラリ（カメラスキャン用） -->
@@ -682,7 +710,7 @@ input.needs-input::placeholder { color:#d08a3a; }
     <div class="res-error" id="resError"></div>
 
     <!-- 予約情報表示 -->
-    <div id="resResult" style="display:none;">
+    <div id="resResult" style="display:none;margin-top:20px;">
       <div class="res-found">
         <div class="res-found-header">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
