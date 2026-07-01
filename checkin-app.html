@@ -681,11 +681,6 @@ input.needs-input::placeholder { color:#d08a3a; }
     </div>
     <div class="res-error" id="resError"></div>
 
-    <!-- 戻る（予約検索ページは常時表示） -->
-    <div class="btn-group">
-      <button class="btn-back" onclick="backFromSearch()" id="btn-back-search-top">← 戻る</button>
-    </div>
-
     <!-- 予約情報表示 -->
     <div id="resResult" style="display:none;">
       <div class="res-found">
@@ -700,9 +695,12 @@ input.needs-input::placeholder { color:#d08a3a; }
           <span class="res-label" id="rl-site">予約サイト</span><span class="res-value" id="rv-site"></span>
         </div>
       </div>
-      <div class="btn-group">
-        <button class="btn-next" id="btn-to-form" onclick="goToForm()">次へ　→</button>
-      </div>
+    </div>
+
+    <!-- 戻る（常時表示）／次へ（予約が見つかった時のみ表示）：同じ行に並べる -->
+    <div class="btn-group">
+      <button class="btn-back" onclick="backFromSearch()" id="btn-back-search-top">← 戻る</button>
+      <button class="btn-next" id="btn-to-form" onclick="goToForm()" style="display:none;">次へ　→</button>
     </div>
   </div>
 
@@ -1546,6 +1544,7 @@ async function searchReservation() {
   el('btn-search').textContent = T[lang].searching;
   el('resError').style.display = 'none';
   el('resResult').style.display = 'none';
+  el('btn-to-form').style.display = 'none';
   el('sendingOverlay').classList.add('active');
   el('sendingText').textContent = T[lang].searching;
 
@@ -1640,6 +1639,7 @@ async function searchReservation() {
       el('rv-guests').textContent = (r.guests || '—') + (lang==='ja'?' 名': lang==='ko'?' 명':' pax');
       el('rv-site').textContent  = r.site || '—';
       el('resResult').style.display = 'block';
+      el('btn-to-form').style.display = 'block';
       _submissionReg = ''; // 新しい予約を検索したら登録番号をリセット
     } else {
       el('resError').textContent = T[lang].notFound;
@@ -2609,6 +2609,7 @@ function restartApp() {
   const agreeChk = el('agree-checkbox'); if(agreeChk) agreeChk.checked = false;
   el('reservationId').value = '';
   el('resResult').style.display = 'none';
+  el('btn-to-form').style.display = 'none';
   el('resError').style.display = 'none';
   document.querySelectorAll('input[type="text"],input[type="tel"],input[type="email"],input[type="number"]').forEach(e => e.value='');
   document.querySelectorAll('select').forEach(e => e.selectedIndex=0);
