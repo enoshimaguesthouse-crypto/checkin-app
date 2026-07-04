@@ -808,7 +808,7 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 .pin-key.del{font-size:16px;color:#888;}
 #role-badge{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:50%;transform:translateX(-50%);background:rgba(15,52,67,.85);color:#fff;font-size:12px;padding:5px 16px;border-radius:99px;z-index:9998;cursor:pointer;backdrop-filter:blur(4px);border:none;white-space:nowrap;}
 @media(max-width:900px){
-  body.role-admin .main,body.role-cleaning .main,body.role-reception .main{padding-bottom:56px;}
+  body.role-admin .main,body.role-cleaning .main,body.role-reception .main,body.role-watanabe .main{padding-bottom:56px;}
 }
 /* PIN画面：縦幅が狭い端末（横持ち等）でもボックスが収まるよう */
 @media(max-height:520px){
@@ -850,6 +850,24 @@ body.role-reception #mobile-stats-area,
 body.role-reception [onclick*="exportCSV("],
 body.role-reception [onclick*="exportRentalCSV"]{display:none!important;}
 body.role-reception .gc[draggable="true"]{-webkit-user-drag:none;}
+
+/* 渡辺千尋：宿泊者名簿・清掃予定表のみ表示（駐車場・レンタル・サーフィン等も非表示） */
+body.role-watanabe .nitem[onclick*="showP('import'"],
+body.role-watanabe .nitem[onclick*="showP('parking'"],
+body.role-watanabe .nitem[onclick*="showP('rental'"],
+body.role-watanabe .nitem[onclick*="showP('surf'"],
+body.role-watanabe .nitem[onclick*="showP('occupancy'"],
+body.role-watanabe .nitem[onclick*="showP('sales'"],
+body.role-watanabe .nitem[onclick*="showP('cancel'"],
+body.role-watanabe .nitem[onclick*="showP('todo'"],
+body.role-watanabe #sidebar-property-group,
+body.role-watanabe #nitem-cleaning-focus{display:none!important;}
+/* 集計・CSV出力を無効化（セルドラッグはJS側でSea Breezeのみ許可） */
+body.role-watanabe [onclick*="toggleMobileStats"],
+body.role-watanabe [onclick*="toggleFilterPanel"],
+body.role-watanabe #mobile-stats-area,
+body.role-watanabe [onclick*="exportCSV("],
+body.role-watanabe [onclick*="exportRentalCSV"]{display:none!important;}
 
 /* ── 閲覧専用：編集ボタンを非表示 ── */
 body.viewonly [onclick*="openAdd("],
@@ -2733,7 +2751,7 @@ function getCellIcons(g){
 let selectedKeys=new Set();
 
 function cellClick(e,k){
-  if(currentRole==='reception')return;
+  if(currentRole==='reception'||currentRole==='watanabe')return;
   if(e.ctrlKey||e.metaKey){
     // Ctrl+クリック：複数選択トグル
     if(selectedKeys.has(k)){
@@ -4869,7 +4887,7 @@ function renderReg(){
 // チェックイン状態トグル（右クリック / 長押し）
 let pressTimer=null;
 function toggleCI(k){
-  if(currentRole==='reception')return;
+  if(currentRole==='reception'||currentRole==='watanabe')return;
   const g=guestData[k];if(!g)return;
   const month=parseInt(document.getElementById('sel-month').value);
   const newStatus=isCheckedIn(g.status)?'reserved':'checked_in';
@@ -4895,7 +4913,7 @@ function toggleCI(k){
 // 貸切のチェックイン状態トグル（右クリック）。通常予約の toggleCI と同じ思想で、
 // 貸切予約に属する全部屋×全泊の status / checkedInAt を一括更新し、即時再描画＋cloudSave。
 function toggleCharterCI(charterGroup, startDay, m){
-  if(currentRole==='reception')return;
+  if(currentRole==='reception'||currentRole==='watanabe')return;
   startDay=parseInt(startDay); m=parseInt(m);
   const targetRooms=rooms.filter(r=>{
     if(charterGroup==='ANNEX')return r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー';
@@ -4987,6 +5005,13 @@ function onDrop(e,rid,day){
     src=guestData[anchorKey];
     if(!src||src.cont)return; // アンカーが見つからない場合は中断
     dragSrc=anchorKey;
+  }
+
+  // ── 権限ガード：渡辺千尋はSea Breeze 鎌倉/三浦のセル移動のみ許可（移動元・移動先とも） ──
+  if(currentRole==='watanabe' && (!_isSBRoom(src.roomId)||!_isSBRoom(rid))){
+    dragSrc=null;
+    showToast('⚠ Sea Breeze 鎌倉・三浦のセルのみ移動できます');
+    return;
   }
 
   // ── ① 同一セルへのドロップ → 何もしない ──
@@ -8395,7 +8420,7 @@ function openCharterNew(){
 }
 
 function openCharterEdit(charterGroup, startDay, month){
-  if(currentRole==='reception')return;
+  if(currentRole==='reception'||currentRole==='watanabe')return;
   editCharterGroup=charterGroup;
   editCharterStartDay=parseInt(startDay);
   editCharterMonth=parseInt(month);
@@ -8757,7 +8782,14 @@ const PIN_ROLES={
   '5070':{role:'admin',    name:'管理者',       pages:'all'},
   '5439':{role:'cleaning', name:'清掃スタッフ', pages:['cleaning']},
   '1827':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning']},
+  // 渡辺千尋：宿泊者名簿・清掃予定表の閲覧のみ。ただしSea Breeze 鎌倉/三浦のセル移動は可能
+  '2332':{role:'watanabe', name:'渡辺千尋',     pages:['register','cleaning']},
 };
+// Sea Breeze 鎌倉・三浦の部屋か判定（roleごとのセル移動許可に使用）
+function _isSBRoom(rid){
+  const r=(rooms||[]).find(x=>String(x.id)===String(rid));
+  return !!(r && typeof r.group==='string' && r.group.indexOf('Sea Breeze')===0);
+}
 let _pinBuffer='';
 let currentRole=null;
 
@@ -8789,7 +8821,7 @@ function _checkPin(){
 }
 function _applyRole(role,name){
   currentRole=role;
-  document.body.classList.remove('role-admin','role-cleaning','role-reception','viewonly');
+  document.body.classList.remove('role-admin','role-cleaning','role-reception','role-watanabe','viewonly');
   document.body.classList.add('role-'+role);
   if(role!=='admin')document.body.classList.add('viewonly');
   if(role==='reception'){
@@ -8807,6 +8839,13 @@ function _applyRole(role,name){
     if(cs)cs.style.display='block';
   } else if(role==='reception'){
     showP('register',document.querySelector('.nitem[onclick*="showP(\'register\'"]'));
+  } else if(role==='watanabe'){
+    // Sea Breeze 鎌倉/三浦以外のセルはドラッグ開始を抑止（移動不可）
+    document.addEventListener('dragstart',function _watanabeDragGuard(e){
+      const cell=e.target.closest&&e.target.closest('[data-k]');
+      if(cell){ if(!_isSBRoom(parseKey(cell.getAttribute('data-k')).r))e.preventDefault(); }
+    },true);
+    showP('register',document.querySelector('.nitem[onclick*="showP(\'register\'"]'));
   }
 }
 function pinLogout(){
@@ -8814,7 +8853,7 @@ function pinLogout(){
   sessionStorage.removeItem('hotel_pin_role');
   sessionStorage.removeItem('hotel_pin_name');
   currentRole=null;_pinBuffer='';
-  document.body.classList.remove('role-admin','role-cleaning','role-reception','viewonly');
+  document.body.classList.remove('role-admin','role-cleaning','role-reception','role-watanabe','viewonly');
   document.getElementById('role-badge').style.display='none';
   _updatePinDots();
   document.getElementById('pin-error').textContent='';
