@@ -4506,7 +4506,7 @@ function renderReg(){
               +`<div class="gc charter${cinC?' ci':''}" `
               +`style="min-height:${rowspan*54}px;border-left:3px solid ${cBorder};background:${cBg};" `
               +`onclick="event.stopPropagation();openCharterEdit('${cg}',${booking.startDay},${month})" `
-              +`oncontextmenu="event.preventDefault();toggleCharterCI('${cg}',${booking.startDay},${month})">`
+              +`oncontextmenu="event.preventDefault();charterCiFromContext('${cg}',${booking.startDay},${month})">`
               // 上段：🔒 + アイコン + 氏名 + 人数 + 支払 + 料金
               +`<div class="c-namerow">`
               +`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`
@@ -4618,7 +4618,7 @@ function renderReg(){
             +`style="${planStyle}" `
             +`ondragstart="onDS(event,'${k}')" `
             +`onclick="event.stopPropagation();cellClick(event,'${k}')" `
-            +`oncontextmenu="event.preventDefault();toggleCI('${k}')">`;
+            +`oncontextmenu="event.preventDefault();ciFromContext('${k}')">`;
 
           // ── 上段：アイコン + 氏名 + 人数 + 支払 + 料金（1行）──
           const payLabel=isCash?'💴現金':isStripe?'Stripe':isBank?'振込':'事前';
@@ -4884,7 +4884,15 @@ function renderReg(){
   if(typeof applyRegSearch==='function')applyRegSearch();
 }
 
-// チェックイン状態トグル（右クリック / 長押し）
+// 直近の入力デバイス種別を記録（タッチ長押し=contextmenu からのチェックイン誤操作を防ぐため）
+let _lastPointerType='mouse';
+document.addEventListener('pointerdown',function(e){ _lastPointerType=e.pointerType||'mouse'; },true);
+// contextmenu（PCの右クリック / スマホ・タブレットの長押し）経由のチェックイン。
+// スマホ・タブレットの長押しでは実行しない（誤操作防止）。PCの右クリックのみ有効。
+function ciFromContext(k){ if(_lastPointerType==='touch')return; toggleCI(k); }
+function charterCiFromContext(cg,startDay,month){ if(_lastPointerType==='touch')return; toggleCharterCI(cg,startDay,month); }
+
+// チェックイン状態トグル（PCの右クリックのみ。スマホ・タブレットの長押しは無効）
 let pressTimer=null;
 function toggleCI(k){
   if(currentRole==='reception'||currentRole==='watanabe')return;
