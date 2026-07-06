@@ -172,11 +172,15 @@ function doPost(e) {
       if(!prevCfg) return jsonOut(JSON.stringify({error:'mail type not configured: '+prevMailKey}));
       var prevLang=payload.lang||_mailLang_(prevG);
       var prevCtx=_mailCtx_(prevData, prevGkey, prevG, prevLang);
-      var prevSubj=_mailRender_((prevCfg.subject&&prevCfg.subject[prevLang])||(prevCfg.subject&&prevCfg.subject.ja)||'', prevCtx);
-      var prevBody=_mailRender_((prevCfg.body&&prevCfg.body[prevLang])||(prevCfg.body&&prevCfg.body.ja)||'', prevCtx);
-      var prevAttList=((prevCfg.attachments&&prevCfg.attachments[prevLang])||[]).map(function(a){return{name:a.name||'',id:a.id||''};});
+      // 部屋タイプ×言語のテンプレートを解決（送信時と同じフォールバックチェーン）
+      var prevRt=_mailRoomTypeKey_(prevData, _mailRoomId_(prevGkey));
+      var prevTpl=_mailResolveTpl_(prevCfg, prevRt, prevLang);
+      if(!prevTpl) return jsonOut(JSON.stringify({error:'テンプレートが未設定です（部屋タイプ: '+(prevRt||'不明')+'）。自動メール配信設定で本文を入力してください。'}));
+      var prevSubj=_mailRender_(prevTpl.subject, prevCtx);
+      var prevBody=_mailRender_(prevTpl.body, prevCtx);
+      var prevAttList=(prevTpl.attachments||[]).map(function(a){return{name:a.name||'',id:a.id||''};});
       var prevQrUrl=(prevMailKey==='checkinCode'&&prevCfg.qr)?prevCtx['チェックインURL']:null;
-      return jsonOut(JSON.stringify({status:'ok',type:'mailPreview',to:prevG.email||'',lang:prevLang,subject:prevSubj,body:prevBody,attachments:prevAttList,qrUrl:prevQrUrl||null}));
+      return jsonOut(JSON.stringify({status:'ok',type:'mailPreview',to:prevG.email||'',lang:prevTpl.lang,roomType:prevRt||'',subject:prevSubj,body:prevBody,attachments:prevAttList,qrUrl:prevQrUrl||null}));
 
     } else if (payload.type === 'sendMail') {
       // 手動メール送信：1通送信してmailHistoryを保存
@@ -320,6 +324,56 @@ function _roomType_(data,roomId){ var r=(data.rooms||[]).filter(function(x){retu
 function _roomLangObj_(data,roomId,lang){ var rs=(data.roomSettings||{})[roomId]; if(!rs)return {}; var L=rs.languages||{}; return L[_roomLangKey_(lang)]||L.ja||{}; }
 function _keycode_(data,roomId){ var rs=(data.roomSettings||{})[roomId]; return rs?(rs.keycode||''):''; }
 
+// ── 部屋タイプ別メールテンプレート ──────────────────────────
+// guestDataキー "m:roomId:d" / "y:m:roomId:d" 両形式からroomIdを取り出す
+function _mailRoomId_(key){
+  var p=String(key).split(':');
+  return p.length===4 ? p[2] : p[1];
+}
+// rooms[].group → メールテンプレートの部屋タイプキー（PMS側 MAIL_ROOM_TYPES と対応）
+var MAIL_ROOM_TYPE_GROUPS_ = {
+  '本館−個室':'honkan_private',
+  '本館−男女混合ドミトリー':'honkan_dormitory',
+  'ANNEX−個室':'annex_private',
+  'ANNEX−ドミトリー':'annex_dormitory',
+  'アパートメント−Southern Court':'apartment',
+  'Sea Breeze 鎌倉':'sb_kamakura',
+  'Sea Breeze 三浦':'sb_miura'
+};
+function _mailRoomTypeKey_(data, roomId){
+  var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0];
+  if(!r)return null;
+  if(MAIL_ROOM_TYPE_GROUPS_[r.group])return MAIL_ROOM_TYPE_GROUPS_[r.group];
+  // グループ名の表記ゆれに備えた部分一致フォールバック
+  var g=String(r.group||'');
+  if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
+  if(g.indexOf('アパートメント')===0)return 'apartment';
+  if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
+  if(g.indexOf('本館')===0)return g.indexOf('個室')>=0?'honkan_private':'honkan_dormitory';
+  return null;
+}
+// テンプレート解決：部屋タイプ×言語 → 同部屋タイプの日本語 → 旧構造（言語→日本語）の順でフォールバック。
+// 本文が全て空なら null（＝送信スキップ）。件名・本文・添付は同じ言語ソースから一貫して取得する。
+function _mailResolveTpl_(cfg, rtKey, lang){
+  var cands=[];
+  var rt=(cfg.roomTypes && rtKey) ? cfg.roomTypes[rtKey] : null;
+  if(rt){ cands.push({src:rt,l:lang}); if(lang!=='ja')cands.push({src:rt,l:'ja'}); }
+  cands.push({src:cfg,l:lang}); if(lang!=='ja')cands.push({src:cfg,l:'ja'});
+  for(var i=0;i<cands.length;i++){
+    var s=cands[i].src, l=cands[i].l;
+    var body=(s.body&&s.body[l])||'';
+    if(String(body).trim()){
+      return {
+        subject:(s.subject&&(s.subject[l]||s.subject.ja))||'',
+        body:body,
+        attachments:(s.attachments&&s.attachments[l])||[],
+        lang:l
+      };
+    }
+  }
+  return null;
+}
+
 // キー "m:roomId:d"（年なし）→ 今日に最も近い年で Date を構築
 function _keyToDate_(key){
   var p=String(key).split(':'); var m=parseInt(p[0]), d=parseInt(p[2]);
@@ -392,9 +446,9 @@ function _mailCtx_(data, key, g, lang){
 }
 
 // 添付（Drive ID→Blob）。失敗は黙ってスキップ。
-function _mailAttachBlobs_(cfg, lang){
-  var out=[]; var list=(cfg.attachments&&cfg.attachments[lang])||[];
-  list.forEach(function(a){ try{ if(a&&a.id)out.push(DriveApp.getFileById(a.id).getBlob()); }catch(e){} });
+function _mailAttachBlobs_(list){
+  var out=[];
+  (list||[]).forEach(function(a){ try{ if(a&&a.id)out.push(DriveApp.getFileById(a.id).getBlob()); }catch(e){} });
   return out;
 }
 // チェックインURLのQR画像Blob（外部API・生成ロジックは変更なし）
@@ -479,9 +533,13 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
   var to=opts.forceTo || (g.email||'').trim();
   if(!to)return {skipped:'no-email'};
   var ctx=_mailCtx_(data, gkey, g, lang);
-  var subject=_mailRender_((cfg.subject&&cfg.subject[lang])||cfg.subject&&cfg.subject.ja||'', ctx);
-  var body=_mailRender_((cfg.body&&cfg.body[lang])||cfg.body&&cfg.body.ja||'', ctx);
-  var atts=_mailAttachBlobs_(cfg, lang);
+  // 部屋タイプ×言語のテンプレートを解決（空ならフォールバック、全て空なら送信スキップ）
+  var rtKey=_mailRoomTypeKey_(data, _mailRoomId_(gkey));
+  var tpl=_mailResolveTpl_(cfg, rtKey, lang);
+  if(!tpl)return {skipped:'no-template', roomType:rtKey||'unknown'};
+  var subject=_mailRender_(tpl.subject, ctx);
+  var body=_mailRender_(tpl.body, ctx);
+  var atts=_mailAttachBlobs_(tpl.attachments);
   // チェックインコード送信メールのみ：QRをcidインライン画像にしてQR＋予約IDのカードをファーストビューに配置
   var htmlBody=null, inlineImages=null;
   if(mailKey==='checkinCode' && cfg.qr){
@@ -546,7 +604,10 @@ function diagnoseMail(){
     var c=ms[mk]||{};
     var subj=(c.subject&&(c.subject.ja||c.subject.en))||'';
     var body=(c.body&&(c.body.ja||c.body.en))||'';
-    L.push('['+mk+'] enabled='+(!!c.enabled)+' / 件名あり='+(!!subj)+' / 本文あり='+(!!body));
+    // 部屋タイプ別テンプレートも本文有無の判定対象にする
+    var rtWithBody=0, rtTotal=0;
+    if(c.roomTypes){ Object.keys(c.roomTypes).forEach(function(rk){ rtTotal++; var t=c.roomTypes[rk]; if(t&&t.body&&String(t.body.ja||t.body.en||'').trim())rtWithBody++; }); }
+    L.push('['+mk+'] enabled='+(!!c.enabled)+' / 件名あり='+(!!subj)+' / 本文あり='+(!!body)+(rtTotal?(' / 部屋タイプ別本文 '+rtWithBody+'/'+rtTotal):''));
   });
   var now=new Date(), todayMs=_dayStart_(now);
   var anchors=0, withEmail=0, future=0, sentRC=0, dueRC=0, sampleNoEmail=[];
@@ -685,7 +746,8 @@ function runAutoMails(){
       try{
         var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
         if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
-        else { g.mailSent[mk]='skip:'+(r&&r.skipped||'?'); }
+        // テンプレート未設定は恒久スキップにしない（後からテンプレートを設定すれば次回送信される）
+        else if(!(r&&r.skipped==='no-template')){ g.mailSent[mk]='skip:'+(r&&r.skipped||'?'); }
       }catch(e){ Logger.log('send error '+mk+' '+k+': '+e); }
     }
   }
