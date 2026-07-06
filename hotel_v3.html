@@ -1769,6 +1769,12 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
       </div>
     </div>
 
+    <!-- 部屋タイプタブ（送信タイミング×部屋タイプ×言語でテンプレートを独立管理） -->
+    <div style="margin-bottom:10px;">
+      <label class="ms-field-label">部屋タイプ</label>
+      <div id="ms-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+    </div>
+
     <!-- 言語タブ -->
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
       <button type="button" class="ms-ltab active" data-lang="ja" onclick="msSwitchLang('ja')">日本語</button>
@@ -3794,8 +3800,19 @@ const MAIL_TYPES=[
 // 差し込みキーワード（送信時にGAS側で実値へ置換する想定のトークン）
 const MAIL_KEYWORDS=['氏名','予約ID','物件名','玄関暗証番号','住所','電話番号','WiFiSSID','WiFiパスワード','チェックイン案内URL','チェックイン日','チェックアウト日','部屋タイプ名','部屋番号','部屋暗証番号','備考1','備考2','備考3','入室案内'];
 const MAIL_ATTACH_MAX=5*1024*1024; // 1ファイル5MB
-let _mailDraft=null, _mailCur={type:'reservationCreated', lang:'ja'};
+// 部屋タイプ（メールテンプレート管理単位）。groupは rooms[].group と対応（GAS側の判定と共通）
+const MAIL_ROOM_TYPES=[
+  {key:'honkan_private',   label:'本館 個室',        group:'本館−個室'},
+  {key:'honkan_dormitory', label:'本館 ドミトリー',   group:'本館−男女混合ドミトリー'},
+  {key:'annex_private',    label:'ANNEX 個室',       group:'ANNEX−個室'},
+  {key:'annex_dormitory',  label:'ANNEX ドミトリー',  group:'ANNEX−ドミトリー'},
+  {key:'apartment',        label:'アパートメント',    group:'アパートメント−Southern Court'},
+  {key:'sb_kamakura',      label:'SB 鎌倉',          group:'Sea Breeze 鎌倉'},
+  {key:'sb_miura',         label:'SB 三浦',          group:'Sea Breeze 三浦'},
+];
+let _mailDraft=null, _mailCur={type:'reservationCreated', rt:'honkan_private', lang:'ja'};
 
+function _msEmptyTpl(){ return {subject:{ja:'',en:'',zh:'',ko:''}, body:{ja:'',en:'',zh:'',ko:''}, attachments:{ja:[],en:[],zh:[],ko:[]}}; }
 function _msEnsureCfg(key){
   if(!propertySettings.mailSettings)propertySettings.mailSettings={};
   if(!_mailDraft[key])_mailDraft[key]=_defaultMailCfg(key==='checkinCode'?{qr:false,sendDaysBefore:3,sendTime:'09:00',resend:false}:undefined);
@@ -3804,14 +3821,34 @@ function _msEnsureCfg(key){
   c.body=c.body||{ja:'',en:'',zh:'',ko:''};
   c.attachments=c.attachments||{ja:[],en:[],zh:[],ko:[]};
   ['ja','en','zh','ko'].forEach(l=>{ if(!Array.isArray(c.attachments[l]))c.attachments[l]=[]; });
+  // ── マイグレーション：部屋タイプ階層が無ければ、既存の言語別テンプレートを全部屋タイプへコピー ──
+  if(!c.roomTypes){
+    c.roomTypes={};
+    MAIL_ROOM_TYPES.forEach(rt=>{
+      c.roomTypes[rt.key]=JSON.parse(JSON.stringify({subject:c.subject, body:c.body, attachments:c.attachments}));
+    });
+  }
+  // 欠けている部屋タイプ・言語キーを補完（後方互換）
+  MAIL_ROOM_TYPES.forEach(rt=>{
+    if(!c.roomTypes[rt.key])c.roomTypes[rt.key]=_msEmptyTpl();
+    const t=c.roomTypes[rt.key];
+    t.subject=t.subject||{}; t.body=t.body||{}; t.attachments=t.attachments||{};
+    ['ja','en','zh','ko'].forEach(l=>{
+      if(t.subject[l]===undefined)t.subject[l]='';
+      if(t.body[l]===undefined)t.body[l]='';
+      if(!Array.isArray(t.attachments[l]))t.attachments[l]=[];
+    });
+  });
   return c;
 }
+// 現在選択中（送信タイミング×部屋タイプ）のテンプレートを取得
+function _msCurTpl(){ return _msEnsureCfg(_mailCur.type).roomTypes[_mailCur.rt]; }
 
 function openMailSettings(){
   // 作業用にディープコピー（保存ボタンまで本体へ反映しない）
   _mailDraft=JSON.parse(JSON.stringify(propertySettings.mailSettings||{}));
   MAIL_TYPES.forEach(m=>_msEnsureCfg(m.key));
-  _mailCur={type:'reservationCreated', lang:'ja'};
+  _mailCur={type:'reservationCreated', rt:'honkan_private', lang:'ja'};
   // 送信時間の選択肢（00:00〜23:30, 30分刻み）
   const tsel=document.getElementById('ms-time');
   if(tsel && !tsel.options.length){
@@ -3838,19 +3875,26 @@ function openMailSettings(){
 function msRenderMTabs(){
   document.getElementById('ms-mtabs').innerHTML=MAIL_TYPES.map(m=>
     `<button type="button" class="ms-mtab ${m.key===_mailCur.type?'active':''}" onclick="msSelectType('${m.key}')">${m.label}</button>`).join('');
+  msRenderRTabs();
+}
+function msRenderRTabs(){
+  const el=document.getElementById('ms-rtabs');
+  if(el)el.innerHTML=MAIL_ROOM_TYPES.map(rt=>
+    `<button type="button" class="ms-ltab ${rt.key===_mailCur.rt?'active':''}" onclick="msSelectRoomType('${rt.key}')">${rt.label}</button>`).join('');
 }
 function msSelectType(key){ _msCommitInputs(); _mailCur.type=key; msRenderMTabs(); msRenderCurrent(); }
+function msSelectRoomType(rt){ _msCommitInputs(); _mailCur.rt=rt; msRenderRTabs(); msRenderLangPart(); }
 function msSwitchLang(l){
   _msCommitInputs(); _mailCur.lang=l;
-  document.querySelectorAll('#mail-settings-modal .ms-ltab').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+  document.querySelectorAll('#mail-settings-modal .ms-ltab[data-lang]').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
   msRenderLangPart();
 }
 
-// 現在編集中の件名・本文をドラフトへ退避
+// 現在編集中の件名・本文をドラフトへ退避（送信タイミング×部屋タイプ×言語）
 function _msCommitInputs(){
-  const c=_msEnsureCfg(_mailCur.type);
-  c.subject[_mailCur.lang]=document.getElementById('ms-subject').value;
-  c.body[_mailCur.lang]=document.getElementById('ms-body').value;
+  const t=_msCurTpl();
+  t.subject[_mailCur.lang]=document.getElementById('ms-subject').value;
+  t.body[_mailCur.lang]=document.getElementById('ms-body').value;
 }
 function msOnInput(){ _msCommitInputs(); }
 
@@ -3869,11 +3913,12 @@ function msRenderCurrent(){
   msRenderLangPart();
 }
 function msRenderLangPart(){
-  const c=_msEnsureCfg(_mailCur.type), l=_mailCur.lang;
-  document.getElementById('ms-subject').value=(c.subject&&c.subject[l])||'';
-  document.getElementById('ms-body').value=(c.body&&c.body[l])||'';
+  const t=_msCurTpl(), l=_mailCur.lang;
+  document.getElementById('ms-subject').value=(t.subject&&t.subject[l])||'';
+  document.getElementById('ms-body').value=(t.body&&t.body[l])||'';
   const langLbl={ja:'日本語',en:'英語',zh:'中国語',ko:'韓国語'}[l];
-  document.getElementById('ms-att-lang').textContent=langLbl;
+  const rtLbl=(MAIL_ROOM_TYPES.find(r=>r.key===_mailCur.rt)||{}).label||'';
+  document.getElementById('ms-att-lang').textContent=rtLbl+'・'+langLbl;
   msRenderAttachments();
 }
 function msOnEnabledChange(){ _msEnsureCfg(_mailCur.type).enabled=document.getElementById('ms-enabled').checked; }
@@ -3889,8 +3934,8 @@ function msInsertKeyword(kw){
 }
 
 function msRenderAttachments(){
-  const c=_msEnsureCfg(_mailCur.type), l=_mailCur.lang;
-  const list=c.attachments[l]||[];
+  const t=_msCurTpl(), l=_mailCur.lang;
+  const list=t.attachments[l]||[];
   document.getElementById('ms-attachments').innerHTML = list.length ? list.map((a,i)=>
     `<span class="ms-chip">
        ${i>0?`<span class="mv" title="前へ" onclick="msMoveAttachment(${i},-1)">◀</span>`:''}
@@ -3900,11 +3945,11 @@ function msRenderAttachments(){
      </span>`).join('') : '<span style="font-size:11.5px;color:#aaa;">添付なし</span>';
 }
 function msRemoveAttachment(i){
-  const c=_msEnsureCfg(_mailCur.type), l=_mailCur.lang;
-  c.attachments[l].splice(i,1); msRenderAttachments();
+  const t=_msCurTpl(), l=_mailCur.lang;
+  t.attachments[l].splice(i,1); msRenderAttachments();
 }
 function msMoveAttachment(i,dir){
-  const c=_msEnsureCfg(_mailCur.type), l=_mailCur.lang, arr=c.attachments[l];
+  const t=_msCurTpl(), l=_mailCur.lang, arr=t.attachments[l];
   const j=i+dir; if(j<0||j>=arr.length)return;
   [arr[i],arr[j]]=[arr[j],arr[i]]; msRenderAttachments();
 }
@@ -3912,13 +3957,13 @@ function msMoveAttachment(i,dir){
 // ファイル追加：5MB検証 → Driveへアップロード（IDのみ保持）
 async function msAddFiles(files){
   const note=document.getElementById('ms-upload-note');
-  const c=_msEnsureCfg(_mailCur.type), l=_mailCur.lang;
+  const t=_msCurTpl(), l=_mailCur.lang;
   for(const f of files){
     if(f.size>MAIL_ATTACH_MAX){ alert(`「${f.name}」は5MBを超えています（${(f.size/1024/1024).toFixed(1)}MB）。5MB以下のファイルを選択してください。`); continue; }
     note.textContent=`「${f.name}」をアップロード中…`;
     try{
       const res=await uploadAttachmentToDrive(f);
-      if(res&&res.id){ c.attachments[l].push({id:res.id, name:res.name||f.name}); msRenderAttachments(); note.textContent=`「${f.name}」を保存しました`; }
+      if(res&&res.id){ t.attachments[l].push({id:res.id, name:res.name||f.name}); msRenderAttachments(); note.textContent=`「${f.name}」を保存しました`; }
       else { note.textContent=`「${f.name}」の保存に失敗しました（GAS未対応の可能性）`; }
     }catch(e){ console.error('添付アップロード失敗',e); note.textContent=`「${f.name}」の保存に失敗しました`; }
   }
