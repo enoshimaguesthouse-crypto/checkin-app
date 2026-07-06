@@ -462,10 +462,10 @@ function _mailQrBlob_(url){
 // ── チェックインコード送信メール：QR・予約IDをファーストビューに配置するHTMLカード ──
 // ラベルの多言語対応（mailSettingsの言語キー ja/en/zh/ko に対応）
 var MAIL_QR_CARD_LABELS_ = {
-  ja: { qr:'チェックインQRコード', id:'予約ID' },
-  en: { qr:'Check-in QR Code',   id:'Check-in Code' },
-  zh: { qr:'入住二维码',          id:'入住代码' },
-  ko: { qr:'체크인 QR 코드',      id:'체크인 코드' }
+  ja: { qr:'チェックインQRコード', id:'予約ID', property:'物件名', address:'住所', pin:'玄関：暗証番号' },
+  en: { qr:'Check-in QR Code',   id:'Check-in Code', property:'Property', address:'Address', pin:'Entrance PIN / 玄関暗証番号' },
+  zh: { qr:'入住二维码',          id:'入住代码', property:'物件名称', address:'地址', pin:'门禁密码 / 玄関暗証番号' },
+  ko: { qr:'체크인 QR 코드',      id:'체크인 코드', property:'물건명', address:'주소', pin:'현관 비밀번호 / 玄関暗証番号' }
 };
 function _escapeHtml_(s){
   return String(s==null?'':s)
@@ -476,11 +476,45 @@ function _escapeHtml_(s){
 function _plainToHtml_(text){
   return _escapeHtml_(text).replace(/\r\n|\r|\n/g,'<br>');
 }
-// QR＋予約IDカード＋既存本文を1通のHTMLメールとして組み立てる。
+// 物件情報カード（②）：白背景・薄グレー枠線・角丸10px・中央寄せ・max-width400px
+function _mailPropertyCardHtml_(L, propertyName, address){
+  return ''
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+      +'<td align="center">'
+        +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:90%;max-width:400px;background-color:#FFFFFF;border:1px solid #D9D9D9;border-radius:10px;">'
+          +'<tr><td align="center" style="padding:18px 20px;">'
+            +'<div style="font-size:11px;color:#8a8a8a;font-family:Arial,Helvetica,sans-serif;margin-bottom:4px;">'+_escapeHtml_(L.property)+'</div>'
+            +'<div style="font-size:16px;font-weight:700;color:#1a5276;font-family:Arial,Helvetica,sans-serif;margin-bottom:12px;">'+_escapeHtml_(propertyName)+'</div>'
+            +'<div style="font-size:11px;color:#8a8a8a;font-family:Arial,Helvetica,sans-serif;margin-bottom:4px;">'+_escapeHtml_(L.address)+'</div>'
+            +'<div style="font-size:14px;color:#2c3e50;font-family:Arial,Helvetica,sans-serif;">'+_escapeHtml_(address)+'</div>'
+          +'</td></tr>'
+        +'</table>'
+      +'</td>'
+    +'</tr></table>';
+}
+// 玄関暗証番号カード（③）：薄灰背景(#F7F7F7)・薄グレー枠線・角丸10px・中央寄せ・数字を大きく強調
+function _mailPinCardHtml_(L, pin){
+  return ''
+    +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+      +'<td align="center">'
+        +'<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:90%;max-width:400px;background-color:#F7F7F7;border:1px solid #D9D9D9;border-radius:10px;">'
+          +'<tr><td align="center" style="padding:16px 20px;">'
+            +'<div style="font-size:12px;color:#5a5a5a;font-family:Arial,Helvetica,sans-serif;margin-bottom:6px;">'+_escapeHtml_(L.pin)+'</div>'
+            +'<div style="font-size:22px;font-weight:bold;letter-spacing:2px;color:#1a5276;font-family:Arial,Helvetica,sans-serif;">'+_escapeHtml_(pin)+'</div>'
+          +'</td></tr>'
+        +'</table>'
+      +'</td>'
+    +'</tr></table>';
+}
+// カード間の余白（marginではなく高さを持つ空行で確実にスペースを作る：Gmail/Outlook対応）
+function _mailSpacerHtml_(px){
+  return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="'+px+'" style="height:'+px+'px;line-height:'+px+'px;font-size:0;">&nbsp;</td></tr></table>';
+}
+// QR＋予約IDカード＋物件情報カード＋玄関暗証番号カード＋既存本文を1通のHTMLメールとして組み立てる。
 // テーブルレイアウト＋インラインCSSのみ使用（Gmail/Yahoo/Outlook/Apple Mail対応）。
 // QR画像はcid参照（inlineImagesでGmailApp.sendEmailに渡す）。
 // 配色：PMS本体と同じ「湘南ビーチハウス」トーン（--ocean #1a5276 / --ocean-light #d6eaf8 / --sand #fdfaf5）。
-function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
+function _mailQrCardHtml_(cid, resId, lang, bodyPlain, propertyName, address, pin){
   var L = MAIL_QR_CARD_LABELS_[lang] || MAIL_QR_CARD_LABELS_.ja;
   var bodyHtml = _plainToHtml_(bodyPlain);
   return ''
@@ -514,6 +548,12 @@ function _mailQrCardHtml_(cid, resId, lang, bodyPlain){
           +'</tr></table>'
         +'</td></tr>'
       +'</table>'
+      +_mailSpacerHtml_(18)
+      // ② 物件情報カード（物件名・住所）
+      +_mailPropertyCardHtml_(L, propertyName, address)
+      +_mailSpacerHtml_(15)
+      // ③ 玄関暗証番号カード
+      +_mailPinCardHtml_(L, pin)
     +'</td></tr>'
     +'<tr><td align="center" style="padding:0 12px 4px;background-color:#fdfaf5;">'
       +'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">'
@@ -547,7 +587,8 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
     if(qb){
       var cid='qr_code_'+(g.reservationId||gkey);
       inlineImages={}; inlineImages[cid]=qb;
-      htmlBody=_mailQrCardHtml_(cid, ctx['予約番号']||g.reservationId||'', lang, body);
+      htmlBody=_mailQrCardHtml_(cid, ctx['予約番号']||g.reservationId||'', lang, body,
+        ctx['施設名']||'', ctx['住所']||'', ctx['玄関暗証番号']||'');
     }
     // QR取得失敗時はhtmlBody=nullのままプレーンテキストのみ送信（既存のフォールバック挙動を維持）
   }
