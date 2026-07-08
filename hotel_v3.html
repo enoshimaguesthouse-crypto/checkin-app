@@ -3854,7 +3854,7 @@ function openMailSettings(){
   // 拡大表示状態を毎回リセット
   _msExpanded=false;
   const _box=document.getElementById('mail-settings-modal-box');
-  if(_box)_box.style.width='760px';
+  if(_box){_box.style.setProperty('width','760px','important');_box.style.setProperty('max-width','96vw','important');}
   const _ta=document.getElementById('ms-body');
   if(_ta){_ta.style.height='';_ta.rows=11;}
   const _btn=document.getElementById('ms-expand-btn');
@@ -3916,13 +3916,16 @@ function msToggleExpand(){
   const box=document.getElementById('mail-settings-modal-box');
   const ta=document.getElementById('ms-body');
   const btn=document.getElementById('ms-expand-btn');
+  // 基本CSSの .modal{width:400px!important} を上書きするため setProperty(...,'important') を使用
   if(_msExpanded){
-    box.style.width='min(1180px,96vw)';
-    ta.style.height='60vh';
+    box.style.setProperty('width','96vw','important');
+    box.style.setProperty('max-width','96vw','important');
+    ta.style.height='64vh';
     ta.rows=undefined;
     btn.textContent='🔎 縮小表示';
   } else {
-    box.style.width='760px';
+    box.style.setProperty('width','760px','important');
+    box.style.setProperty('max-width','96vw','important');
     ta.style.height='';
     ta.rows=11;
     btn.textContent='🔍 拡大表示';
