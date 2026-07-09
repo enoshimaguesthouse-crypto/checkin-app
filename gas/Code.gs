@@ -340,16 +340,16 @@ var MAIL_ROOM_TYPE_GROUPS_ = {
   'Sea Breeze 鎌倉':'sb_kamakura',
   'Sea Breeze 三浦':'sb_miura'
 };
-// 未移行データ向けフォールバック：クイーン/ツインが空なら旧 honkan_private を参照
-var MAIL_RT_FALLBACK_ = { honkan_queen:['honkan_private'], honkan_twin:['honkan_private'] };
+// 未移行データ向けフォールバック：ダブル/ツインが空なら旧キー（honkan_queen→honkan_private）を参照
+var MAIL_RT_FALLBACK_ = { honkan_double:['honkan_queen','honkan_private'], honkan_twin:['honkan_queen','honkan_private'] };
 function _mailRoomTypeKey_(data, roomId){
   var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0];
   if(!r)return null;
   var g=String(r.group||'');
   var ty=String(r.type||'');
-  // 本館個室：クイーン/ツインを部屋タイプ名で分岐（「ツイン」を含めばツイン、それ以外はクイーン）
+  // 本館個室：ダブル/ツインを部屋タイプ名で分岐（「ツイン」を含めばツイン、それ以外はダブル）
   if(g.indexOf('本館')===0 && g.indexOf('個室')>=0){
-    return ty.indexOf('ツイン')>=0 ? 'honkan_twin' : 'honkan_queen';
+    return ty.indexOf('ツイン')>=0 ? 'honkan_twin' : 'honkan_double';
   }
   if(MAIL_ROOM_TYPE_GROUPS_[g])return MAIL_ROOM_TYPE_GROUPS_[g];
   // グループ名の表記ゆれに備えた部分一致フォールバック
