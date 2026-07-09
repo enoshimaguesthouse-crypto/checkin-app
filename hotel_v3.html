@@ -1689,18 +1689,6 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 <div class="modal" onclick="event.stopPropagation()" style="width:640px;max-width:94vw;max-height:92vh;overflow-y:auto;padding:24px 26px;">
   <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;">📱 タブレット表示設定</div>
 
-  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
-    <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認（宿泊約款）を利用する（現地タブレットに表示する）
-  </label>
-
-  <div style="margin-bottom:16px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">同意方法</label>
-    <select id="ca-consent-type" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;">
-      <option value="checkbox">チェックボックス</option>
-      <option value="signature">署名</option>
-    </select>
-  </div>
-
   <!-- 部屋タイプタブ（部屋タイプ×言語でタブレット表示内容を管理） -->
   <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">部屋タイプ</label>
   <div id="td-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
@@ -1719,6 +1707,18 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div style="margin-bottom:12px;">
     <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">① 宿泊約款</label>
     <textarea id="td-agreement" rows="7" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+  </div>
+
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
+    <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認（宿泊約款）を利用する（現地タブレットに表示する）
+  </label>
+
+  <div style="margin-bottom:16px;">
+    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">同意方法</label>
+    <select id="ca-consent-type" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;">
+      <option value="checkbox">チェックボックス</option>
+      <option value="signature">署名</option>
+    </select>
   </div>
   <div style="margin-bottom:12px;">
     <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">② 施設案内</label>
