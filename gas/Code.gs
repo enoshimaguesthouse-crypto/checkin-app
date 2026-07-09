@@ -331,8 +331,8 @@ function _mailRoomId_(key){
   return p.length===4 ? p[2] : p[1];
 }
 // rooms[].group → メールテンプレートの部屋タイプキー（PMS側 MAIL_ROOM_TYPES と対応）
+// ※本館個室はクイーン/ツインに分割したため、グループではなく部屋タイプ名で判定する
 var MAIL_ROOM_TYPE_GROUPS_ = {
-  '本館−個室':'honkan_private',
   '本館−男女混合ドミトリー':'honkan_dormitory',
   'ANNEX−個室':'annex_private',
   'ANNEX−ドミトリー':'annex_dormitory',
@@ -340,24 +340,37 @@ var MAIL_ROOM_TYPE_GROUPS_ = {
   'Sea Breeze 鎌倉':'sb_kamakura',
   'Sea Breeze 三浦':'sb_miura'
 };
+// 未移行データ向けフォールバック：クイーン/ツインが空なら旧 honkan_private を参照
+var MAIL_RT_FALLBACK_ = { honkan_queen:['honkan_private'], honkan_twin:['honkan_private'] };
 function _mailRoomTypeKey_(data, roomId){
   var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0];
   if(!r)return null;
-  if(MAIL_ROOM_TYPE_GROUPS_[r.group])return MAIL_ROOM_TYPE_GROUPS_[r.group];
-  // グループ名の表記ゆれに備えた部分一致フォールバック
   var g=String(r.group||'');
+  var ty=String(r.type||'');
+  // 本館個室：クイーン/ツインを部屋タイプ名で分岐（「ツイン」を含めばツイン、それ以外はクイーン）
+  if(g.indexOf('本館')===0 && g.indexOf('個室')>=0){
+    return ty.indexOf('ツイン')>=0 ? 'honkan_twin' : 'honkan_queen';
+  }
+  if(MAIL_ROOM_TYPE_GROUPS_[g])return MAIL_ROOM_TYPE_GROUPS_[g];
+  // グループ名の表記ゆれに備えた部分一致フォールバック
   if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
   if(g.indexOf('アパートメント')===0)return 'apartment';
   if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
-  if(g.indexOf('本館')===0)return g.indexOf('個室')>=0?'honkan_private':'honkan_dormitory';
+  if(g.indexOf('本館')===0)return 'honkan_dormitory'; // 本館の非個室=ドミトリー
   return null;
 }
-// テンプレート解決：部屋タイプ×言語 → 同部屋タイプの日本語 → 旧構造（言語→日本語）の順でフォールバック。
+// テンプレート解決：部屋タイプ×言語 → 同部屋タイプの日本語 → 旧部屋タイプ(honkan_private等) → 旧構造（言語→日本語）の順でフォールバック。
 // 本文が全て空なら null（＝送信スキップ）。件名・本文・添付は同じ言語ソースから一貫して取得する。
 function _mailResolveTpl_(cfg, rtKey, lang){
   var cands=[];
   var rt=(cfg.roomTypes && rtKey) ? cfg.roomTypes[rtKey] : null;
   if(rt){ cands.push({src:rt,l:lang}); if(lang!=='ja')cands.push({src:rt,l:'ja'}); }
+  // 未移行データ向け：旧部屋タイプキーへフォールバック
+  var fbKeys=(rtKey && MAIL_RT_FALLBACK_[rtKey])||[];
+  fbKeys.forEach(function(fk){
+    var frt=cfg.roomTypes && cfg.roomTypes[fk];
+    if(frt){ cands.push({src:frt,l:lang}); if(lang!=='ja')cands.push({src:frt,l:'ja'}); }
+  });
   cands.push({src:cfg,l:lang}); if(lang!=='ja')cands.push({src:cfg,l:'ja'});
   for(var i=0;i<cands.length;i++){
     var s=cands[i].src, l=cands[i].l;
