@@ -1686,12 +1686,11 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .ca-tab.active{background:#185FA5;color:#fff;border-color:#185FA5;}
 </style>
 <div class="mbg" id="contract-settings-modal" onclick="if(event.target===this)closeM('contract-settings-modal')">
-<div class="modal" onclick="event.stopPropagation()" style="width:580px;max-width:94vw;max-height:90vh;overflow-y:auto;padding:24px 26px;">
-  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:4px;">📱 タブレット表示設定</div>
-  <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:18px;">契約確認（宿泊約款）</div>
+<div class="modal" onclick="event.stopPropagation()" style="width:640px;max-width:94vw;max-height:92vh;overflow-y:auto;padding:24px 26px;">
+  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;">📱 タブレット表示設定</div>
 
-  <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:14px;font-weight:600;cursor:pointer;">
-    <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認を利用する（現地タブレットに表示する）
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
+    <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認（宿泊約款）を利用する（現地タブレットに表示する）
   </label>
 
   <div style="margin-bottom:16px;">
@@ -1702,21 +1701,41 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     </select>
   </div>
 
-  <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:6px;">宿泊約款 本文（言語別）</div>
-  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-    <button type="button" class="ca-tab active" data-lang="ja" onclick="caSwitchTab('ja')">日本語</button>
-    <button type="button" class="ca-tab" data-lang="en" onclick="caSwitchTab('en')">英語</button>
-    <button type="button" class="ca-tab" data-lang="zh" onclick="caSwitchTab('zh')">中国語</button>
-    <button type="button" class="ca-tab" data-lang="ko" onclick="caSwitchTab('ko')">韓国語</button>
-  </div>
-  <textarea id="ca-text-ja" class="ca-text" rows="9" placeholder="宿泊約款（日本語）の本文を入力" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;"></textarea>
-  <textarea id="ca-text-en" class="ca-text" rows="9" placeholder="Accommodation terms (English)" style="display:none;width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;"></textarea>
-  <textarea id="ca-text-zh" class="ca-text" rows="9" placeholder="住宿条款（中文）" style="display:none;width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;"></textarea>
-  <textarea id="ca-text-ko" class="ca-text" rows="9" placeholder="숙박약관（한국어）" style="display:none;width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;"></textarea>
+  <!-- 部屋タイプタブ（部屋タイプ×言語でタブレット表示内容を管理） -->
+  <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">部屋タイプ</label>
+  <div id="td-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
 
-  <div style="display:flex;gap:10px;margin-top:20px;">
+  <!-- 言語タブ -->
+  <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">言語</label>
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+    <button type="button" class="ca-tab active" data-lang="ja" onclick="tdSwitchLang('ja')">日本語</button>
+    <button type="button" class="ca-tab" data-lang="en" onclick="tdSwitchLang('en')">英語</button>
+    <button type="button" class="ca-tab" data-lang="zh" onclick="tdSwitchLang('zh')">中国語</button>
+    <button type="button" class="ca-tab" data-lang="ko" onclick="tdSwitchLang('ko')">韓国語</button>
+  </div>
+
+  <div style="font-size:11px;color:#999;margin-bottom:12px;">▼ 選択中の <span id="td-cur-label" style="font-weight:700;color:#185FA5;">本館 ダブル × 日本語</span> の設定内容 ▼</div>
+
+  <div style="margin-bottom:12px;">
+    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">① 宿泊約款</label>
+    <textarea id="td-agreement" rows="7" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">② 施設案内</label>
+    <textarea id="td-guide" rows="5" placeholder="当施設はセルフチェックインです。鍵は..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">③ チェックイン動画URL（YouTube / Google Drive / 動画 等）</label>
+    <input id="td-video" placeholder="https://youtu.be/..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">④ 外部リンクURL</label>
+    <input id="td-link" placeholder="https://..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:16px;">
     <button class="btn" onclick="closeM('contract-settings-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
-    <button class="btn btn-blue" onclick="saveContractSettings()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+    <button class="btn btn-blue" onclick="saveTabletSettings()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
 </div>
 </div>
@@ -2116,29 +2135,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   <div class="mr"><div class="fl"><label>備考２</label><textarea id="rm-note2" rows="2" placeholder="メール差し込み [備考2] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
   <div class="mr"><div class="fl"><label>備考３</label><textarea id="rm-note3" rows="2" placeholder="メール差し込み [備考3] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
 
-  <!-- 【タブレット表示】多言語 -->
-  <div style="margin:16px 0 10px;padding:4px 10px;background:var(--sand-mid);border-radius:6px;font-size:12px;font-weight:700;color:#888;letter-spacing:.05em;">📱 タブレット表示</div>
-  <!-- 言語タブ -->
-  <div style="display:flex;gap:4px;margin:12px 0 8px;flex-wrap:wrap;" id="rm-lang-tabs">
-    <button type="button" class="rm-lang-tab active" data-lang="ja"  onclick="switchRoomLang('ja',this)">日本語</button>
-    <button type="button" class="rm-lang-tab" data-lang="en"  onclick="switchRoomLang('en',this)">English</button>
-    <button type="button" class="rm-lang-tab" data-lang="zh-CN" onclick="switchRoomLang('zh-CN',this)">简体中文</button>
-    <button type="button" class="rm-lang-tab" data-lang="ko" onclick="switchRoomLang('ko',this)">한국어</button>
-  </div>
-  <div class="mr"><div class="fl"><label>施設名・お部屋名（<span id="rm-lang-label">日本語</span>）</label><input id="rm-roomname-lang" placeholder="本館ダブル"></div></div>
-  <div class="mr"><div class="fl"><label>入室案内（<span id="rm-lang-label2">日本語</span>）</label><textarea id="rm-guidetext-lang" rows="5" placeholder="当施設はセルフチェックインです。鍵は..." style="resize:vertical;font-family:inherit;"></textarea></div></div>
-
-  <!-- 📷 部屋案内メディア（URL方式） -->
-  <div style="border-top:1px solid var(--sand-border);margin:14px 0 10px;padding-top:12px;font-size:12px;font-weight:700;color:#888;letter-spacing:.05em;">📷 部屋案内メディア（URL）</div>
-  <div style="display:flex;gap:6px;margin-bottom:8px;">
-    <input type="text" id="rm-media-url" placeholder="YouTube / Googleスライド / 動画 / 画像 のURL" style="flex:1;min-width:0;">
-    <button class="btn btn-blue btn-xs" onclick="_addRoomMediaUrl()" style="white-space:nowrap;">追加</button>
-  </div>
-  <div style="font-size:10px;color:#bbb;margin-bottom:8px;line-height:1.6;">
-    対応：YouTube・Vimeo・Googleスライド（ウェブに公開URL）・Google Drive・mp4直リンク・画像URL<br>
-    ※Googleスライドは5秒ごとに自動でめくられます
-  </div>
-  <div id="rm-media-list" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
+  <!-- 📱 タブレット表示（施設案内・入室案内・動画）は［物件情報＞タブレット表示設定］で部屋タイプ別に一元管理 -->
+  <div style="margin:16px 0 4px;padding:8px 10px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:#888;line-height:1.6;">📱 タブレット表示（施設案内・入室案内・動画・宿泊約款）は<b>［物件情報 ＞ タブレット表示設定］</b>で部屋タイプ別に管理します。</div>
 
   <div class="mbt"><button class="btn btn-red" id="rm-del-btn" style="display:none;margin-right:auto;" onclick="deleteRoom()">削除</button><button class="btn" onclick="closeM('room-modal')">キャンセル</button><button class="btn btn-blue" onclick="saveRoom()">保存</button></div>
 </div>
@@ -3757,38 +3755,137 @@ function openPropertyModal(type){
   document.getElementById('property-stub-modal').classList.add('open');
 }
 
-// ── 契約確認（宿泊約款）設定 ──────────────────────────────
-function caSwitchTab(l){
-  document.querySelectorAll('.ca-tab').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
-  ['ja','en','zh','ko'].forEach(x=>{
-    const ta=document.getElementById('ca-text-'+x);
-    if(ta)ta.style.display=(x===l)?'':'none';
+// ── タブレット表示設定（部屋タイプ×言語）──────────────────────
+// データ構造: propertySettings.tabletDisplaySettings = {
+//   enabled, consentType,
+//   roomTypes:{ <rtKey>:{ ja:{agreement,guide,video,link}, en:{}, zh:{}, ko:{} }, ... }
+// }
+// rtKey は MAIL_ROOM_TYPES（8種）と共通。lang は ja/en/zh/ko。
+function _tdEmptyLang(){ return {agreement:'',guide:'',video:'',link:''}; }
+function _tdEmptyRT(){ return {ja:_tdEmptyLang(),en:_tdEmptyLang(),zh:_tdEmptyLang(),ko:_tdEmptyLang()}; }
+// roomSettings.languages のキー（zhは zh-CN）へ変換
+function _tdRoomLangKey(l){ return l==='zh'?'zh-CN':l; }
+// ある部屋がどの部屋タイプキーに属するか（GAS _mailRoomTypeKey_ と同一ロジック）
+function _tdRoomTypeKeyOf(room){
+  if(!room)return null;
+  const g=String(room.group||''), ty=String(room.type||'');
+  if(g.indexOf('本館')===0 && g.indexOf('個室')>=0) return ty.indexOf('ツイン')>=0?'honkan_twin':'honkan_double';
+  const map={'本館−男女混合ドミトリー':'honkan_dormitory','ANNEX−個室':'annex_private','ANNEX−ドミトリー':'annex_dormitory','アパートメント−Southern Court':'apartment','Sea Breeze 鎌倉':'sb_kamakura','Sea Breeze 三浦':'sb_miura'};
+  if(map[g])return map[g];
+  if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
+  if(g.indexOf('アパートメント')===0)return 'apartment';
+  if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
+  if(g.indexOf('本館')===0)return 'honkan_dormitory';
+  return null;
+}
+// 指定部屋タイプに属する部屋一覧
+function _tdRoomsOfType(rtKey){ return (rooms||[]).filter(r=>_tdRoomTypeKeyOf(r)===rtKey); }
+
+// tabletDisplaySettings を用意し、無ければ既存データから移行
+function _ensureTabletDisplay(){
+  if(!propertySettings.tabletDisplaySettings){
+    const ca=(propertySettings&&propertySettings.contractAgreement)||{};
+    const caTexts=ca.texts||{};
+    const tds={ enabled:!!ca.enabled, consentType:ca.consentType||'checkbox', roomTypes:{} };
+    MAIL_ROOM_TYPES.forEach(rt=>{
+      const bucket=_tdEmptyRT();
+      const typeRooms=_tdRoomsOfType(rt.key);
+      ['ja','en','zh','ko'].forEach(l=>{
+        // ① 宿泊約款：旧構造は言語別グローバル → 全部屋タイプへ複製
+        bucket[l].agreement=caTexts[l]||'';
+        // ② 施設案内：この部屋タイプの部屋のうち guideText が入力済みの最初の部屋を採用
+        const rlk=_tdRoomLangKey(l);
+        for(const r of typeRooms){
+          const s=roomSettings[r.id]; const gt=s&&s.languages&&s.languages[rlk]&&s.languages[rlk].guideText;
+          if(gt&&String(gt).trim()){ bucket[l].guide=gt; break; }
+        }
+        // ③④ 動画/外部リンク：media（言語非依存）の入力済み最初の部屋から。1件目=動画,2件目=外部リンク
+        for(const r of typeRooms){
+          const s=roomSettings[r.id];
+          if(s&&Array.isArray(s.media)&&s.media.length){
+            if(!bucket[l].video && s.media[0]&&s.media[0].url) bucket[l].video=s.media[0].url;
+            if(!bucket[l].link && s.media[1]&&s.media[1].url) bucket[l].link=s.media[1].url;
+            if(bucket[l].video) break;
+          }
+        }
+      });
+      tds.roomTypes[rt.key]=bucket;
+    });
+    propertySettings.tabletDisplaySettings=tds;
+  }
+  // 欠けている部屋タイプ・言語キーを補完（後方互換）
+  const tds=propertySettings.tabletDisplaySettings;
+  if(!tds.roomTypes)tds.roomTypes={};
+  MAIL_ROOM_TYPES.forEach(rt=>{
+    if(!tds.roomTypes[rt.key])tds.roomTypes[rt.key]=_tdEmptyRT();
+    ['ja','en','zh','ko'].forEach(l=>{
+      if(!tds.roomTypes[rt.key][l])tds.roomTypes[rt.key][l]=_tdEmptyLang();
+      const o=tds.roomTypes[rt.key][l];
+      ['agreement','guide','video','link'].forEach(f=>{ if(o[f]===undefined)o[f]=''; });
+    });
   });
+  return tds;
+}
+
+let _tdDraft=null, _tdCur={rt:'honkan_double', lang:'ja'};
+function _tdCurTpl(){ return _tdDraft.roomTypes[_tdCur.rt][_tdCur.lang]; }
+function _tdUpdateCurLabel(){
+  const rtLbl=(MAIL_ROOM_TYPES.find(r=>r.key===_tdCur.rt)||{}).label||'';
+  const langLbl={ja:'日本語',en:'英語',zh:'中国語',ko:'韓国語'}[_tdCur.lang];
+  const el=document.getElementById('td-cur-label'); if(el)el.textContent=rtLbl+' × '+langLbl;
+}
+function _tdCommitInputs(){
+  const t=_tdCurTpl();
+  t.agreement=document.getElementById('td-agreement').value;
+  t.guide=document.getElementById('td-guide').value;
+  t.video=document.getElementById('td-video').value;
+  t.link=document.getElementById('td-link').value;
+}
+function tdOnInput(){ _tdCommitInputs(); }
+function tdRenderRTabs(){
+  const el=document.getElementById('td-rtabs');
+  if(el)el.innerHTML=MAIL_ROOM_TYPES.map(rt=>
+    `<button type="button" class="ms-ltab ${rt.key===_tdCur.rt?'active':''}" onclick="tdSelectRoomType('${rt.key}')">${rt.label}</button>`).join('');
+}
+function tdRenderFields(){
+  const t=_tdCurTpl();
+  document.getElementById('td-agreement').value=t.agreement||'';
+  document.getElementById('td-guide').value=t.guide||'';
+  document.getElementById('td-video').value=t.video||'';
+  document.getElementById('td-link').value=t.link||'';
+  _tdUpdateCurLabel();
+}
+function tdSelectRoomType(rt){ _tdCommitInputs(); _tdCur.rt=rt; tdRenderRTabs(); tdRenderFields(); }
+function tdSwitchLang(l){
+  _tdCommitInputs(); _tdCur.lang=l;
+  document.querySelectorAll('#contract-settings-modal .ca-tab').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+  tdRenderFields();
 }
 function openContractSettings(){
-  const ca=(propertySettings&&propertySettings.contractAgreement)||{};
-  const texts=ca.texts||{};
-  document.getElementById('ca-enabled').checked=!!ca.enabled;
-  document.getElementById('ca-consent-type').value=ca.consentType||'checkbox';
-  ['ja','en','zh','ko'].forEach(x=>{ document.getElementById('ca-text-'+x).value=texts[x]||''; });
-  caSwitchTab('ja');
+  const tds=_ensureTabletDisplay();
+  _tdDraft=JSON.parse(JSON.stringify(tds));
+  _tdCur={rt:'honkan_double', lang:'ja'};
+  document.getElementById('ca-enabled').checked=!!_tdDraft.enabled;
+  document.getElementById('ca-consent-type').value=_tdDraft.consentType||'checkbox';
+  document.querySelectorAll('#contract-settings-modal .ca-tab').forEach(b=>b.classList.toggle('active',b.dataset.lang==='ja'));
+  tdRenderRTabs();
+  tdRenderFields();
   document.getElementById('contract-settings-modal').classList.add('open');
 }
-function saveContractSettings(){
-  if(!propertySettings.contractAgreement)propertySettings.contractAgreement={};
+function saveTabletSettings(){
+  _tdCommitInputs();
+  _tdDraft.enabled=document.getElementById('ca-enabled').checked;
+  _tdDraft.consentType=document.getElementById('ca-consent-type').value;
+  propertySettings.tabletDisplaySettings=_tdDraft;
+  // 旧 contractAgreement も同期（後方互換：旧チェックインアプリ/旧GAS参照時のフォールバック用に日本語ダブルの約款を代表値として保持）
+  const rep=_tdDraft.roomTypes.honkan_double||{};
   propertySettings.contractAgreement={
-    enabled:document.getElementById('ca-enabled').checked,
-    consentType:document.getElementById('ca-consent-type').value,
-    texts:{
-      ja:document.getElementById('ca-text-ja').value,
-      en:document.getElementById('ca-text-en').value,
-      zh:document.getElementById('ca-text-zh').value,
-      ko:document.getElementById('ca-text-ko').value,
-    }
+    enabled:_tdDraft.enabled, consentType:_tdDraft.consentType,
+    texts:{ ja:(rep.ja&&rep.ja.agreement)||'', en:(rep.en&&rep.en.agreement)||'', zh:(rep.zh&&rep.zh.agreement)||'', ko:(rep.ko&&rep.ko.agreement)||'' }
   };
   closeM('contract-settings-modal');
-  cloudSave(); // TODO保存と同じ共通クラウド保存経路を使用（cloudDataへ集約）
-  showToast('📱 契約確認の設定を保存しました');
+  cloudSave();
+  showToast('📱 タブレット表示設定を保存しました');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -7617,20 +7714,8 @@ function _initRoomMediaUI(){
   }
 }
 
-function switchRoomLang(lang, btn){
-  // 現在の言語の入力内容をバッファへ退避
-  _rmLangBuffer[_rmCurrentLang]={
-    roomName:document.getElementById('rm-roomname-lang').value,
-    guideText:document.getElementById('rm-guidetext-lang').value
-  };
-  _rmCurrentLang=lang;
-  document.querySelectorAll('.rm-lang-tab').forEach(t=>t.classList.toggle('active',t.dataset.lang===lang));
-  document.getElementById('rm-lang-label').textContent=ROOM_LANG_LABELS[lang];
-  document.getElementById('rm-lang-label2').textContent=ROOM_LANG_LABELS[lang];
-  const buf=_rmLangBuffer[lang]||{roomName:'',guideText:''};
-  document.getElementById('rm-roomname-lang').value=buf.roomName||'';
-  document.getElementById('rm-guidetext-lang').value=buf.guideText||'';
-}
+// タブレット表示（施設案内・入室案内・動画）は物件情報＞タブレット表示設定へ移設したため no-op（後方互換で関数は残置）
+function switchRoomLang(lang, btn){}
 
 function _loadRoomSettingToForm(id){
   const s=_ensureRoomSetting(id);
@@ -7645,33 +7730,11 @@ function _loadRoomSettingToForm(id){
   document.getElementById('rm-note1').value=s.note1||'';
   document.getElementById('rm-note2').value=s.note2||'';
   document.getElementById('rm-note3').value=s.note3||'';
-  // 言語バッファを初期化
-  _rmLangBuffer={};
-  ROOM_LANGS.forEach(l=>{
-    _rmLangBuffer[l]={
-      roomName:s.languages[l]?.roomName||'',
-      guideText:s.languages[l]?.guideText||''
-    };
-  });
-  _rmCurrentLang='ja';
-  document.querySelectorAll('.rm-lang-tab').forEach(t=>t.classList.toggle('active',t.dataset.lang==='ja'));
-  document.getElementById('rm-lang-label').textContent='日本語';
-  document.getElementById('rm-lang-label2').textContent='日本語';
-  document.getElementById('rm-roomname-lang').value=_rmLangBuffer['ja'].roomName;
-  document.getElementById('rm-guidetext-lang').value=_rmLangBuffer['ja'].guideText;
-  // メディアバッファを初期化
-  _rmMediaBuffer=Array.isArray(s.media)?JSON.parse(JSON.stringify(s.media)):[];
-  _initRoomMediaUI();_renderRoomMediaList();
+  // languages / media は物件情報側で管理。既存データはそのまま保持（移行元として温存）
 }
 
 function _clearRoomSettingForm(){
-  ['rm-facilityname','rm-keycode','rm-phone','rm-wifissid','rm-wifipass','rm-address','rm-checkinurl','rm-roomcode','rm-note1','rm-note2','rm-note3','rm-roomname-lang','rm-guidetext-lang'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  _rmLangBuffer={};ROOM_LANGS.forEach(l=>_rmLangBuffer[l]={roomName:'',guideText:''});
-  _rmCurrentLang='ja';
-  document.querySelectorAll('.rm-lang-tab').forEach(t=>t.classList.toggle('active',t.dataset.lang==='ja'));
-  document.getElementById('rm-lang-label').textContent='日本語';
-  document.getElementById('rm-lang-label2').textContent='日本語';
-  _rmMediaBuffer=[];_initRoomMediaUI();_renderRoomMediaList();
+  ['rm-facilityname','rm-keycode','rm-phone','rm-wifissid','rm-wifipass','rm-address','rm-checkinurl','rm-roomcode','rm-note1','rm-note2','rm-note3'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
 
 function openRoomAdd(){editRoomId=null;document.getElementById('rm-title').textContent='部屋追加';document.getElementById('rm-del-btn').style.display='none';['rm-no','rm-type','rm-cap'].forEach(id=>document.getElementById(id).value='');_clearRoomSettingForm();document.getElementById('room-modal').classList.add('open');}
@@ -7681,11 +7744,6 @@ function saveRoom(){
   let targetId;
   if(editRoomId!=null){const r=rooms.find(x=>x.id===editRoomId);if(r){r.no=no;r.type=type;r.cap=cap;r.color=color;}targetId=editRoomId;}
   else {targetId=nextRoomId++;rooms.push({id:targetId,no,type,cap,color});}
-  // 多言語設定を保存
-  _rmLangBuffer[_rmCurrentLang]={
-    roomName:document.getElementById('rm-roomname-lang').value,
-    guideText:document.getElementById('rm-guidetext-lang').value
-  };
   const s=_ensureRoomSetting(targetId);
   s.facilityName=document.getElementById('rm-facilityname').value.trim();
   s.keycode=document.getElementById('rm-keycode').value.trim();
@@ -7698,10 +7756,7 @@ function saveRoom(){
   s.note1=document.getElementById('rm-note1').value.trim();
   s.note2=document.getElementById('rm-note2').value.trim();
   s.note3=document.getElementById('rm-note3').value.trim();
-  ROOM_LANGS.forEach(l=>{
-    s.languages[l]={roomName:(_rmLangBuffer[l]?.roomName||'').trim(),guideText:(_rmLangBuffer[l]?.guideText||'').trim()};
-  });
-  s.media=JSON.parse(JSON.stringify(_rmMediaBuffer));
+  // languages / media（施設案内・動画）は物件情報＞タブレット表示設定で管理。既存値はそのまま保持
   closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();
   showToast('🚪 部屋情報を保存しました');
 }
@@ -8146,6 +8201,10 @@ function applyServerData(data) {
         ...data.propertySettings.contractAgreement,
         texts:{...(propertySettings.contractAgreement.texts||{}), ...(data.propertySettings.contractAgreement.texts||{})}
       };
+    }
+    // タブレット表示設定（部屋タイプ×言語）はサーバ値をそのまま採用（上のスプレッドで反映済み）
+    if (data.propertySettings.tabletDisplaySettings && typeof data.propertySettings.tabletDisplaySettings==='object') {
+      propertySettings.tabletDisplaySettings = data.propertySettings.tabletDisplaySettings;
     }
     // 自動メール配信設定：欠けているメール種別/言語をデフォルトで補完しつつサーバ値を採用
     const dms = data.propertySettings.mailSettings;

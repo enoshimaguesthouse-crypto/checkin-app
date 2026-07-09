@@ -931,6 +931,7 @@ input.needs-input::placeholder { color:#d08a3a; }
       </div>
       <div id="guide-roomname" style="font-size:15px;font-weight:600;color:#1a5a6e;margin-bottom:10px;"></div>
       <div id="guide-text" style="font-size:13px;line-height:1.9;color:#444;white-space:pre-wrap;"></div>
+      <a id="guide-link" href="#" target="_blank" rel="noopener" style="display:none;margin-top:12px;padding:11px 14px;background:#eef6f9;border:1.5px solid #b7dde8;border-radius:10px;font-size:13px;font-weight:600;color:#1a7a9a;text-decoration:none;text-align:center;">🔗 <span id="guide-link-label">詳しい案内はこちら</span></a>
       <div id="wifi-box" style="display:none;margin-top:14px;padding:12px 14px;background:#eef6f9;border-radius:10px;">
         <div style="font-size:12px;font-weight:700;color:#1a7a9a;margin-bottom:6px;">📶 Wi-Fi</div>
         <div style="font-size:13px;color:#333;line-height:1.8;">
@@ -1169,12 +1170,42 @@ async function loadContractSettings() {
     const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + now);
     const data = await res.json();
     contractSettings = (data.propertySettings && data.propertySettings.contractAgreement) || { enabled:false };
+    // タブレット表示設定（部屋タイプ×言語）も同時取得
+    tabletSettings = (data.propertySettings && data.propertySettings.tabletDisplaySettings) || null;
     _contractFetchedAt = now;
   } catch(e) {
     console.warn('契約確認設定の取得に失敗:', e);
     if (contractSettings === null) contractSettings = { enabled:false };
   }
   return contractSettings;
+}
+// タブレット表示設定（部屋タイプ×言語）
+let tabletSettings = null;
+// 部屋(rooms配列の要素) → 部屋タイプキー（PMS/GASと同一ロジック）
+function _tdsRoomTypeKey(room){
+  if(!room)return null;
+  const g=String(room.group||''), ty=String(room.type||'');
+  if(g.indexOf('本館')===0 && g.indexOf('個室')>=0) return ty.indexOf('ツイン')>=0?'honkan_twin':'honkan_double';
+  const map={'本館−男女混合ドミトリー':'honkan_dormitory','ANNEX−個室':'annex_private','ANNEX−ドミトリー':'annex_dormitory','アパートメント−Southern Court':'apartment','Sea Breeze 鎌倉':'sb_kamakura','Sea Breeze 三浦':'sb_miura'};
+  if(map[g])return map[g];
+  if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
+  if(g.indexOf('アパートメント')===0)return 'apartment';
+  if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
+  if(g.indexOf('本館')===0)return 'honkan_dormitory';
+  return null;
+}
+// 部屋タイプ×言語の設定を取得。指定言語が空欄なら ja→en の順でフォールバック（画面が真っ白になるのを防ぐ）
+// field: 'agreement'|'guide'|'video'|'link'。フィールド単位でフォールバックする。
+function _tdsGet(typeKey, l, field){
+  if(!tabletSettings || !tabletSettings.roomTypes || !typeKey) return '';
+  const rt = tabletSettings.roomTypes[typeKey];
+  if(!rt) return '';
+  const order=[l,'ja','en'];
+  for(const lg of order){
+    const o=rt[lg];
+    if(o && o[field] && String(o[field]).trim()) return o[field];
+  }
+  return '';
 }
 
 function _nowIso() {
@@ -1188,8 +1219,11 @@ function showAgreementScreen() {
   const cs = contractSettings || {};
   const texts = cs.texts || {};
   el('agree-title').textContent = t.agreeTitle;
-  // 選択言語の本文（無ければ日本語にフォールバック）。改行はCSS white-space:pre-wrap で保持
-  el('agreement-text').textContent = (texts[lang] || texts.ja || '').trim();
+  // 宿泊約款：部屋タイプ×言語（tabletDisplaySettings）を優先。空欄なら ja→en フォールバック。
+  // さらに旧構造 contractAgreement.texts へもフォールバック（後方互換）。
+  const rtKey = (typeof reservationData==='object' && reservationData) ? reservationData.roomTypeKey : null;
+  const tdsAgreement = _tdsGet(rtKey, lang, 'agreement');
+  el('agreement-text').textContent = (tdsAgreement || texts[lang] || texts.ja || '').trim();
 
   const method = (cs.consentType === 'signature') ? 'signature' : 'checkbox';
   // 一時ステートをリセット
@@ -1658,6 +1692,8 @@ async function searchReservation() {
       console.log('best.roomId:', best.roomId, '/ matchedRoom:', matchedRoom);
       reservationData.roomNo = matchedRoom ? String(matchedRoom.no) : String(best.roomId || '—');
       reservationData.roomType = matchedRoom ? matchedRoom.type : (best.type || '');
+      // タブレット表示（部屋タイプ×言語）用の部屋タイプキーを確定
+      reservationData.roomTypeKey = matchedRoom ? _tdsRoomTypeKey(matchedRoom) : null;
 
       console.log("reservationData（取込結果）:", reservationData);
       console.log("部屋番号(no):", reservationData.roomNo, "/ 内部roomId:", reservationData.roomId);
@@ -2325,6 +2361,13 @@ async function _fetchRoomSettings(){
   try{
     const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + Date.now());
     const data = await res.json();
+    // タブレット表示設定（部屋タイプ×言語）を同じレスポンスから取得
+    if(data.propertySettings && data.propertySettings.tabletDisplaySettings){
+      tabletSettings = data.propertySettings.tabletDisplaySettings;
+      try{ localStorage.setItem('hotel_tabletSettings', JSON.stringify(tabletSettings)); }catch(e){}
+    } else if(!tabletSettings){
+      try{ const c=localStorage.getItem('hotel_tabletSettings'); if(c)tabletSettings=JSON.parse(c); }catch(e){}
+    }
     if(data.roomSettings && Object.keys(data.roomSettings).length > 0){
       try{
         localStorage.setItem('hotel_roomSettings', JSON.stringify(data.roomSettings));
@@ -2405,15 +2448,31 @@ async function applyRoomGuide(roomId){
     const langData = (settings.languages || {})[roomLang]
                   || (settings.languages || {})['ja']
                   || {};
-    const roomName  = (langData.roomName  || '').trim();
-    const guideText = (langData.guideText || '').trim();
+    // 部屋名：部屋タイプの名称（マッチ部屋のtype）を優先、旧languagesのroomNameへフォールバック
+    const roomName  = (matchedRoom && matchedRoom.type) ? String(matchedRoom.type) : (langData.roomName || '').trim();
 
-    console.log('roomLang:', roomLang, '/ roomName:', roomName, '/ guideText(先頭50):', guideText.slice(0,50));
+    // ── 施設案内・動画・外部リンク：物件情報＞タブレット表示設定（部屋タイプ×言語）を優先 ──
+    const typeKey = matchedRoom ? _tdsRoomTypeKey(matchedRoom) : null;
+    const tdsGuide = _tdsGet(typeKey, lang, 'guide');
+    const tdsVideo = _tdsGet(typeKey, lang, 'video');
+    const tdsLink  = _tdsGet(typeKey, lang, 'link');
+    // 施設案内：新設定優先、無ければ旧 guideText へフォールバック（画面が真っ白になるのを防ぐ）
+    const guideText = (tdsGuide || (langData.guideText || '')).trim();
+
+    console.log('typeKey:', typeKey, '/ roomName:', roomName, '/ guideText(先頭50):', guideText.slice(0,50));
 
     // 表示
-    el('guide-card').style.display = (roomName || guideText || settings.wifiSsid || pinNo!=='—') ? 'block' : 'none';
+    const hasLink = !!tdsLink;
+    el('guide-card').style.display = (roomName || guideText || tdsVideo || hasLink || settings.wifiSsid || pinNo!=='—') ? 'block' : 'none';
     el('guide-roomname').textContent = roomName;
     el('guide-text').textContent = guideText;
+
+    // 外部リンク
+    const linkEl = el('guide-link');
+    if(linkEl){
+      if(hasLink){ linkEl.href = tdsLink; linkEl.style.display='block'; }
+      else { linkEl.style.display='none'; }
+    }
 
     // Wi-Fi
     const hasWifi = settings.wifiSsid || settings.wifiPass;
@@ -2423,8 +2482,12 @@ async function applyRoomGuide(roomId){
     el('wifi-ssid').textContent = settings.wifiSsid || '';
     el('wifi-pass').textContent = settings.wifiPass || '';
 
-    // 部屋案内メディア（動画優先 / 画像スライドショー）
-    renderRoomMedia(Array.isArray(settings.media)?settings.media:[]);
+    // 部屋案内メディア（新設定の動画URLを優先。無ければ旧 settings.media へフォールバック）
+    if(tdsVideo){
+      renderRoomMedia([{ id:'tds_video', type:_tdsDetectMediaType(tdsVideo), url:tdsVideo }]);
+    } else {
+      renderRoomMedia(Array.isArray(settings.media)?settings.media:[]);
+    }
 
     // 音声テキスト：guideText を優先、[鍵番号]プレースホルダを置換
     const ttsLang = _roomLangToTTS(roomLang);
@@ -2505,6 +2568,18 @@ function _isAutoAdvance(m){
   return m && (m.type==='image');
 }
 
+// URL文字列 → メディア種別（PMS _detectMediaType と同一）
+function _tdsDetectMediaType(url){
+  const u=String(url||'').trim();
+  if(!u)return null;
+  if(/youtube\.com|youtu\.be/i.test(u)) return 'youtube';
+  if(/vimeo\.com/i.test(u)) return 'vimeo';
+  if(/docs\.google\.com\/presentation/i.test(u)) return 'gslides';
+  if(/drive\.google\.com/i.test(u)) return 'gdrive';
+  if(/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)) return 'video';
+  if(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(u)) return 'image';
+  return 'iframe';
+}
 function renderRoomMedia(media){
   _clearMediaTimers();
   const cont=el('media-container'), stage=el('media-stage'), dots=el('media-dots');
