@@ -7985,8 +7985,13 @@ function promptApiKey(message){
   return false;
 }
 // unauthorized応答の共通判定。キー再入力を促し、入力されたらtrue（＝呼び出し元でリトライ可）
+let _lastUnauthorizedPromptAt = 0;
 function _handleUnauthorized(errMsg){
   if(String(errMsg||'').indexOf('unauthorized')<0) return false;
+  // 30秒ポーリング等での連続ポップアップを防止（60秒以内の再表示は抑制）
+  const now = Date.now();
+  if(now - _lastUnauthorizedPromptAt < 60000) return false;
+  _lastUnauthorizedPromptAt = now;
   return promptApiKey('⚠ APIキーが未設定または無効です。\n管理者キーを入力してください（GASの setupApiKeys() 実行ログに表示されます）。');
 }
 
@@ -8379,8 +8384,8 @@ async function cloudLoad(silent=false) {
   } catch(e) {
     updateSyncStatus('error', '読込失敗');
     if (!silent) showToast('❌ 読込失敗: ' + e.message);
-    // APIキー未設定/無効なら入力を促し、入力されたら自動リトライ（ポーリング時は促さない）
-    if(!silent && _handleUnauthorized(e.message)){ isSyncing=false; setTimeout(()=>cloudLoad(),300); return; }
+    // APIキー未設定/無効なら入力を促し、入力されたら自動リトライ（初回のサイレント読込でも表示。60秒クールダウンで連発は防止）
+    if(_handleUnauthorized(e.message)){ isSyncing=false; setTimeout(()=>cloudLoad(silent),300); return; }
   } finally {
     isSyncing = false;
   }
