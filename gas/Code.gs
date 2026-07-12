@@ -290,7 +290,8 @@ function doPost(e) {
       const finalGuestsLight = finalGuests.map(function(g){
         var c = {}; for (var kk in g) { if (kk !== 'passportImage') c[kk] = g[kk]; } return c;
       });
-      const keyDateNum = function(k){ var p=String(k).split(':'); return (parseInt(p[0])||0)*100 + (parseInt(p[2])||0); };
+      // 年付きキー(y:m:r:d)/2026形式(m:r:d)の両方で正しく日付順に並べる
+      const keyDateNum = function(k){ var pk=_parseKey_(k); return (pk.y||0)*10000 + (pk.m||0)*100 + (pk.d||0); };
       const matchingKeys = Object.keys(guestData).filter(function(k){
         var g=guestData[k]; var gid=g&&(g.reservationId||g.id); return gid && String(gid).trim()===targetId;
       }).sort(function(a,b){ return keyDateNum(a)-keyDateNum(b); });
@@ -473,24 +474,33 @@ function _mailResolveTpl_(cfg, rtKey, lang){
 }
 
 // キー "m:roomId:d"（年なし）→ 今日に最も近い年で Date を構築
+// データキー解析（PMS parseKey と同一仕様）：
+//  3要素 "m:r:d"   → 2026年（gk が year===2026 のとき年を省略する仕様）
+//  4要素 "y:m:r:d" → 年付き（2027年以降）
+function _parseKey_(key){
+  var p=String(key).split(':').map(function(x){return parseInt(x);});
+  return p.length===4 ? {y:p[0],m:p[1],r:p[2],d:p[3]} : {y:2026,m:p[0],r:p[1],d:p[2]};
+}
+// 年・月・日から正しいキー文字列を生成（PMS gk と同一仕様。月末跨ぎはDateで正規化）
+function _gk_(m,r,d,y){
+  var dt=new Date(y,m-1,d); y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate();
+  return y===2026 ? (m+':'+r+':'+d) : (y+':'+m+':'+r+':'+d);
+}
 function _keyToDate_(key){
-  var p=String(key).split(':'); var m=parseInt(p[0]), d=parseInt(p[2]);
-  if(isNaN(m)||isNaN(d))return null;
-  var now=new Date(); var y=now.getFullYear();
-  var dt=new Date(y,m-1,d);
-  var diff=(dt-now)/(1000*60*60*24);
-  if(diff<-45)dt=new Date(y+1,m-1,d); else if(diff>320)dt=new Date(y-1,m-1,d);
-  return dt;
+  var pk=_parseKey_(key);
+  if(isNaN(pk.m)||isNaN(pk.d)||isNaN(pk.y))return null;
+  return new Date(pk.y, pk.m-1, pk.d);   // 年はキーから確定（2026形式は2026年）
 }
 function _fmtDate_(dt){ if(!dt)return ''; var p=function(n){return String(n).padStart(2,'0');}; return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); }
 function _dayStart_(dt){ return new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()).getTime(); }
 
-// アンカー（予約開始）レコードから泊数を数えてチェックアウト日を算出
+// アンカー（予約開始）レコードから泊数を数えてチェックアウト日を算出（月末・年末跨ぎ対応）
 function _checkoutDate_(guestData, key, g){
-  var p=String(key).split(':'); var m=parseInt(p[0]), roomId=p[1], d=parseInt(p[2]);
-  var nights=1;
+  var pk=_parseKey_(key); var roomId=pk.r; var nights=1;
+  var base=new Date(pk.y, pk.m-1, pk.d);
   while(true){
-    var nk=m+':'+roomId+':'+(d+nights);
+    var nd=new Date(base.getFullYear(), base.getMonth(), base.getDate()+nights);
+    var nk=_gk_(nd.getMonth()+1, roomId, nd.getDate(), nd.getFullYear());
     var ng=guestData[nk];
     if(!ng)break;
     if(ng.charter&&ng.charterAnchor)break;
