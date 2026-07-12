@@ -4120,7 +4120,7 @@ function uploadAttachmentToDrive(file){
       try{
         const b64=String(reader.result).split(',')[1]||'';
         // Content-Typeヘッダは付けない（application/jsonだとCORSプリフライトでApps Scriptが失敗するため）
-        const r=await fetch(GAS_URL,{method:'POST',
+        const r=await fetch(_withKey(GAS_URL),{method:'POST',
           body:JSON.stringify({type:'uploadAttachment', name:file.name, mimeType:file.type||'application/octet-stream', dataBase64:b64})});
         const j=await r.json();
         if(j&&j.id)resolve(j); else reject(new Error(j&&j.error||'no id'));
@@ -5461,7 +5461,7 @@ async function openMailPreview(mailKey, btn){
   const origText=btn?btn.textContent:'';
   if(btn){btn.textContent='読込中…';btn.disabled=true;}
   try{
-    const res=await fetch(GAS_URL,{method:'POST',
+    const res=await fetch(_withKey(GAS_URL),{method:'POST',
       body:JSON.stringify({type:'mailPreview',reservationId:g.reservationId,mailKey})});
     const data=await res.json();
     if(data.error){alert('プレビュー取得エラー:\n'+data.error);return;}
@@ -5506,7 +5506,7 @@ async function _doSendMail(mailKey,lang,reservationId){
   const sendBtn=document.getElementById('mpm-send-btn');
   sendBtn.textContent='Sending…';sendBtn.disabled=true;
   try{
-    const res=await fetch(GAS_URL,{method:'POST',
+    const res=await fetch(_withKey(GAS_URL),{method:'POST',
       body:JSON.stringify({type:'sendMail',reservationId,mailKey,lang})});
     const data=await res.json();
     if(data.error){
@@ -5548,7 +5548,7 @@ async function loadPassportPhotos(resId){
   box.innerHTML=''; row.style.display='none';
   if(!resId)return;
   try{
-    const res=await fetch(GAS_URL+'?type=search&id='+encodeURIComponent(String(resId).trim())+'&t='+Date.now());
+    const res=await fetch(_withKey(GAS_URL+'?type=search&id='+encodeURIComponent(String(resId).trim())+'&t='+Date.now()));
     const data=await res.json();
     const gd=data.guestData||{};
     // 画像付きの guests 配列を持つレコード（アンカー1件）を探す
@@ -7069,7 +7069,7 @@ function renderParking(){
 async function rentalCloudSave(){
   if(!GAS_URL)return;
   try{
-    const res=await fetch(GAS_URL,{
+    const res=await fetch(_withKey(GAS_URL),{
       method:'POST',
       // Content-Typeヘッダーなし（既存cloudSaveと同じパターン）
       body:JSON.stringify({
@@ -7094,7 +7094,7 @@ async function rentalCloudLoad(silent=false){
   if(!GAS_URL)return;
   try{
     // GASのdoGetはURLパラメータをe.parameterで受け取る
-    const res=await fetch(GAS_URL+'?type=rental&t='+Date.now());
+    const res=await fetch(_withKey(GAS_URL+'?type=rental&t='+Date.now()));
     const text=await res.text();
     let json;
     try{ json=JSON.parse(text); }
@@ -7590,7 +7590,7 @@ async function saveRoomSettingsToCloud(){
     // 1) 最新データを取得（GETはno-corsでなくてもfile://から読める場合が多い）
     let data={};
     try{
-      const res=await fetch(GAS_URL+'?t='+Date.now());
+      const res=await fetch(_withKey(GAS_URL+'?t='+Date.now()));
       data=await res.json();
     }catch(getErr){
       // GETも失敗した場合はローカルの全データで構築
@@ -7601,7 +7601,7 @@ async function saveRoomSettingsToCloud(){
     data.roomSettings=roomSettings;
     data.rooms=rooms;
     // 3) no-cors + text/plain でPOST（プリフライトを発生させない＝file://でも通る）
-    await fetch(GAS_URL,{
+    await fetch(_withKey(GAS_URL),{
       method:'POST',
       mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -7969,6 +7969,27 @@ function snDrop(e,targetId){
 // ▼ GASデプロイ後にURLをここへ貼り付けてください
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxRIQQy4vygxy0NM9QlBBqwYUQucNmlwJI7TuIsCSwTkAkW7q585aO0qcLO0cjUIUpwnw/exec';
 
+// ── APIキー（管理者キー）─────────────────────────────────
+// 秘密のキーはコードに書かず、初回に入力して端末のlocalStorageへ保存する。
+// GAS側で setupApiKeys() を実行するまでは未入力でも従来通り動作する（移行猶予）。
+function _apiKey(){ try{ return localStorage.getItem('hotel_api_key')||''; }catch(e){ return ''; } }
+function _withKey(url){
+  const k=_apiKey();
+  return k ? url + (url.indexOf('?')>=0?'&':'?') + 'key=' + encodeURIComponent(k) : url;
+}
+// キー入力（初回・キー変更時）。入力があればtrue
+function promptApiKey(message){
+  const cur=_apiKey();
+  const k=prompt((message||'APIキー（管理者用）を入力してください。\nGASエディタで setupApiKeys() を実行すると表示されます。'), cur);
+  if(k!==null && k.trim()){ try{ localStorage.setItem('hotel_api_key', k.trim()); }catch(e){} return true; }
+  return false;
+}
+// unauthorized応答の共通判定。キー再入力を促し、入力されたらtrue（＝呼び出し元でリトライ可）
+function _handleUnauthorized(errMsg){
+  if(String(errMsg||'').indexOf('unauthorized')<0) return false;
+  return promptApiKey('⚠ APIキーが未設定または無効です。\n管理者キーを入力してください（GASの setupApiKeys() 実行ログに表示されます）。');
+}
+
 // ── チェックイン用URL（QR）生成 ──────────────────────────────
 // 画像ではなくURL文字列のみを cloudData(guestData) 内に保存し肥大化を防ぐ。
 // メール送信等でも流用できるよう共通関数として切り出し。
@@ -8298,7 +8319,7 @@ async function cloudSave() {
   isSyncing = true;
   updateSyncStatus('saving', '保存中...');
   try {
-    const res = await fetch(GAS_URL, {
+    const res = await fetch(_withKey(GAS_URL), {
       method: 'POST',
       body: JSON.stringify(collectAllData()),
     });
@@ -8322,6 +8343,8 @@ async function cloudSave() {
   } catch(e) {
     updateSyncStatus('error', '保存失敗');
     showToast('❌ 保存失敗: ' + e.message);
+    // APIキー未設定/無効なら入力を促し、入力されたら自動リトライ
+    if(_handleUnauthorized(e.message)){ isSyncing=false; setTimeout(()=>cloudSave(),300); return; }
   } finally {
     isSyncing = false;
     if(pendingSave){pendingSave=false;setTimeout(()=>cloudSave(),500);}
@@ -8335,7 +8358,7 @@ async function cloudLoad(silent=false) {
   isSyncing = true;
   if (!silent) updateSyncStatus('saving', '読込中...');
   try {
-    const res = await fetch(GAS_URL + '?t=' + Date.now()); // キャッシュ回避
+    const res = await fetch(_withKey(GAS_URL + '?t=' + Date.now())); // キャッシュ回避
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     // サーバーが新しい場合のみ反映
@@ -8356,6 +8379,8 @@ async function cloudLoad(silent=false) {
   } catch(e) {
     updateSyncStatus('error', '読込失敗');
     if (!silent) showToast('❌ 読込失敗: ' + e.message);
+    // APIキー未設定/無効なら入力を促し、入力されたら自動リトライ（ポーリング時は促さない）
+    if(!silent && _handleUnauthorized(e.message)){ isSyncing=false; setTimeout(()=>cloudLoad(),300); return; }
   } finally {
     isSyncing = false;
   }

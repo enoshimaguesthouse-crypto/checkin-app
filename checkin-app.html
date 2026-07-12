@@ -1167,7 +1167,7 @@ async function loadContractSettings() {
   try {
     // 軽量設定エンドポイント（type=settings）。guestDataを含まないためデータ増加の影響を受けない。
     // 旧GAS（type未対応）でも全データを返すため後方互換あり。
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + now);
+    const res = await fetch(_hkUrl(HOTEL_DATA_GAS_URL + '?type=settings&t=' + now));
     const data = await res.json();
     contractSettings = (data.propertySettings && data.propertySettings.contractAgreement) || { enabled:false };
     // タブレット表示設定（部屋タイプ×言語）も同時取得
@@ -1447,6 +1447,11 @@ const DEFAULT_ROOMS = [
   {id:23, no:'24'},
 ];
 const HOTEL_DATA_GAS_URL = 'https://script.google.com/macros/s/AKfycbxRIQQy4vygxy0NM9QlBBqwYUQucNmlwJI7TuIsCSwTkAkW7q585aO0qcLO0cjUIUpwnw/exec';
+// チェックインアプリ用の限定APIキー（公開前提）。
+// GAS側でこのキーに許可されるのは search / settings / checkinUpdate のみで、
+// パスポート画像・全予約データ・メール送信などにはアクセスできない。
+const HOTEL_DATA_API_KEY = 'ck134_9f3a72c1d8e4';
+function _hkUrl(url){ return url + (url.indexOf('?')>=0?'&':'?') + 'key=' + encodeURIComponent(HOTEL_DATA_API_KEY); }
 
 // guestDataのキー "month:roomId:day"（年は2026固定）から日付文字列を生成
 function _gkToDate(key){
@@ -1613,7 +1618,7 @@ async function searchReservation() {
   try {
     // 予約ID検索エンドポイント（type=search）：一致レコードのみ取得しデータ増加の影響を受けない。
     // 旧GAS（type未対応）でも全データを返し、下のID一致フィルタで動作するため後方互換あり。
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=search&id=' + encodeURIComponent(targetId) + '&t=' + Date.now());
+    const res = await fetch(_hkUrl(HOTEL_DATA_GAS_URL + '?type=search&id=' + encodeURIComponent(targetId) + '&t=' + Date.now()));
     const data = await res.json();
 
     // guestDataはキーバリュー型オブジェクト → 配列に平坦化
@@ -2253,7 +2258,7 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
     },
     updatedBy: 'checkin-app'
   };
-  await fetch(HOTEL_DATA_GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+  await fetch(_hkUrl(HOTEL_DATA_GAS_URL), { method: 'POST', body: JSON.stringify(payload) });
 }
 
 async function submitCheckin() {
@@ -2359,7 +2364,7 @@ let _lastGuideTTSLang = 'ja-JP';
 async function _fetchRoomSettings(){
   // 1) GAS から最新を試みる（軽量設定エンドポイント。roomSettings/roomsのみでguestDataを含まない）
   try{
-    const res = await fetch(HOTEL_DATA_GAS_URL + '?type=settings&t=' + Date.now());
+    const res = await fetch(_hkUrl(HOTEL_DATA_GAS_URL + '?type=settings&t=' + Date.now()));
     const data = await res.json();
     // タブレット表示設定（部屋タイプ×言語）を同じレスポンスから取得
     if(data.propertySettings && data.propertySettings.tabletDisplaySettings){
