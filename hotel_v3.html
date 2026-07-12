@@ -8306,6 +8306,7 @@ async function cloudSave() {
     if (json.status === 'conflict') {
       if (confirm('⚠ 他の端末が先に保存しています。\n最新データを読み込みますか？\n（現在の編集は破棄されます）')) {
         applyServerData(json.serverData);
+        window._lastLoadedGuestCount = guestData ? Object.keys(guestData).length : 0; // 異常検知の基準を更新
         showToast('🔄 最新データを読み込みました');
       } else {
         updateSyncStatus('warn', '未保存（競合）');
