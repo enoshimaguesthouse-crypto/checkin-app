@@ -48,6 +48,53 @@ function jsonOut(str) {
   return ContentService.createTextOutput(str).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ============================================================
+//  APIキー認証
+//  ・ADMIN_KEY   : PMS（宿泊名簿）用。秘密。コードには書かずScript Propertiesのみに保持し、
+//                  PMS側は初回起動時に入力→端末のlocalStorageへ保存する。
+//  ・CHECKIN_KEY : チェックインアプリ用の限定キー。ゲストのスマホでも動く必要があるため
+//                  HTMLに埋め込む（＝公開前提）。search/settings/checkinUpdateのみ許可し、
+//                  パスポート画像はこのキーでは取得不可にする。
+//  ・両キー未設定の間は従来通り全許可（移行猶予。setupApiKeys実行で有効化）。
+// ============================================================
+function _authLevel_(e) {
+  const p = PropertiesService.getScriptProperties();
+  const admin = p.getProperty('ADMIN_KEY') || '';
+  const checkin = p.getProperty('CHECKIN_KEY') || '';
+  if (!admin && !checkin) return 'admin';   // 未設定＝移行猶予モード（全許可）
+  const key = (e && e.parameter && e.parameter.key) || '';
+  if (admin && key === admin) return 'admin';
+  if (checkin && key === checkin) return 'checkin';
+  return null;
+}
+function _unauthorized_() {
+  return jsonOut(JSON.stringify({ error: 'unauthorized: APIキーが無効です' }));
+}
+
+// 初期設定（GASエディタから1回実行）：キーを生成・保存してログに表示
+function setupApiKeys() {
+  const p = PropertiesService.getScriptProperties();
+  // チェックインアプリ用キーはHTML埋め込み値と一致させる（公開前提の固定値）
+  const CHECKIN = 'ck134_9f3a72c1d8e4';
+  p.setProperty('CHECKIN_KEY', CHECKIN);
+  let admin = p.getProperty('ADMIN_KEY');
+  if (!admin) {
+    admin = 'ak_' + Utilities.getUuid().replace(/-/g, '');
+    p.setProperty('ADMIN_KEY', admin);
+  }
+  const msg = '設定完了。\n\n【ADMIN_KEY（PMS用・他人に教えない）】\n' + admin +
+    '\n\n【CHECKIN_KEY（チェックインアプリ用・HTML埋め込み済み）】\n' + CHECKIN +
+    '\n\nPMSを開くとAPIキーの入力を求められるので、上のADMIN_KEYを貼り付けてください。';
+  Logger.log(msg);
+  return msg;
+}
+// 認証を一時停止したい場合（トラブル時の退避用）：両キーを削除→全許可に戻る
+function disableApiKeys() {
+  const p = PropertiesService.getScriptProperties();
+  p.deleteProperty('ADMIN_KEY'); p.deleteProperty('CHECKIN_KEY');
+  return 'APIキーを削除しました（認証なしの従来動作に戻りました）';
+}
+
 // ── GET ──────────────────────────────────────────────────
 //  type=rental   : レンタルスペースファイル
 //  type=settings : 設定類のみ（巨大な guestData を含めない軽量レスポンス）
@@ -57,12 +104,15 @@ function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
     const type = params.type || 'hotel';
+    const auth = _authLevel_(e);           // 'admin' | 'checkin' | null
+    if (!auth) return _unauthorized_();
 
     if (type === 'rental') {
+      if (auth !== 'admin') return _unauthorized_();   // レンタルはPMS専用
       return jsonOut(getRentalFile().getBlob().getDataAsString());
     }
 
-    // 軽量設定エンドポイント：宿泊者データが何件に増えてもサイズ一定
+    // 軽量設定エンドポイント：宿泊者データが何件に増えてもサイズ一定（checkinキーでも可）
     if (type === 'settings') {
       const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
       return jsonOut(JSON.stringify({
@@ -73,7 +123,7 @@ function doGet(e) {
       }));
     }
 
-    // 予約ID検索エンドポイント：一致する予約レコードのみ返す
+    // 予約ID検索エンドポイント：一致する予約レコードのみ返す（checkinキーでも可）
     if (type === 'search') {
       const id = String(params.id || '').trim();
       const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
@@ -87,11 +137,14 @@ function doGet(e) {
           if (gid && String(gid).trim() === id) matches[k] = g;
         });
       }
+      // パスポート画像は管理者キーのみ取得可（予約IDの総当たりによる画像流出を防止）
+      if (auth !== 'admin') stripPassportImages(matches);
       return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [] }));
     }
 
-    // デフォルト：宿泊データ全体（ただし重いパスポート画像は除外して軽量化）
-    // 画像は type=search（予約編集を開いた時）でのみ取得する。
+    // デフォルト：宿泊データ全体はPMS（管理者キー）専用
+    if (auth !== 'admin') return _unauthorized_();
+    // 重いパスポート画像は除外して軽量化。画像は type=search（予約編集を開いた時）でのみ取得する。
     const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
     stripPassportImages(data.guestData);
     return jsonOut(JSON.stringify(data));
@@ -131,6 +184,12 @@ function mergePassportImages(incomingGuestData, existingGuestData) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    // ── APIキー認証（キーはURLの ?key= で受け取る）──
+    // checkinUpdate はチェックインアプリの限定キーでも可。それ以外の書き込みはPMS（管理者キー）専用。
+    const auth = _authLevel_(e);
+    if (!auth) return _unauthorized_();
+    if (payload.type !== 'checkinUpdate' && auth !== 'admin') return _unauthorized_();
 
     if (payload.type === 'rental') {
       // レンタルスペース専用ファイルに保存
