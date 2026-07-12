@@ -2327,15 +2327,23 @@ const SITE_ICONS={
   '直接':         {bg:'#555',   t:'直'},
   'Stripe':       {bg:'#635bff',t:'St'},
 };
+// HTMLエスケープ（XSS対策）：ユーザー入力・CSV・外部予約データ由来の文字列をinnerHTMLに入れる前に必ず通す
+function esc(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function siteIcon(site){
   const s=SITE_ICONS[site];
-  if(!s)return `<span class="site-icon" style="background:#aaa;">${(site||'?').slice(0,2)}</span>`;
+  if(!s)return `<span class="site-icon" style="background:#aaa;">${esc((site||'?').slice(0,2))}</span>`;
   return `<span class="site-icon" style="background:${s.bg};color:${s.tc||'#fff'};">${s.t}</span>`;
 }
 
-// 2026年祝日
-const HOLIDAYS_2026=new Set(['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-07-20','2026-08-11','2026-09-21','2026-09-23','2026-10-12','2026-11-03','2026-11-23']);
-const HOLIDAY_NAMES={'2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念日','2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日','2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-07-20':'海の日','2026-08-11':'山の日','2026-09-21':'敬老の日','2026-09-23':'秋分の日','2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日'};
+// 祝日（2026・2027年）。名称は HOLIDAY_NAMES を参照、判定は HOLIDAYS_2026（互換名。中身は複数年）を参照。
+const HOLIDAY_NAMES={
+  '2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念日','2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日','2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日','2026-09-21':'敬老の日','2026-09-22':'国民の休日','2026-09-23':'秋分の日','2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日',
+  '2027-01-01':'元日','2027-01-11':'成人の日','2027-02-11':'建国記念日','2027-02-23':'天皇誕生日','2027-03-21':'春分の日','2027-03-22':'振替休日','2027-04-29':'昭和の日','2027-05-03':'憲法記念日','2027-05-04':'みどりの日','2027-05-05':'こどもの日','2027-07-19':'海の日','2027-08-11':'山の日','2027-09-20':'敬老の日','2027-09-23':'秋分の日','2027-10-11':'スポーツの日','2027-11-03':'文化の日','2027-11-23':'勤労感謝の日'
+};
+const HOLIDAYS_2026=new Set(Object.keys(HOLIDAY_NAMES));
 
 // 国籍リスト
 const NATIONALITIES=['日本','中国','韓国','台湾','香港','アメリカ','カナダ','イギリス','フランス','ドイツ','イタリア','スペイン','オランダ','ベルギー','スイス','スウェーデン','ノルウェー','デンマーク','フィンランド','オーストラリア','ニュージーランド','シンガポール','タイ','ベトナム','インドネシア','マレーシア','フィリピン','インド','ブラジル','メキシコ','アルゼンチン','その他'];
@@ -2403,8 +2411,8 @@ const NAT_CODE={
 };
 function natFlag(nat){
   const code=NAT_CODE[nat];
-  if(code)return `<span class="fi fi-${code}" title="${nat}" style="font-size:14px;border-radius:2px;flex-shrink:0;"></span>`;
-  return nat?`<span style="font-size:9px;color:#666;">${nat}</span>`:'';
+  if(code)return `<span class="fi fi-${code}" title="${esc(nat)}" style="font-size:14px;border-radius:2px;flex-shrink:0;"></span>`;
+  return nat?`<span style="font-size:9px;color:#666;">${esc(nat)}</span>`:'';
 }
 
 // ── 商品プラン名称・備考キーワードルールテーブル ──
@@ -3167,7 +3175,7 @@ function renderCleaning(){
             ?'<span class="cl-badge" style="background:#dcfce7;color:#15803d;">🏠 連泊中</span>'
             :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
-        <div class="cl-guest">${guest.name||'—'}　${guestCountOf(guest)}名　${info.nights||1}泊</div>
+        <div class="cl-guest">${esc(guest.name||'—')}　${guestCountOf(guest)}名　${info.nights||1}泊</div>
         <div class="cl-badges">
           ${info.hasNextBooking
           ? `<span class="cl-badge mid">📅 次予約あり ${info.nextGuest?guestCountOf(info.nextGuest)+'名':''}</span>`
@@ -3176,12 +3184,12 @@ function renderCleaning(){
           ${info.nights>=3?'<span class="cl-badge">長期'+info.nights+'泊</span>':''}
         </div>
         <div class="cl-status-row">${statusBtns}</div>
-        <div class="cl-assignee">担当：${d.assignedTo||'未割当'}
-          ${d.startAt?` ／ 開始 ${d.startAt}`:''}
-          ${d.completedAt?` ／ 完了 ${d.completedAt}${elapsed}`:''}
+        <div class="cl-assignee">担当：${esc(d.assignedTo||'未割当')}
+          ${d.startAt?` ／ 開始 ${esc(d.startAt)}`:''}
+          ${d.completedAt?` ／ 完了 ${esc(d.completedAt)}${elapsed}`:''}
         </div>
         <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">📝 メモ編集</button>
-        ${d.memo?`<div class="cl-memo-text">${d.memo}</div>`:''}
+        ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
       </div>`;
     });
   });
@@ -3408,8 +3416,8 @@ function renderPriorityCleaningPreview(){
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1.5px solid ${alert?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${alert?'#e67e6a':cat.color};border-radius:8px;">
       <div class="pc-check ${it.history&&it.history.includes(todayKey)?'done':''}" onclick="togglePriorityCleaningDone(${it.id})" style="flex-shrink:0;" title="今日実施したことを記録"></div>
       <span style="font-size:13px;">${cat.icon}</span>
-      <span style="font-size:12px;font-weight:600;flex:1;">${it.name}</span>
-      ${it.place?`<span style="font-size:10px;color:var(--muted);">${it.place}</span>`:''}
+      <span style="font-size:12px;font-weight:600;flex:1;">${esc(it.name)}</span>
+      ${it.place?`<span style="font-size:10px;color:var(--muted);">${esc(it.place)}</span>`:''}
       <span style="font-size:10px;background:#eef5f4;color:#3b6c69;padding:1px 7px;border-radius:99px;font-weight:600;">${it.frequency}</span>
       ${alert?`<span style="font-size:10px;background:#e67e6a;color:#fff;padding:1px 7px;border-radius:99px;font-weight:700;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
     </div>`;
@@ -3471,8 +3479,8 @@ function renderPriorityCleaning(){
       <select onchange="changePriorityCleaningViewMonth(this.value)" style="margin-left:auto;font-size:11px;padding:4px 8px;border:1px solid var(--sand-border);border-radius:6px;">${monthOptions.join('')}</select>
     </div>
     <div class="pc-month-pills">
-      ${monthCounts.length===0?'<span style="font-size:11px;color:var(--muted);">この月はまだ実施記録がありません</span>':monthCounts.map(x=>`<div class="pc-month-pill"><span>${x.name}</span><strong>${x.count}回</strong></div>`).join('')}
-      ${zeroCount.map(it=>`<div class="pc-month-pill" style="color:#aaa;"><span>${it.name}</span><strong style="color:#aaa;">0回</strong></div>`).join('')}
+      ${monthCounts.length===0?'<span style="font-size:11px;color:var(--muted);">この月はまだ実施記録がありません</span>':monthCounts.map(x=>`<div class="pc-month-pill"><span>${esc(x.name)}</span><strong>${x.count}回</strong></div>`).join('')}
+      ${zeroCount.map(it=>`<div class="pc-month-pill" style="color:#aaa;"><span>${esc(it.name)}</span><strong style="color:#aaa;">0回</strong></div>`).join('')}
     </div>
   </div>
   <div class="pc-grid">`;
@@ -3500,8 +3508,8 @@ function renderPriorityCleaning(){
         <div class="pc-drag">⋮⋮</div>
         <div class="pc-check ${doneToday?'done':''}" onclick="event.stopPropagation();togglePriorityCleaningDone(${it.id})" title="${doneToday?'今日の実施を取消':'今日実施したことを記録'}"></div>
         <div class="pc-body" onclick="openPriorityCleaningEdit(${it.id})">
-          <div class="pc-title">${it.name}${scheduledNow?'<span class="pc-scheduled-tag">⚡今月予定</span>':''}</div>
-          ${it.place?`<div class="pc-place">${it.place}</div>`:''}
+          <div class="pc-title">${esc(it.name)}${scheduledNow?'<span class="pc-scheduled-tag">⚡今月予定</span>':''}</div>
+          ${it.place?`<div class="pc-place">${esc(it.place)}</div>`:''}
           <div class="pc-meta">
             <span class="pc-freq">${it.frequency}</span>
             <span class="pc-last">📅 ${lastLabel}</span>
@@ -4081,7 +4089,7 @@ function msRenderAttachments(){
   document.getElementById('ms-attachments').innerHTML = list.length ? list.map((a,i)=>
     `<span class="ms-chip">
        ${i>0?`<span class="mv" title="前へ" onclick="msMoveAttachment(${i},-1)">◀</span>`:''}
-       <span class="nm" title="${(a.name||'').replace(/"/g,'')}">📎 ${a.name||a.id}</span>
+       <span class="nm" title="${esc(a.name||'')}">📎 ${esc(a.name||a.id)}</span>
        ${i<list.length-1?`<span class="mv" title="後へ" onclick="msMoveAttachment(${i},1)">▶</span>`:''}
        <span class="x" title="削除" onclick="msRemoveAttachment(${i})">✕</span>
      </span>`).join('') : '<span style="font-size:11.5px;color:#aaa;">添付なし</span>';
@@ -4675,7 +4683,7 @@ function renderReg(){
                 ? `<span class="c-price" style="color:#c0392b;font-size:10.5px;font-weight:800;background:#fde8e6;border-radius:3px;padding:1px 5px;border:1px solid #e8877a;">¥${cMeta.price.toLocaleString()}</span>`
                 : `<span class="c-price">¥${cMeta.price.toLocaleString()}</span>`
               : '';
-            const timeChipC=cMeta.arrivalTime?`<span class="c-time">${cMeta.arrivalTime}</span>`:'';
+            const timeChipC=cMeta.arrivalTime?`<span class="c-time">${esc(cMeta.arrivalTime)}</span>`:'';
             const totalNightsC=booking.nights;
             const nightsBadgeC=totalNightsC>1?`<span class="bdg c-nights">${totalNightsC}泊</span>`:'';
             const sexBadgeC=cMeta.sex?`<span class="bdg ${cMeta.sex==='男'?'bm':cMeta.sex==='女'?'bf':''}">${cMeta.sex}</span>`:'';
@@ -4701,7 +4709,7 @@ function renderReg(){
               +`<div class="c-namerow">`
               +`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`
               +planIconsHtmlC
-              +`<span class="c-name" style="color:${cinC?'#92400e':'var(--ocean)'};">${cMeta.name||'貸切'}</span>`
+              +`<span class="c-name" style="color:${cinC?'#92400e':'var(--ocean)'};">${esc(cMeta.name||'貸切')}</span>`
               +guestsBadgeC+payChipC+priceChipC
               +`</div>`
               // 下段：サイト + 性別 + 区分 + 国籍 + 時刻 + 泊数 + 備考
@@ -4712,7 +4720,7 @@ function renderReg(){
               +(cMeta.nat?natFlag(cMeta.nat):'')
               +timeChipC
               +nightsBadgeC
-              +(noteCleanC?`<span class="c-note">📌${noteCleanC.slice(0,30)}</span>`:'')
+              +(noteCleanC?`<span class="c-note">📌${esc(noteCleanC.slice(0,30))}</span>`:'')
               +`</div>`
               +`</div></td>`;
           } else if(ri===0&&!isAnchorDay){
@@ -4821,13 +4829,13 @@ function renderReg(){
               ? `<span class="c-price" style="color:#c0392b;font-size:10.5px;font-weight:800;background:#fde8e6;border-radius:3px;padding:1px 5px;border:1px solid #e8877a;">¥${g.price.toLocaleString()}</span>`
               : `<span class="c-price">¥${g.price.toLocaleString()}</span>`
             : '';
-          const timeChip=g.arrivalTime?`<span class="c-time">${g.arrivalTime}</span>`:'';
+          const timeChip=g.arrivalTime?`<span class="c-time">${esc(g.arrivalTime)}</span>`:'';
           // 氏名・人数・支払・料金をすべて1行に
           row+=`<div class="c-namerow">`;
           if(isCharter)row+=`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`;
           if(allIcons)row+=planIconsHtml;
-          row+=`<span class="${ncls} c-name">${g.name}</span>`;
-          if(g.reservationId)row+=`<span style="font-size:9px;font-weight:600;color:#185FA5;background:#e8f0fe;border-radius:3px;padding:0 4px;flex-shrink:0;">${g.reservationId}</span>`;
+          row+=`<span class="${ncls} c-name">${esc(g.name)}</span>`;
+          if(g.reservationId)row+=`<span style="font-size:9px;font-weight:600;color:#185FA5;background:#e8f0fe;border-radius:3px;padding:0 4px;flex-shrink:0;">${esc(g.reservationId)}</span>`;
           row+=guestsBadge+payChip+priceChip;
           row+=`</div>`;
 
@@ -4844,7 +4852,7 @@ function renderReg(){
           row+=nightsBadge;
           // 備考：泊数の右に表示（駐車・サーフ除外）
           const noteClean=(g.note||'').replace(/🚙|🏄|surf|サーフ/gi,'').trim();
-          if(noteClean)row+=`<span class="c-note">📌${noteClean.slice(0,30)}</span>`;
+          if(noteClean)row+=`<span class="c-note">📌${esc(noteClean.slice(0,30))}</span>`;
           row+=`</div>`;
 
           row+=`</div></td>`;
@@ -5329,7 +5337,7 @@ function openAdd(){
   document.getElementById('f-email').value='';
   const selMonth=parseInt(document.getElementById('sel-month').value);
   const today=new Date();
-  const defDate=`2026-${String(selMonth).padStart(2,'0')}-01`;
+  const defDate=`${DISP_YEAR}-${String(selMonth).padStart(2,'0')}-01`;
   document.getElementById('f-day').value=defDate;
   document.getElementById('f-nights').value='1';
   document.getElementById('f-guests').value='1';
@@ -5345,16 +5353,18 @@ function openAdd(){
 function openAddAt(rid,day){
   openAdd();
   const selMonth=parseInt(document.getElementById('sel-month').value);
-  document.getElementById('f-day').value=`2026-${String(selMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  document.getElementById('f-day').value=`${DISP_YEAR}-${String(selMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   document.getElementById('f-room').value=rid;
 }
 function openEdit(k){
   const g=guestData[k];if(!g||g.cont)return;
   editKey=k;document.getElementById('modal-title').textContent='予約詳細';document.getElementById('del-btn').style.display='block';
   document.getElementById('f-name').value=g.name||'';
-  // チェックイン日：guestDataのキー(month:roomId:day)からmonthを逆引き
-  const editM=editKey?parseKey(editKey).m:parseInt(document.getElementById('sel-month').value);
-  document.getElementById('f-day').value=`2026-${String(editM).padStart(2,'0')}-${String(g.day||1).padStart(2,'0')}`;
+  // チェックイン日：guestDataのキー(年:month:roomId:day / month:roomId:day)から年・monthを逆引き
+  const _pk=editKey?parseKey(editKey):null;
+  const editY=_pk?_pk.y:DISP_YEAR;
+  const editM=_pk?_pk.m:parseInt(document.getElementById('sel-month').value);
+  document.getElementById('f-day').value=`${editY}-${String(editM).padStart(2,'0')}-${String(g.day||1).padStart(2,'0')}`;
   const month=parseInt(document.getElementById('sel-month').value);
   document.getElementById('f-nights').value=findN(g.roomId,g.day,month);
   document.getElementById('f-guests').value=guestCountOf(g);
@@ -5475,7 +5485,7 @@ async function openMailPreview(mailKey, btn){
     const attEl=document.getElementById('mpm-attachments');
     const attRow=document.getElementById('mpm-attach-row');
     if(data.attachments&&data.attachments.length){
-      attEl.innerHTML=data.attachments.map(a=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--sand);border:1px solid var(--sand-border);border-radius:6px;padding:3px 8px;">📎 ${a.name}</span>`).join('');
+      attEl.innerHTML=data.attachments.map(a=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--sand);border:1px solid var(--sand-border);border-radius:6px;padding:3px 8px;">📎 ${esc(a.name)}</span>`).join('');
       attRow.style.display='';
     }else{attRow.style.display='none';}
     // QRコード
@@ -5562,7 +5572,7 @@ async function loadPassportPhotos(resId){
       const nm=((x.familyName||'')+' '+(x.givenName||'')).trim()||('宿泊者'+(i+1));
       return `<div style="text-align:center;">
         <img src="${x.passportImage}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
-        <div style="font-size:10px;color:#888;margin-top:2px;">${nm}</div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">${esc(nm)}</div>
         <a href="${x.passportImage}" download="passport_${String(resId)}_${i+1}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
       </div>`;
     }).join('');
@@ -5572,6 +5582,7 @@ async function loadPassportPhotos(resId){
 function saveGuest(){
   const dateVal=document.getElementById('f-day').value; // YYYY-MM-DD
   const dateParts=dateVal?dateVal.split('-'):null;
+  const yearSel=dateParts?parseInt(dateParts[0]):DISP_YEAR;   // 選択された年（キー生成に使用）
   const month=dateParts?parseInt(dateParts[1]):parseInt(document.getElementById('sel-month').value);
   const day=dateParts?parseInt(dateParts[2]):1;
   const rid=parseInt(document.getElementById('f-room').value),nights=parseInt(document.getElementById('f-nights').value)||1,status=document.getElementById('f-status').value;
@@ -5636,7 +5647,7 @@ function saveGuest(){
         const restoreData=allKeys.map(({m:km,d:kd,k})=>({m:km,d:kd,data:{...guestData[k]}}));
         allKeys.forEach(({k})=>delete guestData[k]);
         // cancelListに登録（cm-dateはYYYY-MM-DD形式）
-        const dateStr=`2026-${String(month).padStart(2,'0')}-${String(og.day).padStart(2,'0')}`;
+        const dateStr=`${DISP_YEAR}-${String(month).padStart(2,'0')}-${String(og.day).padStart(2,'0')}`;
         cancelList.unshift({
           date:dateStr,
           name:og.name,
@@ -5681,7 +5692,7 @@ function saveGuest(){
 
   // 月跨ぎ対応：各泊の実カレンダー日付(y,m,d)を算出してキー・dayフィールドを正しく設定（CSV取込と同一ロジックへ統一）
   for(let n=0;n<nights;n++){
-    const {y:ny,m:nm,d:nd}=addDays(month,day,n);
+    const {y:ny,m:nm,d:nd}=addDays(month,day,n,yearSel);   // 選択年を基準に月末・年末跨ぎを正規化
     guestData[gk(nm,rid,nd,ny)]={..._preserve,...base,roomId:rid,day:nd,price:n===0?base.price:null,cont:n>0};
   }
 
@@ -6485,14 +6496,14 @@ function importCSVText(text){
   ${updatedList.length>0?`<div class="import-changes" style="background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
     <div style="font-weight:700;margin-bottom:6px;color:#7a5800;">🔄 予約内容の変更（${updatedList.length}件）</div>
     ${updatedList.map(u=>`<div style="padding:3px 0;border-bottom:1px dashed #eee;">
-      <strong>${u.name}</strong> <span style="color:#888;">#${u.reservationId||''}</span>
-      <span style="margin-left:8px;color:#7a5800;">${u.changes.join('・')}</span>
+      <strong>${esc(u.name)}</strong> <span style="color:#888;">#${esc(u.reservationId||'')}</span>
+      <span style="margin-left:8px;color:#7a5800;">${esc(u.changes.join('・'))}</span>
       ${u.status==='競合エラー'?'<span style="color:#c0392b;font-weight:700;margin-left:8px;">⚠ 競合（手動割当が必要）</span>':''}
     </div>`).join('')}
   </div>`:''}
   ${dupSkipList.length>0?`<div class="import-dups" style="background:#f0f4f8;border-left:4px solid #90a4ae;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
     <div style="font-weight:700;margin-bottom:6px;color:#546e7a;">ℹ 重複スキップ（${dupSkipList.length}件・変更なしのため未処理）</div>
-    <div style="color:#546e7a;font-size:11px;">${dupSkipList.map(d=>`${d.name} <span style="color:#999;">#${d.reservationId||''}</span>`).join(' / ')}</div>
+    <div style="color:#546e7a;font-size:11px;">${dupSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>`).join(' / ')}</div>
   </div>`:''}`;
   renderUnassignedPanel();
   renderReg();autoSave();
@@ -6515,11 +6526,11 @@ function renderUnassignedPanel(){
           return `<div style="background:#fff;border:1px solid #e0c0c0;border-radius:6px;padding:10px 12px;font-size:12px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
               <div style="flex:1;min-width:0;">
-                <div style="font-weight:700;color:#1a2b3a;font-size:13px;margin-bottom:3px;">${u.name} <span style="font-weight:400;color:#888;font-size:11px;">${u.reservationId?'#'+u.reservationId:''}</span></div>
+                <div style="font-weight:700;color:#1a2b3a;font-size:13px;margin-bottom:3px;">${esc(u.name)} <span style="font-weight:400;color:#888;font-size:11px;">${u.reservationId?'#'+esc(u.reservationId):''}</span></div>
                 <div style="color:#666;line-height:1.6;">
-                  ${u.checkinMonth}/${u.checkinDay} → ${co}　${u.nights}泊　${u.guests}名　${u.site||''}<br>
-                  希望: ${u.typeName||'-'}　区分: ${u.cat||'-'}<br>
-                  <span style="color:#c0392b;font-weight:600;">理由: ${u.reason||'空室不足'}</span>
+                  ${u.checkinMonth}/${u.checkinDay} → ${co}　${u.nights}泊　${u.guests}名　${esc(u.site||'')}<br>
+                  希望: ${esc(u.typeName||'-')}　区分: ${esc(u.cat||'-')}<br>
+                  <span style="color:#c0392b;font-weight:600;">理由: ${esc(u.reason||'空室不足')}</span>
                 </div>
               </div>
               <button onclick="openManualAssign(${i})" class="btn btn-blue btn-xs" style="flex-shrink:0;white-space:nowrap;">名簿へ手動追加</button>
@@ -7033,7 +7044,7 @@ function renderParking(){
     html+=`<div class="park-price">¥${price.toLocaleString()}/日</div>`;
     entries.forEach(e=>{
       const cls=e.type==='park-auto'?'auto-park':'';
-      html+=`<div class="park-entry ${cls}" onclick="event.stopPropagation();openParkEdit('${dk}',${e.id})" title="${e.name} ¥${(e.price||0).toLocaleString()}">🚙${e.name.split(/\s/)[0]} ${e.price?'¥'+e.price.toLocaleString():''}</div>`;
+      html+=`<div class="park-entry ${cls}" onclick="event.stopPropagation();openParkEdit('${dk}',${e.id})" title="${esc(e.name)} ¥${(e.price||0).toLocaleString()}">🚙${esc(e.name.split(/\s/)[0])} ${e.price?'¥'+e.price.toLocaleString():''}</div>`;
     });
     html+=`</div>`;
   }
@@ -7177,14 +7188,14 @@ function renderRental(){
     if(hol)html+=`<div class="park-hol">${HOLIDAY_NAMES[dk]||'祝'}</div>`;
     dayRes.forEach(r=>{
       const t1=(r.start||'').slice(11,16),t2=(r.end||'').slice(11,16);
-      html+=`<div class="rs-cell-entry ${RENTAL_SITE_CLASS[r.site]||''}" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${r.name} / ${r.facility} / ${r.purpose}">`
+      html+=`<div class="rs-cell-entry ${RENTAL_SITE_CLASS[r.site]||''}" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${esc(r.name)} / ${esc(r.facility)} / ${esc(r.purpose)}">`
         +`<div style="display:flex;justify-content:space-between;align-items:center;gap:2px;">`
         +`<span style="font-weight:700;font-size:12px;">${t1}〜${t2}</span>`
-        +`<span style="font-size:11px;background:rgba(0,0,0,.1);border-radius:3px;padding:0 3px;">${r.facility}</span>`
+        +`<span style="font-size:11px;background:rgba(0,0,0,.1);border-radius:3px;padding:0 3px;">${esc(r.facility)}</span>`
         +`</div>`
-        +`<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name||''}（${r.guests||1}名）</div>`
+        +`<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.name||'')}（${r.guests||1}名）</div>`
         +`<div style="display:flex;justify-content:space-between;align-items:center;gap:2px;">`
-        +`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.purpose||''}</span>`
+        +`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.purpose||'')}</span>`
         +`<span style="font-weight:700;white-space:nowrap;">¥${(r.price||0).toLocaleString()}</span>`
         +`</div>`
         +`<div style="font-size:11px;opacity:.7;text-align:right;">${r.site||''}</div>`
@@ -7299,10 +7310,10 @@ function showRentalDay(y,m,d){
   list.forEach(r=>{
     const t1=(r.start||'').slice(11,16),t2=(r.end||'').slice(11,16);
       html+=`<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="closeM('rental-day-modal');showP('rental',document.querySelector('.nitem[onclick*=rental]'));openRentalEdit(${r.id});">`
-        +`<strong>${t1}-${t2}</strong> ${r.facility} ／ ${r.name}（${r.guests}名）<br>`
-        +`<span style="font-size:11px;color:#666;">${r.purpose} ／ ${r.site} ／ ¥${(r.price||0).toLocaleString()}</span>`
-        +(r.options&&r.options.length?`<br><span style="font-size:11px;color:#888;">🔧 ${r.options.join('・')}</span>`:'')
-        +(r.detail?`<br><span style="font-size:11px;color:#555;white-space:pre-wrap;">${r.detail}</span>`:'')
+        +`<strong>${t1}-${t2}</strong> ${esc(r.facility)} ／ ${esc(r.name)}（${r.guests}名）<br>`
+        +`<span style="font-size:11px;color:#666;">${esc(r.purpose)} ／ ${esc(r.site)} ／ ¥${(r.price||0).toLocaleString()}</span>`
+        +(r.options&&r.options.length?`<br><span style="font-size:11px;color:#888;">🔧 ${esc(r.options.join('・'))}</span>`:'')
+        +(r.detail?`<br><span style="font-size:11px;color:#555;white-space:pre-wrap;">${esc(r.detail)}</span>`:'')
         +`</div>`;
   });
   document.getElementById('rdm-list').innerHTML=html;
@@ -7418,16 +7429,16 @@ function renderCancel(){
     const restore=c.restoreData?'<button class="btn btn-xs" style="margin-right:4px;background:var(--ocean-light);color:var(--ocean);border-color:var(--ocean);" onclick="restoreCancel('+i+')">復元</button>':'';
     html+='<tr style="'+rowBg+'">'
       +'<td style="text-align:center;">'+chk+'</td>'
-      +'<td>'+(c.date||'')+'</td>'
-      +'<td style="font-weight:600;">'+(c.name||'')+'</td>'
-      +'<td>'+(c.site||'')+'</td>'
-      +'<td style="font-size:11px;">'+(c.pay||'')+'</td>'
+      +'<td>'+esc(c.date||'')+'</td>'
+      +'<td style="font-weight:600;">'+esc(c.name||'')+'</td>'
+      +'<td>'+esc(c.site||'')+'</td>'
+      +'<td style="font-size:11px;">'+esc(c.pay||'')+'</td>'
       +'<td>¥'+(c.price||0).toLocaleString()+'</td>'
-      +'<td>'+(c.nat||'')+'</td>'
-      +'<td><span class="tag '+(c.sex==='男'?'tm':'tf')+'">'+(c.sex||'')+'</span></td>'
-      +'<td><span class="tag '+cc+'">'+(c.cat||'')+'</span></td>'
-      +'<td style="font-size:11px;">'+(c.room||'')+'</td>'
-      +'<td style="font-size:11px;">'+(c.note||'')+'</td>'
+      +'<td>'+esc(c.nat||'')+'</td>'
+      +'<td><span class="tag '+(c.sex==='男'?'tm':'tf')+'">'+esc(c.sex||'')+'</span></td>'
+      +'<td><span class="tag '+cc+'">'+esc(c.cat||'')+'</span></td>'
+      +'<td style="font-size:11px;">'+esc(c.room||'')+'</td>'
+      +'<td style="font-size:11px;">'+esc(c.note||'')+'</td>'
       +'<td style="white-space:nowrap;">'+restore+'<button class="btn btn-xs" onclick="openCancelEdit('+i+')">編集</button></td>'
       +'</tr>';
   });
@@ -7487,7 +7498,7 @@ function renderSurf(){
   let html='<thead><tr><th>日程</th><th>氏名</th><th>予約サイト</th><th>料金</th><th>性別</th><th>サーフィン日</th><th>ショップ</th><th>連絡日</th><th>入金日</th><th>備考</th><th></th></tr></thead><tbody>';
   filtered.forEach(s=>{
     const i=surfList.indexOf(s);
-    html+=`<tr><td>${s.date}</td><td style="font-weight:600;">${s.name}${s.auto?' <span style="font-size:9px;color:#aaa;">自動</span>':''}</td><td>${s.site}</td><td>${s.price?'¥'+s.price.toLocaleString():'—'}</td><td><span class="tag ${s.sex==='男'?'tm':'tf'}">${s.sex}</span></td><td style="font-size:11px;">${s.surfday||'—'}</td><td>${s.shop||'—'}</td><td style="font-size:11px;">${s.contact||'—'}</td><td style="font-size:11px;">${s.payment||'—'}</td><td style="font-size:11px;">${s.note}</td><td><button class="btn btn-xs" onclick="openSurfEdit(${i})">編集</button></td></tr>`;
+    html+=`<tr><td>${esc(s.date)}</td><td style="font-weight:600;">${esc(s.name)}${s.auto?' <span style="font-size:9px;color:#aaa;">自動</span>':''}</td><td>${esc(s.site)}</td><td>${s.price?'¥'+s.price.toLocaleString():'—'}</td><td><span class="tag ${s.sex==='男'?'tm':'tf'}">${esc(s.sex)}</span></td><td style="font-size:11px;">${esc(s.surfday||'—')}</td><td>${esc(s.shop||'—')}</td><td style="font-size:11px;">${esc(s.contact||'—')}</td><td style="font-size:11px;">${esc(s.payment||'—')}</td><td style="font-size:11px;">${esc(s.note)}</td><td><button class="btn btn-xs" onclick="openSurfEdit(${i})">編集</button></td></tr>`;
   });
   if(!filtered.length)html+='<tr><td colspan="11" style="text-align:center;color:#aaa;padding:16px;">データなし</td></tr>';
   document.getElementById('surf-table').innerHTML=html+'</tbody>';
@@ -7555,14 +7566,14 @@ function renderRooms(){
   if(!tbody)return;
   tbody.innerHTML=rooms.map((r,i)=>`
     <tr style="border-bottom:1px solid var(--sand-border);${i%2===1?'background:var(--sand);':''}">
-      <td style="padding:12px 16px;color:#555;">${(roomSettings[r.id]&&roomSettings[r.id].facilityName)||'江の島ゲストハウス134'}</td>
+      <td style="padding:12px 16px;color:#555;">${esc((roomSettings[r.id]&&roomSettings[r.id].facilityName)||'江の島ゲストハウス134')}</td>
       <td style="padding:12px 16px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="width:10px;height:10px;border-radius:50%;background:${r.color};flex-shrink:0;display:inline-block;"></span>
-          <span style="font-weight:600;color:var(--text);">${r.no}</span>
+          <span style="font-weight:600;color:var(--text);">${esc(r.no)}</span>
         </div>
       </td>
-      <td style="padding:12px 16px;color:#333;">${r.type}</td>
+      <td style="padding:12px 16px;color:#333;">${esc(r.type)}</td>
       <td style="padding:12px 16px;text-align:center;color:#555;">${r.cap}名</td>
       <td style="padding:12px 16px;text-align:center;">
         <button class="btn btn-xs" onclick="openRoomEdit(${r.id})" style="font-size:11px;padding:4px 12px;">詳細</button>
@@ -7838,19 +7849,19 @@ function renderStaffNotes(){
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
             ${snRankSelectHtml(n.id,n,11)}
             ${snTypeSelectHtml(n.id,n,11)}
-            <span style="font-size:11px;font-weight:600;color:var(--ink);">${n.author}</span>
-            <span style="font-size:11px;color:var(--muted);">${n.created}</span>
+            <span style="font-size:11px;font-weight:600;color:var(--ink);">${esc(n.author)}</span>
+            <span style="font-size:11px;color:var(--muted);">${esc(n.created)}</span>
             ${n.done?`<span style="font-size:10px;color:var(--seaglass);margin-left:auto;">✓ 確認済</span>`:''}
           </div>
           <!-- タイトル（タップで直接編集） -->
           <div class="sn-ce" contenteditable="true" data-ph="タイトルを入力"
             onblur="snInlineText(${n.id},'title',this)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-            style="font-size:14.5px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:3px;padding:2px 4px;">${n.title||n.text||''}</div>
+            style="font-size:14.5px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:3px;padding:2px 4px;">${esc(n.title||n.text||'')}</div>
           <!-- 詳細（タップで直接編集・改行可） -->
           <div class="sn-ce" contenteditable="true" data-ph="詳細を入力（任意）"
             onblur="snInlineText(${n.id},'detail',this)"
-            style="font-size:12px;color:${n.done?'var(--light)':'var(--text)'};line-height:1.65;white-space:pre-wrap;padding:2px 4px;min-height:1.2em;">${n.detail||''}</div>
+            style="font-size:12px;color:${n.done?'var(--light)':'var(--text)'};line-height:1.65;white-space:pre-wrap;padding:2px 4px;min-height:1.2em;">${esc(n.detail||'')}</div>
         </div>
         <button onclick="deleteSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--muted);">✕</button>
       </div>
@@ -8095,8 +8106,8 @@ function showCheckInNotification(info){
   card.innerHTML = `
     <button class="cn-close" title="閉じる">✕</button>
     <div class="cn-head">✓ チェックイン完了</div>
-    <div class="cn-name">${info.name||'(no name)'} 様</div>
-    ${roomName?`<div class="cn-room">${roomName}</div>`:''}
+    <div class="cn-name">${esc(info.name||'(no name)')} 様</div>
+    ${roomName?`<div class="cn-room">${esc(roomName)}</div>`:''}
     <div class="cn-msg">チェックインが完了しました</div>
     ${dt?`<div class="cn-time">${dt}</div>`:''}
   `;
@@ -8466,13 +8477,13 @@ function renderRankAPanel(){
           <div class="sn-ce" contenteditable="true" data-ph="タイトルを入力"
             onblur="snInlineText(${n.id},'title',this)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-            style="font-size:12px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:3px;padding:1px 3px;">${n.title||n.text||''}</div>
+            style="font-size:12px;font-weight:700;line-height:1.4;color:${n.done?'var(--muted)':'var(--ink)'};${n.done?'text-decoration:line-through;':''}margin-bottom:3px;padding:1px 3px;">${esc(n.title||n.text||'')}</div>
           <div class="sn-ce" contenteditable="true" data-ph="詳細を入力（任意）"
             onblur="snInlineText(${n.id},'detail',this)"
-            style="font-size:10.5px;color:var(--text);line-height:1.5;white-space:pre-wrap;padding:1px 3px;min-height:1.2em;">${n.detail||''}</div>
+            style="font-size:10.5px;color:var(--text);line-height:1.5;white-space:pre-wrap;padding:1px 3px;min-height:1.2em;">${esc(n.detail||'')}</div>
           <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
-            <span style="font-size:10px;font-weight:600;color:var(--ink);">${n.author}</span>
-            <span style="font-size:10px;color:var(--muted);">${n.created}</span>
+            <span style="font-size:10px;font-weight:600;color:var(--ink);">${esc(n.author)}</span>
+            <span style="font-size:10px;color:var(--muted);">${esc(n.created)}</span>
           </div>
         </div>
       </div>
@@ -8969,13 +8980,22 @@ else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); 
 setTimeout(adjustRegScrollHeight,300);
 
 // ── PIN認証 ──────────────────────────────────────────────────
+// PINは平文ではなくSHA-256ハッシュで保持（公開リポジトリからPIN値を秘匿）。
+// PINを変更するときは、コンソールで
+//   crypto.subtle.digest('SHA-256',new TextEncoder().encode('新PIN')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// を実行してハッシュを取得し、下記キーを差し替える。
 const PIN_ROLES={
-  '5070':{role:'admin',    name:'管理者',       pages:'all'},
-  '5439':{role:'cleaning', name:'清掃スタッフ', pages:['cleaning']},
-  '1827':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning']},
+  '739ec77b846ad913811cc124579cc44f902f83f5bd4e89256ff0e826ddb64ce4':{role:'admin',    name:'管理者',       pages:'all'},
+  '9b8f2fa45e4b5f1962f98a562df2f105c9b3bd7b9ef70aca4bc2fd07692b7958':{role:'cleaning', name:'清掃スタッフ', pages:['cleaning']},
+  '52a6932d5af5316a815af86286167054ebaa4953cedb82e3914a5c126e363ea4':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning']},
   // 渡辺千尋：宿泊者名簿・清掃予定表の閲覧のみ。ただしSea Breeze 鎌倉/三浦のセル移動は可能
-  '2332':{role:'watanabe', name:'渡辺千尋',     pages:['register','cleaning']},
+  'ae9123de2fc403666c9f48a6546fffc5257ff69536f7c4d8f8d5d327d6a4e061':{role:'watanabe', name:'渡辺千尋',     pages:['register','cleaning']},
 };
+// 入力PINをSHA-256ハッシュ化（照合用）
+async function _hashPin(pin){
+  const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(pin)));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
 // Sea Breeze 鎌倉・三浦の部屋か判定（roleごとのセル移動許可に使用）
 function _isSBRoom(rid){
   const r=(rooms||[]).find(x=>String(x.id)===String(rid));
@@ -8998,11 +9018,14 @@ function _updatePinDots(){
   }
   document.getElementById('pin-error').textContent='';
 }
-function _checkPin(){
-  const r=PIN_ROLES[_pinBuffer];
+async function _checkPin(){
+  const entered=_pinBuffer;
+  const hash=await _hashPin(entered);
+  const r=PIN_ROLES[hash];
   if(!r){
-    document.getElementById('pin-error').textContent='PINが違います';
-    _pinBuffer='';_updatePinDots();return;
+    _pinBuffer='';_updatePinDots();
+    document.getElementById('pin-error').textContent='PINが違います'; // _updatePinDotsがクリアするので後に設定
+    return;
   }
   sessionStorage.setItem('hotel_pin_role',r.role);
   sessionStorage.setItem('hotel_pin_name',r.name);

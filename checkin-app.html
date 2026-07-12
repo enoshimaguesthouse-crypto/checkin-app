@@ -1453,13 +1453,16 @@ const HOTEL_DATA_GAS_URL = 'https://script.google.com/macros/s/AKfycbxRIQQy4vygx
 const HOTEL_DATA_API_KEY = 'ck134_9f3a72c1d8e4';
 function _hkUrl(url){ return url + (url.indexOf('?')>=0?'&':'?') + 'key=' + encodeURIComponent(HOTEL_DATA_API_KEY); }
 
-// guestDataのキー "month:roomId:day"（年は2026固定）から日付文字列を生成
+// guestDataのキーから日付文字列を生成
+//  3要素 "m:r:d"（2026年・年省略形式）／ 4要素 "y:m:r:d"（2027年以降）の両対応
 function _gkToDate(key){
   const parts = String(key).split(':');
   if (parts.length < 3) return null;
-  const m = parseInt(parts[0]), d = parseInt(parts[2]);
+  let y, m, d;
+  if (parts.length === 4) { y=parseInt(parts[0]); m=parseInt(parts[1]); d=parseInt(parts[3]); }
+  else { y=2026; m=parseInt(parts[0]); d=parseInt(parts[2]); }
   if (isNaN(m) || isNaN(d)) return null;
-  return `2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
 // ═══════════════════════════════════════
@@ -2197,10 +2200,16 @@ function goToConfirm() {
   showScreen('screen-confirm');
 }
 
+// HTMLエスケープ（XSS対策）：宿泊者が入力した氏名・国籍などをinnerHTMLに入れる前に必ず通す
+function _esc(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function buildConfirmTable() {
   const t = T[lang];
   const r = reservationData;
-  const row = (k,val)=>`<tr><th>${k}</th><td>${val||'—'}</td></tr>`;
+  // valはユーザー入力を含むためエスケープ。kは固定ラベルなのでそのまま
+  const row = (k,val)=>`<tr><th>${k}</th><td>${_esc(val)||'—'}</td></tr>`;
   let html = row(t.cfReservation, r ? r.reservationId : '');
   if (r) {
     html += row(t.cfCheckin, r.checkin || '');
