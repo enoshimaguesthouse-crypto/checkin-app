@@ -184,6 +184,11 @@ function doPost(e) {
 
     } else if (payload.type === 'sendMail') {
       // 手動メール送信：1通送信してmailHistoryを保存
+      // 読み→送信→書きの間にPMSの全体保存が割り込むとmailHistoryが消えるためロックで直列化
+      var smLock = LockService.getScriptLock();
+      try { smLock.waitLock(10000); }
+      catch(lockErr) { return jsonOut(JSON.stringify({ error: 'busy: サーバーが混み合っています。数秒後に再試行してください' })); }
+      try {
       var sndData=_mailLoad_(); var sndGd=sndData.guestData||{};
       var sndResId=String(payload.reservationId||'').trim();
       var sndMailKey=String(payload.mailKey||'');
@@ -200,10 +205,16 @@ function doPost(e) {
       sndG.mailHistory=sndG.mailHistory||{}; sndG.mailHistory[sndMailKey]=sndNow;
       _mailSave_(sndData);
       return jsonOut(JSON.stringify({status:'ok',type:'sendMail',to:sndResult.to,sentAt:sndNow}));
+      } finally { smLock.releaseLock(); }
 
     } else if (payload.type === 'checkinUpdate') {
       // ── チェックイン確定の「部分更新」：予約ID一致レコードだけをサーバー側で更新 ──
       // 全DBのダウンロード/再アップロードを回避し、クライアントは差分＋写真のみ送信。
+      // 読み→書きの間にPMSの全体保存が割り込むとチェックイン内容が消えるためロックで直列化
+      const ciLock = LockService.getScriptLock();
+      try { ciLock.waitLock(10000); }
+      catch(lockErr) { return jsonOut(JSON.stringify({ error: 'busy: サーバーが混み合っています。数秒後に再試行してください' })); }
+      try {
       const file = getHotelFile();
       const data = JSON.parse(file.getBlob().getDataAsString());
       const guestData = data.guestData || {};
@@ -248,6 +259,7 @@ function doPost(e) {
       data.updatedBy = payload.updatedBy || 'checkin-app';
       file.setContent(JSON.stringify(data));
       return jsonOut(JSON.stringify({ status:'ok', type:'checkinUpdate', updated: updated }));
+      } finally { ciLock.releaseLock(); }
 
     } else {
       // 宿泊データファイルに保存（rentalSpaceReservations は含めない）
@@ -255,14 +267,27 @@ function doPost(e) {
       if (payload.guestData === undefined || payload.guestData === null) {
         return jsonOut(JSON.stringify({ error: 'guestData missing; save skipped to prevent data loss' }));
       }
+      // ── 書き込みロック：複数端末の同時保存を直列化（読み→比較→書きの割り込み防止）──
+      const lock = LockService.getScriptLock();
+      try { lock.waitLock(10000); }
+      catch(lockErr) { return jsonOut(JSON.stringify({ error: 'busy: サーバーが混み合っています。数秒後にもう一度保存してください' })); }
+      try {
       const file = getHotelFile();
+      // 既存ファイルを読み込み（競合検知とpassportImageマージの両方に使用）
+      let existing = null;
+      try { existing = JSON.parse(file.getBlob().getDataAsString()); } catch(readErr) { /* 初回等 */ }
+      // ── 競合検知：クライアントが最後に読んだ時点(baseUpdatedAt)より新しい保存が既にあれば上書きせず通知 ──
+      // 「後から保存した端末が黙って勝つ」事故（mailSentフラグ消失事故と同型）を防ぐ。
+      if (existing && existing.updatedAt && payload.baseUpdatedAt &&
+          payload.baseUpdatedAt !== existing.updatedAt) {
+        // serverDataは画像を除いて返す（doGetと同じ軽量化。画像はmergePassportImagesで保全される）
+        stripPassportImages(existing.guestData);
+        return jsonOut(JSON.stringify({ status:'conflict', serverData: existing }));
+      }
       // 既存ファイルのpassportImageを保持：起動時GETで画像を除外しているため、
       // クライアントが画像なしで保存しても既存の画像が消えないようマージする。
       const incomingGuestData = payload.guestData || {};
-      try {
-        const existing = JSON.parse(file.getBlob().getDataAsString());
-        mergePassportImages(incomingGuestData, existing.guestData || {});
-      } catch(mergeErr) { /* 既存読込失敗時はそのまま保存 */ }
+      if (existing) mergePassportImages(incomingGuestData, existing.guestData || {});
       const newData = {
   guestData:   incomingGuestData   || {},
   cancelList:  payload.cancelList  || [],
@@ -289,6 +314,7 @@ function doPost(e) {
       return ContentService
         .createTextOutput(JSON.stringify({ status:'ok', updatedAt:newData.updatedAt }))
         .setMimeType(ContentService.MimeType.JSON);
+      } finally { lock.releaseLock(); }
     }
 
   } catch(err) {
@@ -823,4 +849,99 @@ function installMailTrigger(){
 function removeMailTrigger(){
   var n=0; ScriptApp.getProjectTriggers().forEach(function(t){ if(t.getHandlerFunction()==='runAutoMails'){ ScriptApp.deleteTrigger(t); n++; } });
   return '既存トリガー '+n+' 件を削除しました';
+}
+
+// ============================================================
+//  日次バックアップ
+//  hotel134_data.json を毎日1回「バックアップ」フォルダへ日付付きコピー。
+//  保持期間30日（古いものは自動でゴミ箱へ）。
+//  導入手順：GASエディタで installBackupTrigger() を1回実行するだけ。
+//  復旧手順：listBackups() で一覧確認 → restoreFromBackup('ファイル名') を実行。
+// ============================================================
+const BACKUP_FOLDER_NAME = 'バックアップ';
+const BACKUP_KEEP_DAYS = 30;
+
+function _getBackupFolder_(){
+  const parent = getFolder();
+  const it = parent.getFoldersByName(BACKUP_FOLDER_NAME);
+  return it.hasNext() ? it.next() : parent.createFolder(BACKUP_FOLDER_NAME);
+}
+
+// バックアップ本体（トリガーから毎日実行。手動実行も可）
+function backupHotelData(){
+  const bf = _getBackupFolder_();
+  const stamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  const name = 'hotel134_data_' + stamp + '.json';
+  // 同日分が既にあれば置き換え（多重トリガー・手動再実行対策）
+  const dup = bf.getFilesByName(name);
+  while(dup.hasNext()) dup.next().setTrashed(true);
+  getHotelFile().makeCopy(name, bf);
+  // 保持期間を過ぎた古いバックアップをゴミ箱へ（誤削除してもゴミ箱から30日は戻せる）
+  const cutoff = Date.now() - BACKUP_KEEP_DAYS * 86400000;
+  const files = bf.getFiles();
+  let removed = 0;
+  while(files.hasNext()){
+    const f = files.next();
+    if(f.getName().indexOf('hotel134_data_') === 0 && f.getDateCreated().getTime() < cutoff){
+      f.setTrashed(true); removed++;
+    }
+  }
+  const msg = 'バックアップ完了: ' + name + (removed ? '（古いもの' + removed + '件を整理）' : '');
+  Logger.log(msg);
+  return msg;
+}
+
+// 毎日午前4時（日本時間）にバックアップを実行するトリガーを設置（1回だけ実行）
+function installBackupTrigger(){
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if(t.getHandlerFunction()==='backupHotelData') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('backupHotelData').timeBased().everyDays(1).atHour(4).create();
+  // 初回分をその場で1つ作成（動作確認を兼ねる）
+  const first = backupHotelData();
+  const msg = '毎日4時のバックアップトリガーを設置しました。' + first;
+  Logger.log(msg);
+  return msg;
+}
+function removeBackupTrigger(){
+  var n=0; ScriptApp.getProjectTriggers().forEach(function(t){ if(t.getHandlerFunction()==='backupHotelData'){ ScriptApp.deleteTrigger(t); n++; } });
+  return 'バックアップトリガー '+n+' 件を削除しました';
+}
+
+// バックアップ一覧（新しい順）。復旧時にファイル名を確認する用途
+function listBackups(){
+  const bf = _getBackupFolder_();
+  const files = bf.getFiles();
+  const rows = [];
+  while(files.hasNext()){
+    const f = files.next();
+    rows.push({ name:f.getName(), size:Math.round(f.getSize()/1024)+'KB', created:Utilities.formatDate(f.getDateCreated(),'Asia/Tokyo','yyyy-MM-dd HH:mm') });
+  }
+  rows.sort(function(a,b){ return a.name<b.name?1:-1; });
+  const text = rows.map(function(r){ return r.name+'\t'+r.size+'\t'+r.created; }).join('\n') || '（バックアップはまだありません）';
+  Logger.log(rows.length+'件\n'+text);
+  return text;
+}
+
+// 緊急復旧：指定したバックアップの内容で本体を上書きする
+// 例）restoreFromBackup('hotel134_data_2026-07-10.json')
+// ※実行前に自動で「復旧直前」のバックアップを取るので、間違えてももう一度戻せる
+function restoreFromBackup(fileName){
+  if(!fileName) return '復旧するファイル名を指定してください（listBackups()で確認できます）';
+  const bf = _getBackupFolder_();
+  const it = bf.getFilesByName(fileName);
+  if(!it.hasNext()) return 'バックアップが見つかりません: ' + fileName;
+  const backup = it.next();
+  const content = backup.getBlob().getDataAsString();
+  try { JSON.parse(content); } catch(e){ return '中止：バックアップのJSONが壊れています（' + e.message + '）'; }
+  // 復旧直前の状態も退避（やり直し可能に）
+  const stamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd_HHmm");
+  getHotelFile().makeCopy('hotel134_data_restore前_' + stamp + '.json', bf);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { getHotelFile().setContent(content); }
+  finally { lock.releaseLock(); }
+  const msg = '復旧完了: ' + fileName + ' の内容で本体を上書きしました（直前の状態も退避済み）';
+  Logger.log(msg);
+  return msg;
 }
