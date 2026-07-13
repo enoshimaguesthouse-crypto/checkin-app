@@ -2369,6 +2369,16 @@ function _roomLangToTTS(roomLang){
 let _lastGuideText = '';
 let _lastGuideTTSLang = 'ja-JP';
 
+// localStorage保存用に機微情報（暗証番号・Wi-Fiパスワード）を除去したコピーを作る
+function _stripSecrets(roomSettings){
+  const out={};
+  Object.keys(roomSettings||{}).forEach(k=>{
+    const s=roomSettings[k]||{};
+    const c={}; for(const f in s){ if(f!=='keycode'&&f!=='roomCode'&&f!=='wifiPass') c[f]=s[f]; }
+    out[k]=c;
+  });
+  return out;
+}
 // roomSettings を取得（GAS → localStorage の優先順でフォールバック）
 async function _fetchRoomSettings(){
   // 1) GAS から最新を試みる（軽量設定エンドポイント。roomSettings/roomsのみでguestDataを含まない）
@@ -2384,7 +2394,8 @@ async function _fetchRoomSettings(){
     }
     if(data.roomSettings && Object.keys(data.roomSettings).length > 0){
       try{
-        localStorage.setItem('hotel_roomSettings', JSON.stringify(data.roomSettings));
+        // 端末盗難対策：localStorageには暗証番号・Wi-Fiパスワードを保存しない（画面表示用の値はメモリ上のdataにのみ保持）
+        localStorage.setItem('hotel_roomSettings', JSON.stringify(_stripSecrets(data.roomSettings)));
         if(data.rooms) localStorage.setItem('hotel_rooms', JSON.stringify(data.rooms));
       }catch(e){}
       return { roomSettings: data.roomSettings, rooms: data.rooms || [] };

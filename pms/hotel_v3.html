@@ -8241,6 +8241,7 @@ function generateCheckinUrl(reservationId){
 let cloudUpdatedAt = null;   // サーバーの最終更新時刻
 let pollingTimer   = null;   // ポーリングタイマー
 let isSyncing      = false;  // 二重リクエスト防止
+let isDirty        = false;  // 未保存の変更あり（保存成功でfalse・ポーリング上書き/離脱警告の判定に使用）
 
 // すべてのデータをオブジェクトにまとめる
 function collectAllData() {
@@ -8577,6 +8578,8 @@ async function cloudSave() {
       }
     } else if (json.status === 'ok') {
       cloudUpdatedAt = json.updatedAt;
+      isDirty = false;              // 保存成功 → 未保存フラグ解除
+      _saveRetryCount = 0;          // リトライ回数リセット
       updateSyncStatus('ok', '保存済み ' + fmtTime(json.updatedAt));
       showToast('☁ クラウドに保存しました');
     } else {
@@ -8587,11 +8590,21 @@ async function cloudSave() {
     showToast('❌ 保存失敗: ' + e.message);
     // APIキー未設定/無効なら入力を促し、入力されたら自動リトライ
     if(_handleUnauthorized(e.message)){ isSyncing=false; setTimeout(()=>cloudSave(),300); return; }
+    // ネットワーク瞬断など：最大5回まで指数バックオフで自動リトライ（未保存の変更を守る）
+    if(_saveRetryCount < 5){
+      _saveRetryCount++;
+      const wait = Math.min(30000, 3000 * Math.pow(2, _saveRetryCount-1)); // 3,6,12,24,30秒
+      updateSyncStatus('warn', `保存失敗（${_saveRetryCount}回目・${Math.round(wait/1000)}秒後に再試行）`);
+      isSyncing = false;
+      setTimeout(()=>{ if(isDirty)cloudSave(); }, wait);
+      return;
+    }
   } finally {
     isSyncing = false;
     if(pendingSave){pendingSave=false;setTimeout(()=>cloudSave(),500);}
   }
 }
+let _saveRetryCount = 0;
 
 // ── クラウド読込 ──────────────────────────────────────────
 async function cloudLoad(silent=false) {
@@ -8632,8 +8645,16 @@ async function cloudLoad(silent=false) {
 function startPolling() {
   if (pollingTimer) clearInterval(pollingTimer);
   if (!GAS_URL) return;
-  pollingTimer = setInterval(() => { cloudLoad(true); autoCalcTodayOcc(); }, 30000);
+  pollingTimer = setInterval(() => {
+    // 未保存の変更がある間はポーリング取込をスキップ（編集内容がサーバー値で巻き戻るのを防止）
+    if (isDirty || isSyncing) { autoCalcTodayOcc(); return; }
+    cloudLoad(true); autoCalcTodayOcc();
+  }, 30000);
 }
+// 未保存のまま離脱しようとしたら警告（保存完了前のタブ閉じ・リロードによる変更消失を防止）
+window.addEventListener('beforeunload', (e) => {
+  if (isDirty) { e.preventDefault(); e.returnValue = ''; return ''; }
+});
 function stopPolling() {
   if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
 }
@@ -8663,6 +8684,7 @@ let autoSaveTimer=null;
 let pendingSave=false; // isSyncing中にautoSaveが来た場合のフラグ
 function autoSave(){
   if(!GAS_URL)return;
+  isDirty=true; // 未保存の変更あり（保存成功でクリア）
   updateSyncStatus('saving','変更あり（自動保存待機中...）');
   clearTimeout(autoSaveTimer);
   autoSaveTimer=setTimeout(async()=>{
