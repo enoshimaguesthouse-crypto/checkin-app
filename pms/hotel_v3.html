@@ -1899,6 +1899,7 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     <div class="ctr">
       <button class="btn" onclick="openSNTypeEdit()">🏷 種別編集</button>
       <button class="btn" onclick="openSNStaffEdit()">👤 スタッフ名編集</button>
+      <button class="btn" onclick="openReminderSettings()">🔁 定期リマインド設定</button>
     </div>
   </div>
 
@@ -1959,6 +1960,50 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
     <div style="flex:1;"></div>
     <button class="btn" onclick="closeM('sn-type-modal')">キャンセル</button>
     <button class="btn btn-blue" onclick="saveSNType()">保存</button>
+  </div>
+</div>
+</div>
+
+<!-- 定期リマインド設定モーダル -->
+<div class="mbg" id="reminder-modal" onclick="if(event.target===this)closeM('reminder-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:min(560px,96vw);max-height:90vh;overflow-y:auto;">
+  <h3>🔁 定期リマインド設定</h3>
+  <div style="font-size:11px;color:var(--muted);margin:4px 0 14px;">毎週・毎月・毎年の定型業務を、対象日になると自動でTODOへ追加します。TODOを完了・削除しても設定は残ります。</div>
+
+  <!-- 入力フォーム -->
+  <div style="background:var(--sand);border:1px solid var(--sand-border);border-radius:var(--radius-md);padding:14px;margin-bottom:14px;">
+    <div id="rmd-edit-badge" style="display:none;font-size:11px;font-weight:700;color:var(--ocean);margin-bottom:8px;">✏ 編集中</div>
+    <div class="mr"><div class="fl"><label>タイトル（必須）</label><input id="rmd-title" placeholder="例: 料金カレンダー変更"></div></div>
+    <div class="mr"><div class="fl"><label>詳細（任意）</label><textarea id="rmd-detail" rows="2" placeholder="詳細メモ" style="resize:vertical;font-family:inherit;"></textarea></div></div>
+    <div class="mr mr2">
+      <div class="fl"><label>ランク</label><select id="rmd-rank"><option value="A">A（最重要）</option><option value="B">B（重要）</option><option value="C">C（通常）</option></select></div>
+      <div class="fl"><label>種類</label><select id="rmd-type"></select></div>
+    </div>
+    <div class="mr mr2">
+      <div class="fl"><label>繰り返し</label><select id="rmd-repeat" onchange="rmdOnRepeatChange()"><option value="weekly">毎週</option><option value="monthly">毎月</option><option value="yearly">毎年</option></select></div>
+      <div class="fl" id="rmd-weekly-wrap"><label>曜日</label><select id="rmd-weekday"><option value="1">月</option><option value="2">火</option><option value="3">水</option><option value="4">木</option><option value="5">金</option><option value="6">土</option><option value="0">日</option></select></div>
+      <div class="fl" id="rmd-monthly-wrap" style="display:none;"><label>日付</label><select id="rmd-monthday"></select></div>
+      <div class="fl" id="rmd-yearly-wrap" style="display:none;"><label>月／日</label>
+        <div style="display:flex;gap:6px;">
+          <select id="rmd-month" style="flex:1;"></select>
+          <select id="rmd-yday" style="flex:1;"></select>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn" id="rmd-cancel-edit" style="display:none;" onclick="rmdResetForm()">編集中止</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-blue" onclick="rmdSave()">保存</button>
+    </div>
+  </div>
+
+  <!-- 登録済み一覧 -->
+  <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">登録済みリマインド</div>
+  <div id="rmd-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+  <div style="display:flex;gap:8px;margin-top:16px;">
+    <div style="flex:1;"></div>
+    <button class="btn btn-blue" onclick="closeM('reminder-modal')">閉じる</button>
   </div>
 </div>
 </div>
@@ -4271,7 +4316,7 @@ function showP(n,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nitem').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+n).classList.add('active');if(el)el.classList.add('active');
-  if(n==='rooms')renderRooms();if(n==='todo')renderStaffNotes();
+  if(n==='rooms')renderRooms();if(n==='todo'){generateDueReminders();renderStaffNotes();renderRankAPanel();}
   if(n==='occupancy')renderOcc();if(n==='cancel')renderCancel();if(n==='surf')renderSurf();
   if(n==='parking')renderParking();if(n==='sales')renderSales();
   if(n==='rental')renderRental();
@@ -7785,6 +7830,182 @@ let snTypes=[
 ];
 let snDragId=null;
 
+// ══════════════════════════════════════════════════════════
+//  定期リマインド（毎週/毎月/毎年 → 対象日にTODOへ自動生成）
+//  repeatReminders: [{ id, title, detail, rank, type, repeat, weekday, monthday, month, day, lastGeneratedDate }]
+//   repeat: 'weekly'|'monthly'|'yearly'
+//   weekly  : weekday 0(日)〜6(土)
+//   monthly : monthday 1〜31 または 'end'（月末）
+//   yearly  : month 1〜12, day 1〜31
+//   lastGeneratedDate: 最後にTODO生成した日付 'YYYY-MM-DD'（同周期内の再生成を防止）
+// ══════════════════════════════════════════════════════════
+let repeatReminders=[];
+let nextReminderId=1;
+// 初期シード（未登録時のみ投入）
+const REPEAT_REMINDER_SEED=[
+  {title:'料金カレンダー変更',              detail:'', rank:'A', type:'指示', repeat:'weekly',  weekday:5},                 // 毎週 金曜
+  {title:'シフト作成',                      detail:'', rank:'A', type:'指示', repeat:'monthly', monthday:15},               // 毎月 15日
+  {title:'送信業務',                        detail:'', rank:'A', type:'指示', repeat:'monthly', monthday:20},               // 毎月 20日
+  {title:'給与計算・給与支払い',            detail:'', rank:'A', type:'指示', repeat:'monthly', monthday:'end'},            // 毎月 月末
+  {title:'Booking.com 当日締め切り設定変更',detail:'', rank:'A', type:'指示', repeat:'yearly',  month:10, day:1},           // 毎年 10月1日
+];
+function _seedRemindersIfEmpty(){
+  if(!Array.isArray(repeatReminders)||repeatReminders.length===0){
+    repeatReminders=REPEAT_REMINDER_SEED.map((r,i)=>({id:i+1, ...r, detail:r.detail||'', lastGeneratedDate:''}));
+    nextReminderId=repeatReminders.length+1;
+  } else {
+    nextReminderId=Math.max(0,...repeatReminders.map(r=>r.id||0))+1;
+  }
+}
+// その月の最終日（28/29/30/31を動的判定）
+function _lastDayOfMonth(y,m){ return new Date(y,m,0).getDate(); } // m:1〜12
+// 指定リマインドが指定日(Date)に該当するか
+function _reminderDueOn(r,dt){
+  const y=dt.getFullYear(), m=dt.getMonth()+1, d=dt.getDate(), wd=dt.getDay();
+  if(r.repeat==='weekly')  return Number(r.weekday)===wd;
+  if(r.repeat==='monthly'){
+    if(r.monthday==='end') return d===_lastDayOfMonth(y,m);
+    // 指定日が存在しない月（例:31日指定の2月）は月末に寄せる
+    const target=Math.min(Number(r.monthday), _lastDayOfMonth(y,m));
+    return d===target;
+  }
+  if(r.repeat==='yearly')  return Number(r.month)===m && d===Math.min(Number(r.day), _lastDayOfMonth(y,m));
+  return false;
+}
+function _todayStr(){ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; }
+// 起動時・TODO表示時に呼ぶ：今日が対象日で未生成のリマインドをTODOへ生成
+function generateDueReminders(){
+  _seedRemindersIfEmpty();
+  const now=new Date();
+  const todayStr=_todayStr();
+  const created=`${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  let generated=0;
+  repeatReminders.forEach(r=>{
+    if(r.lastGeneratedDate===todayStr)return;        // 本日分は生成済み → 再生成しない（削除後も再生成されない）
+    if(!_reminderDueOn(r,now))return;                // 今日は対象日でない
+    staffNotes.unshift({
+      id:nextSnId++, type:r.type||'指示', rank:r.rank||'A',
+      author:(staffNames&&staffNames[0])||'オーナー',
+      title:r.title||'', detail:r.detail||'', done:false, created,
+      repeatReminderId:r.id                          // 生成元の判別用
+    });
+    r.lastGeneratedDate=todayStr;                    // 最終生成日を記録
+    generated++;
+  });
+  if(generated>0){ saveToLS(); autoSave(); }
+  return generated;
+}
+
+// ── 定期リマインド設定モーダル ─────────────────────────────
+let _rmdEditId=null;
+const _WEEKDAY_LABEL={0:'日',1:'月',2:'火',3:'水',4:'木',5:'金',6:'土'};
+function rmdOnRepeatChange(){
+  const rep=document.getElementById('rmd-repeat').value;
+  document.getElementById('rmd-weekly-wrap').style.display  = rep==='weekly' ?'':'none';
+  document.getElementById('rmd-monthly-wrap').style.display = rep==='monthly'?'':'none';
+  document.getElementById('rmd-yearly-wrap').style.display  = rep==='yearly' ?'':'none';
+}
+function openReminderSettings(){
+  _seedRemindersIfEmpty();
+  // 種類セレクトをsnTypesから生成
+  document.getElementById('rmd-type').innerHTML=snTypes.map(t=>`<option value="${t.label}">${t.icon} ${t.label}</option>`).join('');
+  // 日付セレクト（1〜31＋月末）
+  let md='<option value="end">月末</option>';
+  for(let d=1;d<=31;d++)md+=`<option value="${d}">${d}日</option>`;
+  document.getElementById('rmd-monthday').innerHTML=md;
+  // 年次：月・日
+  document.getElementById('rmd-month').innerHTML=Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}月</option>`).join('');
+  document.getElementById('rmd-yday').innerHTML=Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}日</option>`).join('');
+  rmdResetForm();
+  rmdRenderList();
+  document.getElementById('reminder-modal').classList.add('open');
+}
+function rmdResetForm(){
+  _rmdEditId=null;
+  document.getElementById('rmd-title').value='';
+  document.getElementById('rmd-detail').value='';
+  document.getElementById('rmd-rank').value='A';
+  document.getElementById('rmd-type').selectedIndex=0;
+  document.getElementById('rmd-repeat').value='weekly';
+  document.getElementById('rmd-weekday').value='5';
+  document.getElementById('rmd-monthday').value='1';
+  document.getElementById('rmd-month').value='1';
+  document.getElementById('rmd-yday').value='1';
+  document.getElementById('rmd-edit-badge').style.display='none';
+  document.getElementById('rmd-cancel-edit').style.display='none';
+  rmdOnRepeatChange();
+}
+function rmdEdit(id){
+  const r=repeatReminders.find(x=>x.id===id);if(!r)return;
+  _rmdEditId=id;
+  document.getElementById('rmd-title').value=r.title||'';
+  document.getElementById('rmd-detail').value=r.detail||'';
+  document.getElementById('rmd-rank').value=r.rank||'A';
+  document.getElementById('rmd-type').value=r.type||snTypes[0].label;
+  document.getElementById('rmd-repeat').value=r.repeat||'weekly';
+  if(r.repeat==='weekly')document.getElementById('rmd-weekday').value=String(r.weekday??5);
+  if(r.repeat==='monthly')document.getElementById('rmd-monthday').value=String(r.monthday??1);
+  if(r.repeat==='yearly'){document.getElementById('rmd-month').value=String(r.month??1);document.getElementById('rmd-yday').value=String(r.day??1);}
+  document.getElementById('rmd-edit-badge').style.display='';
+  document.getElementById('rmd-cancel-edit').style.display='';
+  rmdOnRepeatChange();
+  document.getElementById('reminder-modal').scrollTop=0;
+}
+function rmdSave(){
+  const title=document.getElementById('rmd-title').value.trim();
+  if(!title){ showToast('⚠ タイトルを入力してください'); return; }
+  const rep=document.getElementById('rmd-repeat').value;
+  const base={
+    title, detail:document.getElementById('rmd-detail').value.trim(),
+    rank:document.getElementById('rmd-rank').value, type:document.getElementById('rmd-type').value,
+    repeat:rep
+  };
+  if(rep==='weekly')  base.weekday=parseInt(document.getElementById('rmd-weekday').value);
+  if(rep==='monthly'){ const v=document.getElementById('rmd-monthday').value; base.monthday=(v==='end'?'end':parseInt(v)); }
+  if(rep==='yearly'){ base.month=parseInt(document.getElementById('rmd-month').value); base.day=parseInt(document.getElementById('rmd-yday').value); }
+  if(_rmdEditId!=null){
+    const r=repeatReminders.find(x=>x.id===_rmdEditId);
+    if(r)Object.assign(r, base); // lastGeneratedDateは保持
+  } else {
+    repeatReminders.push({ id:nextReminderId++, ...base, lastGeneratedDate:'' });
+  }
+  saveToLS(); autoSave();
+  rmdResetForm(); rmdRenderList();
+  showToast('🔁 定期リマインドを保存しました');
+}
+function rmdDelete(id){
+  if(!confirm('この定期リマインド設定を削除しますか？\n（生成済みのTODOは残ります）'))return;
+  repeatReminders=repeatReminders.filter(x=>x.id!==id);
+  saveToLS(); autoSave();
+  if(_rmdEditId===id)rmdResetForm();
+  rmdRenderList();
+}
+function _rmdScheduleLabel(r){
+  if(r.repeat==='weekly')  return `毎週 ${_WEEKDAY_LABEL[r.weekday]||'?'}曜`;
+  if(r.repeat==='monthly') return r.monthday==='end'?'毎月 月末':`毎月 ${r.monthday}日`;
+  if(r.repeat==='yearly')  return `毎年 ${r.month}月${r.day}日`;
+  return '';
+}
+function rmdRenderList(){
+  const el=document.getElementById('rmd-list');if(!el)return;
+  if(!repeatReminders.length){ el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px;">登録済みのリマインドはありません</div>'; return; }
+  el.innerHTML=repeatReminders.map(r=>{
+    const ts=getSNTypeStyle(r.type);
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--sand-border);border-left:4px solid ${ts.border};border-radius:var(--radius-sm);padding:9px 12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:3px;">${esc(r.title)}</div>
+        <div style="font-size:11px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <span style="font-weight:700;color:${(SN_RANK_STYLE[r.rank]||{}).color||'#555'};">Rank ${esc(r.rank)}</span>
+          <span style="padding:1px 7px;border-radius:99px;${ts.badge}">${esc(ts.label)}</span>
+          <span>🔁 ${esc(_rmdScheduleLabel(r))}</span>
+        </div>
+      </div>
+      <button class="btn btn-xs" onclick="rmdEdit(${r.id})">編集</button>
+      <button class="btn btn-xs btn-red" onclick="rmdDelete(${r.id})">削除</button>
+    </div>`;
+  }).join('');
+}
+
 // 種別スタイルをsnTypesから動的に取得
 function getSNTypeStyle(label){
   const t=snTypes.find(x=>x.label===label);
@@ -7847,6 +8068,7 @@ function renderStaffNotes(){
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+            ${n.repeatReminderId?`<span style="font-size:10px;font-weight:700;color:#0e6b5e;background:#d1f2eb;border:1px solid #7fd6c4;border-radius:99px;padding:2px 8px;">🔁 定期</span>`:''}
             ${snRankSelectHtml(n.id,n,11)}
             ${snTypeSelectHtml(n.id,n,11)}
             <span style="font-size:11px;font-weight:600;color:var(--ink);">${esc(n.author)}</span>
@@ -8026,7 +8248,7 @@ function collectAllData() {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
-    rentalSpaceReservations,propertySettings,
+    rentalSpaceReservations,propertySettings,repeatReminders,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -8205,6 +8427,10 @@ function applyServerData(data) {
   }
   if (data.snTypes && Array.isArray(data.snTypes) && data.snTypes.length > 0) {
     snTypes = data.snTypes;
+  }
+  if (Array.isArray(data.repeatReminders)) {
+    repeatReminders = data.repeatReminders;
+    nextReminderId = Math.max(0,...repeatReminders.map(r=>r.id||0))+1;
   }
   if(Array.isArray(data.priorityCleaningItems)){
     priorityCleaningItems=data.priorityCleaningItems;
@@ -8471,6 +8697,7 @@ function renderRankAPanel(){
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;flex-wrap:wrap;">
+            ${n.repeatReminderId?`<span style="font-size:9px;font-weight:700;color:#0e6b5e;background:#d1f2eb;border:1px solid #7fd6c4;border-radius:99px;padding:1px 6px;">🔁</span>`:''}
             ${snRankSelectHtml(n.id,n,10)}
             ${snTypeSelectHtml(n.id,n,10)}
           </div>
@@ -8510,6 +8737,7 @@ function saveToLS(){
   try{localStorage.setItem('hotel_staffNotes',JSON.stringify(staffNotes));
       localStorage.setItem('hotel_staffNames',JSON.stringify(staffNames));
       localStorage.setItem('hotel_snTypes',JSON.stringify(snTypes));
+      localStorage.setItem('hotel_repeatReminders',JSON.stringify(repeatReminders));
       localStorage.setItem('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
       localStorage.setItem('hotel_roomFilter',JSON.stringify(roomFilter));
       localStorage.setItem('hotel_rooms',JSON.stringify(rooms));
@@ -8521,6 +8749,7 @@ function loadFromLS(){
     const n=localStorage.getItem('hotel_staffNotes');if(n){staffNotes=JSON.parse(n);nextSnId=staffNotes.reduce((m,x)=>Math.max(m,x.id+1),0);}
     const s=localStorage.getItem('hotel_staffNames');if(s)staffNames=JSON.parse(s);
     const t=localStorage.getItem('hotel_snTypes');if(t)snTypes=JSON.parse(t);
+    const rr=localStorage.getItem('hotel_repeatReminders');if(rr){repeatReminders=JSON.parse(rr);nextReminderId=Math.max(0,...repeatReminders.map(r=>r.id||0))+1;}
     rankAPanelHidden=localStorage.getItem('hotel_rankAPanelHidden')==='1';
     const rf=localStorage.getItem('hotel_roomFilter');if(rf){const parsed=JSON.parse(rf);FILTER_GROUPS.forEach(g=>{if(parsed[g.key]!==undefined)roomFilter[g.key]=parsed[g.key];});}
     const bg=localStorage.getItem('hotel_budgets');if(bg){
@@ -8963,8 +9192,8 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',adjustR
 const _rrOrig=renderReg;
 renderReg=function(){_rrOrig.apply(this,arguments);setTimeout(adjustRegScrollHeight,100);};
 
-if(GAS_URL){ cloudLoad(true).then(()=>{ autoImportCancelIfNeeded(); setTimeout(()=>cloudSave(),3000); }); startPolling(); rentalCloudLoad(true); }
-else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); }
+if(GAS_URL){ cloudLoad(true).then(()=>{ autoImportCancelIfNeeded(); generateDueReminders(); renderStaffNotes(); renderRankAPanel(); setTimeout(()=>cloudSave(),3000); }); startPolling(); rentalCloudLoad(true); }
+else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); generateDueReminders(); }
 
 // reg-scroll の横スクロールをdebounceで保存
 (()=>{
