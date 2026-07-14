@@ -362,14 +362,6 @@ function shouldDisplayTask(item,refDate){
   const scheduled=isScheduledThisMonth(item,ref.getMonth()+1);
   const completed=isPriorityCleaningCompletedInPeriod(item,ref);
   const display=scheduled&&!completed;
-  console.log({
-    taskName:item.name,
-    frequency:item.frequency,
-    lastCompletedDate:getPriorityCleaningLastDate(item),
-    today:ref.toISOString().split('T')[0],
-    isCompletedInPeriod:completed,
-    shouldDisplay:display
-  });
   return display;
 }
 function togglePriorityCleaningDone(itemId){

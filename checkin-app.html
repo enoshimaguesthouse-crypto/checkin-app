@@ -1665,15 +1665,6 @@ async function searchReservation() {
       (r.id && String(r.id).trim() === targetId)
     );
 
-    // デバッグログ
-    console.log("検索ターゲットID:", targetId);
-    console.log("取得した全データ数:", targetArray.length);
-    console.log("検索結果:", reservation);
-    if (!reservation) {
-      console.log("保存されているIDのサンプル:",
-        targetArray.slice(0, 5).map(r => r.reservationId || r.id));
-    }
-
     if (reservation) {
       // 同一予約IDの全泊から最も早い日付＝チェックイン日を算出
       const sameId = targetArray.filter(r =>
@@ -1711,30 +1702,23 @@ async function searchReservation() {
       // rooms 配列から表示用の部屋番号（no）を逆引き
       // GAS取得分 → localStorage → DEFAULT_ROOMS の順でフォールバック
       let roomsArr = data.rooms || [];
-      console.log('GAS data.rooms:', data.rooms ? `${data.rooms.length}件` : 'なし（undefined）');
       if(!roomsArr.length){
         try{
           const cached = localStorage.getItem('hotel_rooms');
           if(cached) roomsArr = JSON.parse(cached);
-          console.log('localStorage hotel_rooms:', roomsArr.length ? `${roomsArr.length}件` : 'なし');
         }catch(e){}
       }
       if(!roomsArr.length){
         roomsArr = DEFAULT_ROOMS;
-        console.log('DEFAULT_ROOMS を使用');
       }
-      console.log('最終的な roomsArr[2]:', roomsArr[2]);
       const matchedRoom = roomsArr.find(r =>
         String(r.id) === String(best.roomId) || r.id === best.roomId
       );
-      console.log('best.roomId:', best.roomId, '/ matchedRoom:', matchedRoom);
       reservationData.roomNo = matchedRoom ? String(matchedRoom.no) : String(best.roomId || '—');
       reservationData.roomType = matchedRoom ? matchedRoom.type : (best.type || '');
       // タブレット表示（部屋タイプ×言語）用の部屋タイプキーを確定
       reservationData.roomTypeKey = matchedRoom ? _tdsRoomTypeKey(matchedRoom) : null;
 
-      console.log("reservationData（取込結果）:", reservationData);
-      console.log("部屋番号(no):", reservationData.roomNo, "/ 内部roomId:", reservationData.roomId);
       const r = reservationData;
       el('rv-name').textContent  = r.name || '—';
       el('rv-dates').textContent = (r.checkin || '?') + ' → ' + (r.checkout || '?');
@@ -2467,12 +2451,7 @@ async function applyRoomGuide(roomId){
     const { roomSettings: allSettings, rooms: gasRooms } = await _fetchRoomSettings();
     const allRooms = gasRooms.length ? gasRooms : DEFAULT_ROOMS;
 
-    // デバッグ：取得した roomSettings のキー一覧
-    console.log('roomSettings keys:', Object.keys(allSettings));
-    console.log('対象 roomId:', roomId, '(type:', typeof roomId, ')');
-
     const settings = _resolveRoomSetting(allSettings, roomId);
-    console.log('マッチした settings:', settings);
 
     // 表示用の部屋番号（no）を rooms 配列から解決
     const matchedRoom = allRooms.find(r =>
@@ -2515,8 +2494,6 @@ async function applyRoomGuide(roomId){
     const tdsLink  = _tdsGet(typeKey, lang, 'link');
     // 施設案内：新設定優先、無ければ旧 guideText へフォールバック（画面が真っ白になるのを防ぐ）
     const guideText = (tdsGuide || (langData.guideText || '')).trim();
-
-    console.log('typeKey:', typeKey, '/ roomName:', roomName, '/ guideText(先頭50):', guideText.slice(0,50));
 
     // 表示
     const hasLink = !!tdsLink;
@@ -2723,7 +2700,6 @@ function speakLang(text, ttsLang){
   if(!best && langVoices.length) best = langVoices[0];
   if(best) utter.voice = best;
 
-  console.log('TTS音声:', best?.name || 'デフォルト', '/ lang:', ttsLang);
   window.speechSynthesis.speak(utter);
 }
 

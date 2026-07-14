@@ -353,11 +353,6 @@ function renderReg(){
           if(g.price)rS+=g.price;
           if(isCash&&g.price&&!isCheckedIn(g.status))tCash+=g.price;
           const gc=guestCountOf(g);
-          // ── デバッグ（一時）：guests配列で保存された予約のみ出力 ──
-          if(Array.isArray(g.guests)){
-            console.log('Render reservation data:', g);
-            console.log('Guest count display source:', gc, g.guests);
-          }
           // 性別集計: 空欄は不明としてカウントしない
           if(g.sex==='男')rM+=gc;else if(g.sex==='女')rF+=gc;
           if(g.cat==='Ｓ')cS++;else if(g.cat==='Ｇ')cG++;else if(g.cat==='Ｆ')cF++;else cC++;
