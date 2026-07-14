@@ -1027,6 +1027,7 @@ function saveTabletSettings(){
     enabled:_tdDraft.enabled, consentType:_tdDraft.consentType,
     texts:{ ja:(rep.ja&&rep.ja.agreement)||'', en:(rep.en&&rep.en.agreement)||'', zh:(rep.zh&&rep.zh.agreement)||'', ko:(rep.ko&&rep.ko.agreement)||'' }
   };
+  logAudit('設定変更', 'タブレット表示設定', `契約確認:${_tdDraft.enabled?'有効':'無効'} 同意方法:${_tdDraft.consentType||'checkbox'}`);
   closeM('contract-settings-modal');
   cloudSave();
   showToast('📱 タブレット表示設定を保存しました');
@@ -1285,6 +1286,7 @@ function saveMailSettings(){
   code.resend=document.getElementById('ms-resend').checked;
   // 本体へ反映してクラウド保存（cloudSaveのみ）
   propertySettings.mailSettings=_mailDraft;
+  logAudit('設定変更', '自動メール配信設定', MAIL_TYPES.map(m=>`${m.label}:${(_mailDraft[m.key]&&_mailDraft[m.key].enabled)?'ON':'OFF'}`).join(' / '));
   closeM('mail-settings-modal');
   cloudSave();
   showToast('✉ 自動メール配信設定を保存しました');

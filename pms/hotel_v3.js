@@ -2684,10 +2684,16 @@ function saveRoom(){
   s.note2=document.getElementById('rm-note2').value.trim();
   s.note3=document.getElementById('rm-note3').value.trim();
   // languages / media（施設案内・動画）は物件情報＞タブレット表示設定で管理。既存値はそのまま保持
+  logAudit(editRoomId!=null?'部屋更新':'部屋追加', `${no} ${type}`, `定員:${cap}名`);
   closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();
   showToast('🚪 部屋情報を保存しました');
 }
-function deleteRoom(){if(editRoomId==null)return;rooms=rooms.filter(r=>r.id!==editRoomId);delete roomSettings[editRoomId];closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();}
+function deleteRoom(){
+  if(editRoomId==null)return;
+  const _r=rooms.find(r=>r.id===editRoomId);
+  logAudit('部屋削除', _r?`${_r.no} ${_r.type}`:('部屋'+editRoomId), '');
+  rooms=rooms.filter(r=>r.id!==editRoomId);delete roomSettings[editRoomId];closeM('room-modal');renderRooms();saveRoomSettingsLS();saveToLS();cloudSave();
+}
 
 // ============================================================
 // TODO（スタッフノート）
@@ -3257,6 +3263,8 @@ function saveCharter(){
   }
   if(useSurf){ addAutoSurf(gBase, m); }
   else { removeAutoSurf(gBase); }
+  logAudit(editCharterGroup?'貸切更新':'貸切作成', `${newGroup} ${m}月${newDay}日〜`,
+           `${newNights}泊 ${newName||'(無名)'} 料金:${gBase.price||0}`);
   closeM('charter-modal');
   renderReg();autoSave();
 }
@@ -3272,6 +3280,7 @@ function hideCharterDeleteConfirm(){
   document.getElementById('cm2-confirm').style.display='none';
 }
 function execDeleteCharter(){
+  logAudit('貸切削除', `${editCharterGroup} ${editCharterMonth}月${editCharterStartDay}日〜`, '');
   _deleteCharterData(editCharterGroup, editCharterStartDay, editCharterMonth);
   closeM('charter-modal');
   renderReg();autoSave();
@@ -3511,6 +3520,7 @@ function _isSBRoom(rid){
 }
 let _pinBuffer='';
 let currentRole=null;
+let currentUserName=null; // 監査ログの「誰が」に使用（PIN認証で確定）
 
 function pinInput(d){
   if(_pinBuffer.length>=4)return;
@@ -3543,6 +3553,7 @@ async function _checkPin(){
 }
 function _applyRole(role,name){
   currentRole=role;
+  currentUserName=name||role;
   document.body.classList.remove('role-admin','role-cleaning','role-reception','role-watanabe','viewonly');
   document.body.classList.add('role-'+role);
   if(role!=='admin')document.body.classList.add('viewonly');

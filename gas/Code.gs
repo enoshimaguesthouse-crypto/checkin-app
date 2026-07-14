@@ -64,6 +64,7 @@ function getHotelFile() {
     staffNames:[], snTypes:[], priorityCleaningItems:[], priorityCleaningSettings:{},
     propertySettings:{},                                           // ←契約確認設定などタブレット表示設定
     repeatReminders:[],                                            // ←定期リマインド設定
+    auditLog:[],                                                   // ←監査ログ（誰が・いつ・何を変更したか）
     updatedAt: new Date().toISOString(), updatedBy:'init'
   });
 }
@@ -453,6 +454,7 @@ function doPost(e) {
   priorityCleaningSettings:payload.priorityCleaningSettings|| {},
   propertySettings:        payload.propertySettings        || {},   // ←契約確認設定などタブレット表示設定
   repeatReminders:         payload.repeatReminders         || [],   // ←定期リマインド設定
+  auditLog:                payload.auditLog                || [],   // ←監査ログ（誰が・いつ・何を変更したか）
   updatedAt:   new Date().toISOString(),
   updatedBy:   payload.updatedBy   || '不明'
 };
