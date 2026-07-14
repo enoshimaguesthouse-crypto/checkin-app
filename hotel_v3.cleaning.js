@@ -971,6 +971,43 @@ function _tdCommitInputs(){
   t.link=document.getElementById('td-link').value;
 }
 function tdOnInput(){ _tdCommitInputs(); }
+// 🔍 拡大表示（自動メール配信設定の msToggleExpand と同一方式）
+// フィールドごとに独立してトグル。基本CSSの .modal{width:400px!important} を上書きするため
+// setProperty(...,'important') を使う。
+const _TD_EXPAND={agreement:{ta:'td-agreement',btn:'td-agreement-expand-btn',rows:10},
+                  guide:    {ta:'td-guide',    btn:'td-guide-expand-btn',    rows:8}};
+let _tdExpanded={agreement:false, guide:false};
+function tdToggleExpand(field){
+  const cfg=_TD_EXPAND[field]; if(!cfg)return;
+  const box=document.getElementById('contract-settings-modal-box');
+  const ta=document.getElementById(cfg.ta);
+  const btn=document.getElementById(cfg.btn);
+  if(!box||!ta||!btn)return;
+  _tdExpanded[field]=!_tdExpanded[field];
+  if(_tdExpanded[field]){
+    box.style.setProperty('width','96vw','important');
+    box.style.setProperty('max-width','96vw','important');
+    ta.removeAttribute('rows');
+    ta.style.height='64vh';
+    btn.textContent='🔎 縮小表示';
+  } else {
+    box.style.setProperty('width','760px','important');
+    box.style.setProperty('max-width','96vw','important');
+    ta.style.height='';
+    ta.rows=cfg.rows;
+    btn.textContent='🔍 拡大表示';
+  }
+}
+// 拡大表示状態をリセット（モーダルを開く時・タブ切替時）
+function _tdResetExpand(){
+  _tdExpanded={agreement:false, guide:false};
+  const box=document.getElementById('contract-settings-modal-box');
+  if(box){box.style.setProperty('width','760px','important');box.style.setProperty('max-width','96vw','important');}
+  Object.values(_TD_EXPAND).forEach(cfg=>{
+    const ta=document.getElementById(cfg.ta);  if(ta){ta.style.height='';ta.rows=cfg.rows;}
+    const btn=document.getElementById(cfg.btn);if(btn)btn.textContent='🔍 拡大表示';
+  });
+}
 // 上部タブ（宿泊約款／施設案内）の描画・切替。表示の出し分けのみでデータは触らない。
 function tdRenderMTabs(){
   const el=document.getElementById('td-mtabs');
@@ -983,7 +1020,7 @@ function tdRenderPanels(){
   if(a)a.style.display=(_tdCur.tab==='agreement')?'':'none';
   if(g)g.style.display=(_tdCur.tab==='guide')?'':'none';
 }
-function tdSelectTab(key){ _tdCommitInputs(); _tdCur.tab=key; tdRenderMTabs(); tdRenderPanels(); }
+function tdSelectTab(key){ _tdCommitInputs(); _tdCur.tab=key; _tdResetExpand(); tdRenderMTabs(); tdRenderPanels(); }
 function tdRenderRTabs(){
   const el=document.getElementById('td-rtabs');
   if(el)el.innerHTML=MAIL_ROOM_TYPES.map(rt=>
@@ -1010,6 +1047,7 @@ function openContractSettings(){
   document.getElementById('ca-enabled').checked=!!_tdDraft.enabled;
   document.getElementById('ca-consent-type').value=_tdDraft.consentType||'checkbox';
   document.querySelectorAll('#contract-settings-modal .ms-ltab[data-lang]').forEach(b=>b.classList.toggle('active',b.dataset.lang==='ja'));
+  _tdResetExpand();
   tdRenderMTabs();
   tdRenderPanels();
   tdRenderRTabs();
