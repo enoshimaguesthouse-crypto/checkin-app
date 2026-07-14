@@ -770,7 +770,7 @@
 .td-card:last-child{margin-bottom:0;}
 </style>
 <div class="mbg" id="contract-settings-modal" onclick="if(event.target===this)closeM('contract-settings-modal')">
-<div class="modal" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+<div class="modal" id="contract-settings-modal-box" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;transition:width .18s,max-width .18s;">
   <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;flex-shrink:0;">📱 タブレット表示設定</div>
 
   <!-- 上部タブ（宿泊約款／施設案内）：自動メール配信設定の送信タイミングタブと同一UI(.ms-mtab) -->
@@ -800,8 +800,11 @@
     <!-- タブ①：宿泊約款 -->
     <div id="td-panel-agreement">
       <div class="td-card">
-        <label class="ms-field-label">宿泊約款</label>
-        <textarea id="td-agreement" rows="10" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <label class="ms-field-label">宿泊約款</label>
+          <button type="button" class="btn btn-xs" id="td-agreement-expand-btn" onclick="tdToggleExpand('agreement')" style="font-size:11px;padding:3px 10px;">🔍 拡大表示</button>
+        </div>
+        <textarea id="td-agreement" rows="10" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;transition:height .18s;" oninput="tdOnInput()"></textarea>
       </div>
       <div class="td-card">
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
@@ -818,8 +821,11 @@
     <!-- タブ②：施設案内（施設案内／チェックイン動画／外部リンクの3カード） -->
     <div id="td-panel-guide" style="display:none;">
       <div class="td-card">
-        <label class="ms-field-label">施設案内</label>
-        <textarea id="td-guide" rows="8" placeholder="当施設はセルフチェックインです。鍵は..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <label class="ms-field-label">施設案内</label>
+          <button type="button" class="btn btn-xs" id="td-guide-expand-btn" onclick="tdToggleExpand('guide')" style="font-size:11px;padding:3px 10px;">🔍 拡大表示</button>
+        </div>
+        <textarea id="td-guide" rows="8" placeholder="当施設はセルフチェックインです。鍵は..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;transition:height .18s;" oninput="tdOnInput()"></textarea>
       </div>
       <div class="td-card">
         <label class="ms-field-label">チェックイン動画URL（YouTube / Google Drive / 動画 等）</label>
