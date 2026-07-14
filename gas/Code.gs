@@ -19,6 +19,36 @@ function getMailAttachFolder() {
   return it.hasNext() ? it.next() : parent.createFolder(MAIL_ATTACH_FOLDER);
 }
 
+// ── パスポート画像フォルダ（実体はDrive保存・JSONにはファイルIDのみ）──
+// base64画像をJSON本体に溜め込むとファイルが肥大化し、保存のたびに全画像を
+// 再アップロードして遅く・壊れやすくなるため、画像はDriveへ分離しIDだけ保持する。
+const PASSPORT_FOLDER = 'パスポート画像';
+function getPassportFolder() {
+  const parent = getFolder();
+  const it = parent.getFoldersByName(PASSPORT_FOLDER);
+  return it.hasNext() ? it.next() : parent.createFolder(PASSPORT_FOLDER);
+}
+// dataURL("data:image/jpeg;base64,....") をDriveへ保存しファイルIDを返す。失敗時はnull。
+function _savePassportToDrive_(dataUrl, resId, idx) {
+  try {
+    const m = String(dataUrl||'').match(/^data:([^;]+);base64,(.*)$/);
+    if (!m) return null;
+    const mime = m[1] || 'image/jpeg';
+    const ext = (mime.indexOf('png')>=0)?'png':(mime.indexOf('webp')>=0)?'webp':'jpg';
+    const name = 'passport_' + (resId||'x') + '_' + (idx!=null?idx:0) + '_' + Date.now() + '.' + ext;
+    const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), mime, name);
+    return getPassportFolder().createFile(blob).getId();
+  } catch(e) { return null; }
+}
+// ファイルID → dataURL("data:mime;base64,...")。表示用に復元。失敗時は空文字。
+function _passportDataUrl_(fileId) {
+  try {
+    const f = DriveApp.getFileById(fileId);
+    const blob = f.getBlob();
+    return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { return ''; }
+}
+
 function getOrCreateFile(fileName, emptyContent) {
   const files = DriveApp.getFilesByName(fileName);
   if (files.hasNext()) return files.next();
@@ -139,7 +169,8 @@ function doGet(e) {
         });
       }
       // パスポート画像は管理者キーのみ取得可（予約IDの総当たりによる画像流出を防止）
-      if (auth !== 'admin') stripPassportImages(matches);
+      if (auth !== 'admin') { stripPassportImages(matches); }
+      else { _hydratePassportImages_(matches); } // passportImageId → base64 に復元（PMS表示用）
       return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [] }));
     }
 
@@ -152,6 +183,49 @@ function doGet(e) {
   } catch(err) {
     return jsonOut(JSON.stringify({ error: err.message }));
   }
+}
+
+// passportImageId を持つ宿泊者に、表示用のbase64(passportImage)を復元して埋める（メモリ上のみ）
+function _hydratePassportImages_(guestData) {
+  if (!guestData) return;
+  Object.keys(guestData).forEach(function(k){
+    var g = guestData[k];
+    if (g && Array.isArray(g.guests)) {
+      g.guests.forEach(function(x){
+        if (x && !x.passportImage && x.passportImageId) {
+          var url = _passportDataUrl_(x.passportImageId);
+          if (url) x.passportImage = url;
+        }
+      });
+    }
+  });
+}
+
+// 【一度だけ実行】既存のbase64パスポート画像をDriveへ移行し、JSON本体からbase64を除去してIDに置換。
+// GASエディタで migratePassportImages() を実行するだけ。JSONが大幅に軽くなり保存が高速・安全になる。
+function migratePassportImages() {
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var file = getHotelFile();
+    var data = JSON.parse(file.getBlob().getDataAsString());
+    var gd = data.guestData || {};
+    var moved = 0, kept = 0;
+    Object.keys(gd).forEach(function(k){
+      var g = gd[k];
+      if (!g || !Array.isArray(g.guests)) return;
+      g.guests.forEach(function(x, i){
+        if (x && typeof x.passportImage === 'string' && x.passportImage.indexOf('data:') === 0) {
+          var pid = _savePassportToDrive_(x.passportImage, (g.reservationId||g.id||k), i);
+          if (pid) { x.passportImageId = pid; delete x.passportImage; moved++; }
+          else { kept++; } // 変換失敗時はbase64を残す（消さない）
+        }
+      });
+    });
+    if (moved > 0) file.setContent(JSON.stringify(data));
+    var msg = 'パスポート画像移行: ' + moved + '件をDriveへ移動' + (kept? '（変換失敗で据置 '+kept+'件）':'');
+    Logger.log(msg);
+    return msg;
+  } finally { lock.releaseLock(); }
 }
 
 // guestData内の guests[].passportImage を取り除く（メモリ上のみ・ファイルは変更しない）
@@ -173,9 +247,10 @@ function mergePassportImages(incomingGuestData, existingGuestData) {
     const eg = existingGuestData[k];
     if (ig && Array.isArray(ig.guests) && eg && Array.isArray(eg.guests)) {
       ig.guests.forEach((guest, i) => {
-        if (guest && !guest.passportImage && eg.guests[i] && eg.guests[i].passportImage) {
-          guest.passportImage = eg.guests[i].passportImage;
-        }
+        if (!guest || !eg.guests[i]) return;
+        // 旧base64・新ID どちらも、incomingに無ければ既存値を保全（画像消失防止）
+        if (!guest.passportImage   && eg.guests[i].passportImage)   guest.passportImage   = eg.guests[i].passportImage;
+        if (!guest.passportImageId && eg.guests[i].passportImageId) guest.passportImageId = eg.guests[i].passportImageId;
       });
     }
   });
@@ -287,10 +362,17 @@ function doPost(e) {
       const agreement = payload.agreement || null;
       const contact   = payload.contact || {};
       const finalGuests = Array.isArray(payload.guests) ? payload.guests : [];
-      // 連泊の画像重複を避けるため、画像付きはアンカー1件のみ。他は画像なし。
-      const finalGuestsLight = finalGuests.map(function(g){
-        var c = {}; for (var kk in g) { if (kk !== 'passportImage') c[kk] = g[kk]; } return c;
+      // パスポート画像(base64)はDriveへ保存し、JSONにはファイルID(passportImageId)のみ残す。
+      // これによりJSON本体の肥大化・毎保存の再アップロードを回避する。
+      finalGuests.forEach(function(g, i){
+        if (g && typeof g.passportImage === 'string' && g.passportImage.indexOf('data:') === 0) {
+          var pid = _savePassportToDrive_(g.passportImage, targetId, i);
+          if (pid) g.passportImageId = pid;
+          delete g.passportImage; // base64はJSONに残さない
+        }
       });
+      // IDは軽量なので全レコードに保持（表示側はどのレコードからでも参照可能）
+      const finalGuestsLight = finalGuests;
       // 年付きキー(y:m:r:d)/2026形式(m:r:d)の両方で正しく日付順に並べる
       const keyDateNum = function(k){ var pk=_parseKey_(k); return (pk.y||0)*10000 + (pk.m||0)*100 + (pk.d||0); };
       const matchingKeys = Object.keys(guestData).filter(function(k){
