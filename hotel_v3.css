@@ -1,0 +1,963 @@
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* =====================================================
+   カラートークン — 湘南ビーチハウス・モダン
+   ===================================================== */
+:root{
+  --sand:       #fdfaf5;   /* 砂浜：ページ背景 */
+  --sand-mid:   #f5efe3;   /* 砂浜中：カードのホバー・テーブル偶数行 */
+  --sand-border:#e8dfd0;   /* 砂浜：ボーダー全般 */
+  --ocean:      #1a5276;   /* 深海：メインカラー・ボタン */
+  --ocean-light:#d6eaf8;   /* 海泡：選択状態の背景 */
+  --ocean-mid:  #2e86c1;   /* 波：ホバー */
+  --seaglass:   #45b39d;   /* シーグラス：チェックイン・アクセント */
+  --seaglass-lt:#d1f2eb;   /* 薄シーグラス */
+  --coral:      #e8877a;   /* サンゴ：女性バッジ・削除系 */
+  --coral-lt:   #fde8e6;
+  --sunset:     #e59866;   /* 夕陽：現金・警告 */
+  --sunset-lt:  #fdebd0;
+  --driftwood:  #7d6608;   /* 流木：稼働率バー中間 */
+  --ink:        #1c2833;   /* 深墨：見出しテキスト */
+  --text:       #2c3e50;   /* 本文テキスト */
+  --muted:      #7f8c8d;   /* 補助テキスト */
+  --light:      #aab7b8;   /* プレースホルダー */
+  --white:      #ffffff;
+  --shadow-sm:  0 1px 4px rgba(26,82,118,.08);
+  --shadow-md:  0 4px 12px rgba(26,82,118,.12);
+  --shadow-sticky: 3px 0 8px rgba(26,82,118,.10);
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+}
+
+/* =====================================================
+   ベース
+   ===================================================== */
+html,body{
+  height:100%;
+  margin:0;
+  padding:0;
+  /* overflow:hidden を削除 → 清掃管理はbodyスクロール方式 */
+}
+body{
+  font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;
+  color:var(--text);
+  background:var(--sand);
+  line-height:1.5;
+  touch-action:pan-x pan-y pinch-zoom;
+}
+
+/* =====================================================
+   レイアウト
+   ===================================================== */
+/* レイアウト：画面全体を100vh固定にし、サイドバーは固定・メインのみスクロール */
+.layout{display:flex;height:100vh;height:100dvh;overflow:hidden;}
+.main{flex:1;min-width:0;padding:1.5rem;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.page{display:none;}.page.active{display:block;}
+#page-cleaning.active{display:block;height:auto;overflow:visible;}
+.topbar{flex-shrink:0;}
+#reg-scroll{
+  overflow-x:auto;
+  overflow-y:auto;
+  max-height:calc(100vh - 140px);         /* フォールバック */
+  max-height:calc(100dvh - 120px);        /* Android Chrome 対応 */
+  -webkit-overflow-scrolling:touch;
+}
+.tw{
+  border:1.5px solid var(--sand-border);
+  border-radius:var(--radius-md);
+  background:var(--white);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+.prel{position:relative;}
+
+/* =====================================================
+   サイドバー
+   ===================================================== */
+.sidebar{
+  width:60px;flex-shrink:0;
+  background:var(--white);
+  border-right:1px solid var(--sand-border);
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 0;gap:5px;
+  transition:width .2s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+  box-shadow:1px 0 0 var(--sand-border);
+}
+.sidebar.open{width:195px;align-items:flex-start;}
+.sb-toggle{
+  width:44px;height:44px;border-radius:var(--radius-sm);border:none;
+  background:transparent;cursor:pointer;
+  color:var(--muted);font-size:19px;
+  display:flex;align-items:center;justify-content:center;
+  margin-left:6px;flex-shrink:0;transition:background .15s,color .15s;
+}
+.sb-toggle:hover{background:var(--sand);color:var(--ocean);}
+.sb-div{width:34px;height:1px;background:var(--sand-border);margin:6px 10px;}
+.sidebar.open .sb-div{width:calc(100% - 20px);}
+.nitem{
+  display:flex;align-items:center;gap:11px;
+  width:44px;height:42px;
+  border-radius:var(--radius-sm);border:none;background:transparent;
+  cursor:pointer;color:var(--muted);
+  white-space:nowrap;overflow:hidden;
+  padding:0 13px;flex-shrink:0;font-size:13.5px;
+  transition:background .15s,color .15s;
+}
+.sidebar.open .nitem{width:calc(100% - 12px);margin-left:6px;}
+.nitem:hover{background:var(--sand);color:var(--ocean);}
+.nitem.active{
+  background:var(--ocean-light);
+  color:var(--ocean);
+  font-weight:600;
+}
+.nico{font-size:20px;flex-shrink:0;width:22px;text-align:center;}
+.nlbl{display:none;letter-spacing:.01em;}
+.sidebar.open .nlbl{display:inline;}
+
+/* =====================================================
+   トップバー・タイトル
+   ===================================================== */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:1.25rem;flex-wrap:wrap;gap:10px;
+}
+.ttl{
+  font-size:18px;font-weight:700;color:var(--ink);
+  letter-spacing:-.01em;
+}
+.sub{font-size:12px;color:var(--muted);margin-top:3px;}
+
+/* =====================================================
+   フォームコントロール
+   ===================================================== */
+.ctr{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+select,input:not([type=checkbox]):not([type=radio]):not([type=file]){
+  padding:7px 11px;
+  border-radius:var(--radius-sm);
+  border:1.5px solid var(--sand-border);
+  background:var(--white);
+  color:var(--text);
+  font-size:13px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+select:focus,input:focus{
+  border-color:var(--ocean);
+  box-shadow:0 0 0 3px rgba(26,82,118,.10);
+}
+
+/* =====================================================
+   ボタン
+   ===================================================== */
+.btn{
+  padding:7px 16px;
+  border-radius:var(--radius-sm);
+  border:1.5px solid var(--sand-border);
+  background:var(--white);
+  color:var(--text);
+  font-size:13px;font-weight:500;
+  cursor:pointer;
+  transition:background .15s,border-color .15s,box-shadow .15s;
+  box-shadow:var(--shadow-sm);
+}
+.btn:hover{background:var(--sand);border-color:var(--ocean);color:var(--ocean);}
+.btn-blue{
+  background:var(--ocean);color:var(--white);
+  border-color:var(--ocean);
+}
+.btn-blue:hover{background:var(--ocean-mid);border-color:var(--ocean-mid);}
+/* 検索バー（＋予約追加ボタンと同じ高さ） */
+.search-container{
+  display:flex;align-items:center;gap:6px;
+  align-self:stretch;
+  box-sizing:border-box;
+  padding:0 12px;
+  border:1.5px solid #aed0ec;
+  border-radius:var(--radius-sm);
+  background:var(--white);
+  box-shadow:var(--shadow-sm);
+}
+.search-container:focus-within{border-color:var(--ocean);box-shadow:0 0 0 3px rgba(26,82,118,.10);}
+.search-icon{font-size:13px;color:var(--ocean);line-height:1;display:flex;align-items:center;flex-shrink:0;}
+.search-input{
+  border:none!important;outline:none!important;background:transparent!important;
+  padding:0!important;margin:0;box-shadow:none!important;border-radius:0!important;
+  font-size:13px;width:180px;color:var(--text);transition:none;
+}
+.search-input::placeholder{color:#9bb0bd;font-size:11.5px;}
+.btn-red{
+  background:var(--coral-lt);color:var(--coral);
+  border-color:var(--coral);
+}
+.btn-red:hover{background:var(--coral);color:var(--white);}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:6px;}
+/* チェックイン完了通知 */
+#notification-container{position:fixed;bottom:20px;right:20px;z-index:99999;display:flex;flex-direction:column-reverse;gap:10px;pointer-events:none;}
+.checkin-notif{width:360px;background:white;border-left:6px solid #22c55e;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);padding:16px 18px;pointer-events:auto;position:relative;animation:cnSlideIn .3s ease;}
+@keyframes cnSlideIn{from{transform:translateX(30px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.checkin-notif .cn-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:15px;color:#aaa;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1;}
+.checkin-notif .cn-close:hover{background:#f3f4f6;color:#666;}
+.checkin-notif .cn-head{font-size:13px;font-weight:700;color:#16a34a;margin-bottom:8px;}
+.checkin-notif .cn-name{font-size:16px;font-weight:600;color:#1a2b3a;margin-bottom:3px;}
+.checkin-notif .cn-room{font-size:13px;color:#555;margin-bottom:6px;}
+.checkin-notif .cn-msg{font-size:12px;color:#777;}
+.checkin-notif .cn-time{font-size:11px;color:#b0b0b0;margin-top:8px;}
+.rm-lang-tab{padding:5px 12px;font-size:12px;border-radius:16px;border:1.5px solid var(--sand-border);background:#fff;color:#888;cursor:pointer;transition:all .12s;}
+.rm-lang-tab.active{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600;}
+
+/* =====================================================
+   統計カード
+   ===================================================== */
+.sr{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:1.25rem;}
+.sc{
+  background:var(--white);
+  border-radius:var(--radius-md);
+  padding:6px 12px;
+  border:1.5px solid var(--sand-border);
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .15s;
+}
+.sc:hover{box-shadow:var(--shadow-md);}
+.sl{font-size:10px;color:var(--muted);margin-bottom:2px;font-weight:500;letter-spacing:.03em;text-transform:uppercase;}
+.sv{font-size:16px;font-weight:700;color:var(--ink);}
+.ss{font-size:10px;color:var(--light);margin-top:1px;}
+
+/* =====================================================
+   名簿テーブルラッパー
+   ===================================================== */
+/* =====================================================
+   テーブル本体
+   ===================================================== */
+table{border-collapse:collapse;min-width:100%;}
+th{
+  background:var(--sand);
+  color:var(--muted);
+  font-weight:600;font-size:11px;
+  padding:8px 7px;
+  white-space:nowrap;
+  border-bottom:2px solid var(--sand-border);
+  border-right:1px solid var(--sand-border);
+  text-align:center;
+  letter-spacing:.03em;
+}
+th.st{
+  position:sticky;left:0;z-index:3;
+  background:var(--sand);
+  box-shadow:var(--shadow-sticky);
+}
+th.st2{
+  position:sticky;left:60px;z-index:3;
+  background:var(--sand);
+  box-shadow:var(--shadow-sticky);
+}
+td{
+  padding:0;
+  border-bottom:1px solid var(--sand-border);
+  border-right:1px solid var(--sand-border);
+  vertical-align:top;
+}
+td.st{
+  position:sticky;left:0;z-index:11;
+  background:var(--white);
+  box-shadow:var(--shadow-sticky);
+}
+td.st2{
+  position:sticky;left:60px;z-index:11;
+  background:var(--white);
+  box-shadow:var(--shadow-sticky);
+}
+tr:last-child td{border-bottom:none;}
+.ri{font-size:11px;min-width:88px;padding:6px 8px;}
+.rn{font-size:10px;color:var(--light);}
+.rt{font-weight:600;font-size:11px;}
+
+/* =====================================================
+   予約セル（.gc）
+   ===================================================== */
+.gc{
+  padding:5px 10px 5px 13px;
+  font-size:11px;
+  line-height:1.4;
+  gap:4px;
+  cursor:pointer;
+  user-select:none;
+  min-height:62px;
+  display:flex;flex-direction:column;
+  transition:filter .1s;
+}
+.gc:hover{filter:brightness(.97);}
+.gc.rv{
+  background:linear-gradient(135deg,#eaf4fd 0%,#d6eaf8 100%);
+  box-shadow:inset 7px 0 0 0 var(--ocean);
+  border-radius:4px;
+}
+.gc.ci{
+  background:linear-gradient(135deg,#fffbea 0%,#fef3c7 100%);
+  box-shadow:inset 7px 0 0 0 #d97706;
+  border-radius:4px;
+}
+.gc.solo{border-radius:6px;}
+.gc.spst{border-radius:6px 0 0 6px;}
+.gc[draggable=true]{cursor:grab;}
+.gc.dragging{opacity:.3;transform:scale(.98);}
+
+/* ドロップターゲット */
+td.dt{background:rgba(26,82,118,.08);outline:2px dashed var(--ocean);}
+td.dt-swap{background:rgba(229,152,102,.15)!important;outline:2px dashed var(--sunset);}
+
+/* =====================================================
+   セル内テキスト
+   ===================================================== */
+.gn{
+  font-weight:700;color:var(--ocean);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:120px;font-size:11px;
+}
+.gn.ci{color:#92400e;}
+.gs{color:var(--light);font-size:9px;}
+.gp{font-size:9px;}
+.gpp{color:var(--ocean);}
+.gpc{color:var(--sunset);}
+.gnt{color:var(--light);font-size:9px;margin-top:1px;white-space:normal;}
+.ec{
+  color:var(--sand-border);font-size:11px;
+  text-align:center;padding:10px 2px;
+  min-height:52px;box-sizing:border-box;
+  transition:color .1s;
+}
+td:hover .ec{color:var(--ocean);opacity:.5;}
+.tc{
+  background:var(--sand);font-weight:600;
+  text-align:right;font-size:11px;
+  padding:5px 10px;color:var(--text);
+  vertical-align:middle;
+  white-space:nowrap;
+}
+
+/* =====================================================
+   バッジ類
+   ===================================================== */
+.gbg{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;}
+.bdg{
+  display:inline-block;padding:2px 5px;
+  border-radius:99px;font-size:8px;font-weight:700;
+  letter-spacing:.02em;
+}
+/* 性別 */
+.bm{background:#dbeafe;color:#1a5276;}
+.bf{background:var(--coral-lt);color:var(--coral);}
+/* 区分 */
+.bs{background:var(--sunset-lt);color:#7d5000;}
+.bg2{background:var(--seaglass-lt);color:#1a5c45;}
+.bc{background:#ede9fe;color:#4a2c8f;}
+.bf2{background:#fef9c3;color:var(--driftwood);}
+.bdg-charter{background:#fde68a;color:#7d4c00;border:1px solid var(--sunset);}
+/* 決済バッジ */
+.pay-badge{
+  display:inline-block;padding:1px 5px;
+  border-radius:4px;font-size:8px;font-weight:700;
+  vertical-align:middle;margin-left:2px;
+}
+.pay-cash{background:var(--coral-lt);color:var(--coral);border:1px solid var(--coral);}
+.pay-stripe{background:#ede9fe;color:#4a2c8f;border:1px solid #c4b5fd;}
+.pay-bank{background:var(--seaglass-lt);color:#1a5c45;border:1px solid var(--seaglass);}
+/* 到着時刻 */
+.arr-time{
+  font-size:8px;color:#7d5000;
+  background:var(--sunset-lt);
+  border-radius:3px;padding:0 4px;margin-left:3px;font-weight:700;
+}
+
+
+/* =====================================================
+   左上コーナー ナビゲーション（3分割）
+   ===================================================== */
+.cnav{
+  position:absolute;inset:0;
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-rows:1fr 1fr;
+  box-sizing:border-box;
+  padding:4px 5px;gap:2px 3px;align-items:center;
+}
+.cnav-date{
+  grid-column:1;grid-row:1;
+  font-size:12px;font-weight:700;color:var(--ocean);
+  line-height:1;white-space:nowrap;
+}
+.cnav-today{
+  grid-column:2;grid-row:1;
+  font-size:12px;font-weight:700;line-height:1;white-space:nowrap;
+  padding:6px 11px;border:1px solid var(--ocean);
+  background:var(--ocean);color:#fff;border-radius:6px;cursor:pointer;
+}
+.cnav-today:hover{filter:brightness(1.12);}
+.cnav-month{
+  grid-column:1 / span 2;grid-row:2;
+  display:flex;align-items:center;justify-content:space-between;gap:2px;
+}
+.cnav-month button{
+  font-size:11px;font-weight:700;line-height:1.1;
+  padding:1px 5px;border:1px solid var(--sand-border,#ddd);
+  background:var(--white);color:var(--text);border-radius:4px;cursor:pointer;
+}
+.cnav-month button:hover{background:#eef3f8;}
+.cnav-mlabel{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;}
+
+/* =====================================================
+   セル2段レイアウト（コンパクト）
+   ===================================================== */
+.gc{min-height:52px;padding:4px 10px 4px 13px;gap:5px;}
+/* 貸切セルはrowspanで高さ確保→gc全体に反映 */
+.gc.charter{height:100%;box-sizing:border-box;}
+/* 検索ハイライト */
+.gc.search-hit{outline:2.5px solid var(--ocean);outline-offset:-2px;border-radius:4px;}
+.gc.search-dim{opacity:.25;filter:grayscale(.3);}
+
+/* 上段：氏名＋人数＋支払＋料金＋時刻（1行） */
+.c-namerow{display:flex;align-items:center;gap:3px;min-width:0;flex-wrap:nowrap;}
+.c-name{
+  font-size:13px;font-weight:700;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--ocean);
+}
+.c-name.ci{color:#92400e;}
+.c-icons{font-size:10px;flex-shrink:0;}
+.c-guests{
+  font-size:9.5px;font-weight:700;
+  color:var(--white);background:var(--ocean);
+  border-radius:99px;padding:1px 6px;
+  flex-shrink:0;white-space:nowrap;
+}
+.c-guests.ci{background:#d97706;}
+.c-chips{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.c-pay{font-size:8.5px;font-weight:700;border-radius:3px;padding:1px 4px;white-space:nowrap;flex-shrink:0;}
+.c-price{font-size:10.5px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0;}
+.c-time{font-size:8.5px;font-weight:700;color:#7d4c00;background:var(--sunset-lt);border-radius:3px;padding:1px 4px;white-space:nowrap;flex-shrink:0;}
+
+/* 下段：サイト＋バッジ群 */
+.c-sub{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;overflow:hidden;opacity:.72;}
+.c-nights{background:var(--sand);color:var(--muted);border:1px solid var(--sand-border);}
+
+/* 備考（条件表示） */
+.c-note{
+  display:inline-block;
+  font-size:8.5px;color:#3b1a00;font-weight:600;
+  background:var(--sunset-lt);border-left:2px solid var(--sunset);
+  border-radius:2px;padding:1px 4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  max-width:160px;
+}
+
+/* =====================================================
+   予約サイトアイコン（看板風・角丸）
+   ===================================================== */
+.site-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;
+  border-radius:5px;
+  font-size:7.5px;font-weight:800;
+  flex-shrink:0;color:var(--white);line-height:1;
+  box-shadow:0 1px 2px rgba(0,0,0,.18);
+}
+
+/* =====================================================
+   貸切スタイル
+   ===================================================== */
+.gc.charter{
+  background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)!important;
+  box-shadow:inset 7px 0 0 0 #059669!important;
+}
+/* 貸切がチェックイン済みの場合は通常予約と同じオレンジ配色に統一 */
+.gc.charter.ci{
+  background:linear-gradient(135deg,#fffbea 0%,#fef3c7 100%)!important;
+  box-shadow:inset 7px 0 0 0 #d97706!important;
+}
+.charter-banner{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9px;font-weight:600;color:#065f46;
+  background:rgba(16,185,129,.18);border-radius:3px;
+  padding:1px 5px;margin-bottom:2px;
+}
+td.charter-col{background:rgba(16,185,129,.08)!important;}
+
+/* =====================================================
+   プレス・トースト
+   ===================================================== */
+.gc.pressing{outline:2px solid var(--sunset);outline-offset:1px;}
+.ci-toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%);
+  background:var(--ink);color:var(--white);
+  padding:9px 22px;border-radius:99px;
+  font-size:13px;font-weight:500;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s;z-index:200;
+  box-shadow:var(--shadow-md);letter-spacing:.02em;
+}
+.ci-toast.show{opacity:1;}
+
+/* =====================================================
+   凡例
+   ===================================================== */
+.lg{display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.li{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.lsq{width:11px;height:11px;border-radius:3px;}
+
+/* =====================================================
+   縦書きグループラベル
+   ===================================================== */
+.grp-lbl{writing-mode:vertical-lr;text-orientation:mixed;font-size:10px;font-weight:700;white-space:nowrap;letter-spacing:.08em;}
+
+/* =====================================================
+   カード（一般）
+   ===================================================== */
+.card{
+  background:var(--white);
+  border:1.5px solid var(--sand-border);
+  border-radius:var(--radius-md);
+  padding:1.25rem 1.5rem;
+  margin-bottom:1.25rem;
+  box-shadow:var(--shadow-sm);
+}
+
+/* =====================================================
+   モーダル
+   ===================================================== */
+.mbg{
+  display:none;position:fixed;inset:0;
+  background:transparent;            /* 暗転なし：カレンダーは見えたまま */
+  z-index:100;
+  align-items:stretch;justify-content:flex-end;padding:0;
+  pointer-events:none;               /* クリックを背面へ透過＝カレンダー操作可 */
+}
+.mbg.open{display:flex;}
+.modal{
+  pointer-events:auto;               /* パネル自身は操作可 */
+  background:var(--white);
+  border-radius:0;
+  border:none;border-left:1.5px solid var(--sand-border);
+  padding:1.5rem;
+  width:400px!important;max-width:92vw!important;
+  height:100vh;max-height:100vh!important;overflow-y:auto;
+  box-shadow:-6px 0 20px rgba(28,40,51,.14);
+  animation:modalSlideIn .22s ease;
+}
+@keyframes modalSlideIn{from{transform:translateX(100%);}to{transform:translateX(0);}}
+/* 旧型カードモーダル(.mbox)はドッキングではなく従来の中央表示に戻す */
+.mbg:has(> .mbox){
+  align-items:center;justify-content:center;
+  padding:20px;
+  background:rgba(20,30,40,.35);
+  pointer-events:auto;
+}
+.mbg.open > .mbox{
+  pointer-events:auto;
+  flex:0 0 auto;align-self:center;
+  width:min(500px,92vw);
+  height:auto;max-height:90vh;overflow-y:auto;
+  animation:none;
+}
+/* TODOインライン編集（Googleタスク風） */
+.sn-ce{outline:none;border-radius:4px;cursor:text;transition:background .12s;}
+.sn-ce:hover{background:rgba(26,82,118,.045);}
+.sn-ce:focus{background:rgba(26,82,118,.08);box-shadow:0 0 0 2px rgba(26,82,118,.20);}
+.sn-ce:empty:before{content:attr(data-ph);color:var(--light);pointer-events:none;}
+.sn-metasel{appearance:none;-webkit-appearance:none;border:none;cursor:pointer;font-family:inherit;text-align:left;}
+.sn-metasel:focus{outline:none;box-shadow:0 0 0 2px rgba(26,82,118,.25);}
+/* パネル右上の閉じる(×)ボタン */
+.mbg-close{
+  position:absolute;top:10px;right:12px;z-index:2;
+  width:30px;height:30px;border-radius:50%;
+  border:1px solid var(--sand-border);background:var(--white);
+  color:var(--muted);font-size:20px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:auto;box-shadow:var(--shadow-sm);
+}
+.mbg-close:hover{background:var(--sand);color:var(--ocean);border-color:var(--ocean);}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:1.1rem;color:var(--ink);}
+.mr{display:grid;gap:9px;margin-top:10px;}
+.mr2{grid-template-columns:1fr 1fr;}.mr3{grid-template-columns:1fr 1fr 1fr;}
+.fl label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;letter-spacing:.02em;}
+.fl input,.fl select,.fl textarea{width:100%;box-sizing:border-box;}
+.mbt{
+  display:flex;gap:9px;justify-content:flex-end;
+  margin-top:1.5rem;padding-top:1.1rem;
+  border-top:1.5px solid var(--sand-border);
+}
+
+/* =====================================================
+   リスト系テーブル（.lt）
+   ===================================================== */
+.lt{width:100%;border-collapse:collapse;}
+.lt th{
+  text-align:left;padding:9px 11px;
+  font-size:11px;color:var(--muted);font-weight:600;
+  border-bottom:2px solid var(--sand-border);
+  white-space:nowrap;background:var(--sand);
+  letter-spacing:.03em;
+}
+.lt td{padding:9px 11px;font-size:13px;border-bottom:1px solid var(--sand-border);vertical-align:top;}
+.lt tr:last-child td{border-bottom:none;}
+.lt tr:hover td{background:var(--sand);}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;}
+.ts{background:var(--sunset-lt);color:#7d5000;}
+.tg2{background:var(--seaglass-lt);color:#1a5c45;}
+.tc2{background:#ede9fe;color:#4a2c8f;}
+.tm{background:#dbeafe;color:#1a5276;}
+.tf{background:var(--coral-lt);color:var(--coral);}
+
+/* =====================================================
+   TODO
+   ===================================================== */
+.rrow{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--sand-border);}
+.rrow:last-child{border-bottom:none;}
+.rdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.tdi{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--sand-border);}
+.tdi:last-child{border-bottom:none;}
+.tck{
+  width:17px;height:17px;border-radius:5px;
+  border:2px solid var(--sand-border);cursor:pointer;
+  background:var(--white);flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,border-color .15s;
+}
+.tck.done{background:var(--ocean);border-color:var(--ocean);}
+.tck.done::after{content:'';display:block;width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px);}
+.ttx{flex:1;font-size:13.5px;line-height:1.55;}.ttx.done{color:var(--light);text-decoration:line-through;}
+.tmt{font-size:11px;color:var(--light);margin-top:3px;}
+.ph{color:#a93226;font-weight:600;}.pm{color:#7d5000;font-weight:600;}.pl{color:#1a5c45;font-weight:600;}
+.tadd{display:flex;gap:7px;margin-bottom:1.25rem;}.tadd input{flex:1;}
+
+/* =====================================================
+   CSV取込エリア
+   ===================================================== */
+.import-zone{
+  border:2px dashed var(--sand-border);
+  border-radius:var(--radius-md);
+  padding:2.5rem 2rem;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .15s,background .15s;
+  background:var(--white);
+}
+.import-zone:hover,.import-zone.drag{
+  border-color:var(--ocean);
+  background:var(--ocean-light);
+}
+.import-zone p{color:var(--muted);font-size:13px;margin-top:9px;line-height:1.6;}
+.import-result{
+  background:#e8f8f1;border:1.5px solid var(--seaglass);
+  border-radius:var(--radius-sm);padding:13px 17px;
+  margin-top:1rem;font-size:13px;color:#1a5c45;
+}
+.import-warn{
+  background:var(--sunset-lt);border:1.5px solid var(--sunset);
+  border-radius:var(--radius-sm);padding:11px 15px;
+  margin-top:9px;font-size:12px;color:#7d5000;
+}
+
+/* =====================================================
+   駐車場カレンダー
+   ===================================================== */
+.park-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:1.25rem;}
+.park-day-header{text-align:center;font-size:10.5px;color:var(--muted);padding:5px 0;font-weight:600;letter-spacing:.04em;}
+.park-cell{
+  min-height:76px;
+  border:1.5px solid var(--sand-border);
+  border-radius:var(--radius-sm);
+  padding:5px;background:var(--white);
+  font-size:10px;cursor:pointer;
+  transition:background .15s,box-shadow .15s;
+}
+.park-cell:hover{background:var(--sand);box-shadow:var(--shadow-sm);}
+.park-cell.today{border-color:var(--ocean);background:var(--ocean-light);}
+.park-cell.other-month{opacity:.3;pointer-events:none;}
+.park-cell.holiday .park-date,.park-cell.sun .park-date{color:#c0392b;}
+.park-cell.sat .park-date{color:var(--ocean);}
+.park-date{font-size:14px;font-weight:700;margin-bottom:2px;color:var(--ink);}
+.park-hol{font-size:10px;color:#c0392b;margin-bottom:2px;}
+.park-price{font-size:11px;color:var(--light);margin-bottom:3px;}
+.park-entry{
+  background:var(--sunset-lt);border-radius:4px;
+  padding:3px 6px;margin-bottom:2px;
+  font-size:12px;font-weight:600;color:#7d5000;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border-left:2px solid var(--sunset);
+}
+.park-entry.auto-park{background:var(--seaglass-lt);color:#1a5c45;border-left-color:var(--seaglass);}
+.park-nav{display:flex;align-items:center;gap:13px;margin-bottom:1.25rem;}
+.park-nav-btn{
+  background:var(--white);border:1.5px solid var(--sand-border);
+  border-radius:var(--radius-sm);padding:5px 13px;
+  cursor:pointer;font-size:14px;color:var(--text);
+  transition:background .15s,border-color .15s;
+}
+.park-nav-btn:hover{background:var(--ocean-light);border-color:var(--ocean);color:var(--ocean);}
+
+/* =====================================================
+   Aランク固定パネル
+   ===================================================== */
+#rank-a-panel.hidden{display:none;}
+.rank-a-card{
+  background:var(--white);
+  border:1.5px solid #F09595;
+  border-left:4px solid #E24B4A;
+  border-radius:var(--radius-sm);
+  padding:9px 11px;
+  margin-bottom:7px;
+}
+.rank-a-card.done{opacity:.5;border-color:#B4B2A9;border-left-color:#B4B2A9;}
+.rank-a-title{font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.4;margin-bottom:3px;}
+.rank-a-title.done{text-decoration:line-through;color:var(--muted);}
+.rank-a-detail{font-size:11px;color:var(--muted);line-height:1.55;white-space:pre-wrap;}
+.rank-a-foot{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.rank-a-type{font-size:10px;padding:1px 6px;border-radius:99px;}
+
+/* =====================================================
+/* 集計エリアはデフォルト非表示（トグルで開閉） */
+#mobile-stats-area{display:none;}
+#mobile-stats-area.open{display:block;}
+
+/* ── スマホ最適化（768px以下） ── */
+@media(max-width:768px){
+  body,html{min-width:0;}
+  /* mainのpadding削除：テーブルを端まで表示 */
+  .main{padding:0!important;}
+  /* register topbar をスクロール中も固定 */
+  #page-register .topbar{
+    position:sticky;top:0;z-index:50;
+    background:var(--white);
+    border-bottom:1px solid var(--sand-border);
+    padding:5px 8px;box-sizing:border-box;
+    flex-direction:column;align-items:flex-start;gap:4px;
+  }
+  #page-register .topbar .ttl{font-size:12px;font-weight:700;}
+  #page-register .topbar .sub{display:none;}
+  #page-register .topbar .ctr{gap:4px;flex-wrap:wrap;}
+  #page-register .topbar .btn{padding:4px 8px;font-size:11px;}
+  /* グループラベルを縦書き縮小 */
+  .grp-lbl{font-size:7px!important;writing-mode:vertical-rl;line-height:1;}
+  /* reg-scroll：高さはJSで制御 */
+  #reg-scroll{overflow-x:auto;overflow-y:auto;}
+  /* flex gapを減らす */
+  #page-register > div[style*="display:flex"]{gap:0!important;}
+  /* 左帯をモバイルで5pxに縮小 */
+  .gc{padding-left:11px;}
+  .gc.rv{box-shadow:inset 5px 0 0 0 var(--ocean);}
+  .gc.ci{box-shadow:inset 5px 0 0 0 #d97706;}
+  .gc.charter{box-shadow:inset 5px 0 0 0 #059669!important;}
+  /* ── スマホ/タブレット：氏名最優先 ── */
+  /* 氏名行を縦積みにして、氏名を1行目でフル表示（省略せず最大2行まで折り返し） */
+  .c-namerow{flex-wrap:wrap;}
+  .c-name{
+    font-size:15px;line-height:1.2;
+    white-space:normal;            /* 省略をやめ折り返す */
+    text-overflow:clip;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+    flex:1 1 100%;                 /* 氏名は常に1行を占有＝補助チップは下段へ */
+  }
+  /* 人数・支払・料金などの補助チップは氏名の下にまとめて表示 */
+  .c-namerow .c-guests,
+  .c-namerow .c-pay,
+  .c-namerow .c-price,
+  .c-namerow .c-time{order:2;}
+}
+.gc.selected{outline:2.5px solid #e74c3c !important;outline-offset:1px;background:#fff0f0 !important;}
+/* 名簿テーブル thead sticky */
+#main-table{ table-layout:fixed; }
+/* セルのmin-content幅がcol指定を押し広げるのを無効化（予約有無で列幅がばらつく根本原因の対策）。
+   左固定列(.st/.st2)はインラインwidthを持つため除外。 */
+#main-table td:not(.st):not(.st2){ max-width:0; }
+#main-table thead th{
+  position:sticky;
+  background:var(--white);
+}
+#main-table thead .st,
+#main-table thead .st2{ z-index:30; }
+#main-table thead th:not(.st):not(.st2){ z-index:20; }
+#main-table tbody .st { z-index:11; }
+#main-table tbody .st2{ z-index:11; }
+/* ── PIN認証オーバーレイ ── */
+#pin-overlay{position:fixed;top:0;right:0;bottom:0;left:0;background:linear-gradient(135deg,#0f3443 0%,#1a5276 100%);z-index:99999;display:flex;align-items:center;justify-content:center;}
+#pin-box{background:#fff;border-radius:20px;padding:32px 28px;width:min(300px,calc(100vw - 32px));text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);box-sizing:border-box;}
+#pin-logo{font-size:32px;margin-bottom:6px;}
+#pin-title{font-size:15px;font-weight:700;color:#1a3a4a;margin-bottom:3px;}
+#pin-sub{font-size:11px;color:#999;margin-bottom:20px;}
+#pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:8px;}
+.pin-dot{width:13px;height:13px;border-radius:50%;background:#e0e0e0;transition:.15s;}
+.pin-dot.filled{background:#1a5276;}
+#pin-error{font-size:12px;color:#e74c3c;height:18px;margin-bottom:10px;font-weight:600;}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.pin-key{background:#f5f7fa;border:none;border-radius:10px;padding:15px;font-size:20px;font-weight:600;cursor:pointer;transition:.1s;color:#1a3a4a;font-family:inherit;}
+.pin-key:hover{background:#e0eaf5;}
+.pin-key:active{background:#c8d8ec;transform:scale(.95);}
+.pin-key.del{font-size:16px;color:#888;}
+#role-badge{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:50%;transform:translateX(-50%);background:rgba(15,52,67,.85);color:#fff;font-size:12px;padding:5px 16px;border-radius:99px;z-index:9998;cursor:pointer;backdrop-filter:blur(4px);border:none;white-space:nowrap;}
+@media(max-width:900px){
+  body.role-admin .main,body.role-cleaning .main,body.role-reception .main,body.role-watanabe .main{padding-bottom:56px;}
+}
+/* PIN画面：縦幅が狭い端末（横持ち等）でもボックスが収まるよう */
+@media(max-height:520px){
+  #pin-box{padding:14px 20px;}
+  #pin-logo{font-size:22px;margin-bottom:2px;}
+  #pin-title{font-size:13px;margin-bottom:1px;}
+  #pin-sub{margin-bottom:8px;}
+  #pin-dots{margin-bottom:4px;}
+  #pin-error{height:14px;margin-bottom:4px;}
+  .pin-key{padding:9px;}
+}
+
+/* ── ロール別サイドバー制御 ── */
+/* 清掃スタッフ：清掃予定表のみ */
+body.role-cleaning .nitem[onclick*="showP('register'"],
+body.role-cleaning .nitem[onclick*="showP('import'"],
+body.role-cleaning .nitem[onclick*="showP('parking'"],
+body.role-cleaning .nitem[onclick*="showP('rental'"],
+body.role-cleaning .nitem[onclick*="showP('surf'"],
+body.role-cleaning .nitem[onclick*="showP('occupancy'"],
+body.role-cleaning .nitem[onclick*="showP('sales'"],
+body.role-cleaning .nitem[onclick*="showP('cancel'"],
+body.role-cleaning .nitem[onclick*="showP('todo'"],
+body.role-cleaning #sidebar-property-group,
+body.role-cleaning #nitem-cleaning-focus,
+body.role-cleaning .sb-div{display:none!important;}
+/* 接客スタッフ：宿泊名簿・駐車場・レンタル・サーフィン・清掃予定表 */
+body.role-reception .nitem[onclick*="showP('import'"],
+body.role-reception .nitem[onclick*="showP('occupancy'"],
+body.role-reception .nitem[onclick*="showP('sales'"],
+body.role-reception .nitem[onclick*="showP('cancel'"],
+body.role-reception .nitem[onclick*="showP('todo'"],
+body.role-reception #sidebar-property-group,
+body.role-reception #nitem-cleaning-focus{display:none!important;}
+/* 接客スタッフ：集計・CSV出力・セルドラッグを無効化 */
+body.role-reception [onclick*="toggleMobileStats"],
+body.role-reception [onclick*="toggleFilterPanel"],
+body.role-reception #mobile-stats-area,
+body.role-reception [onclick*="exportCSV("],
+body.role-reception [onclick*="exportRentalCSV"]{display:none!important;}
+body.role-reception .gc[draggable="true"]{-webkit-user-drag:none;}
+
+/* 渡辺千尋：宿泊者名簿・清掃予定表のみ表示（駐車場・レンタル・サーフィン等も非表示） */
+body.role-watanabe .nitem[onclick*="showP('import'"],
+body.role-watanabe .nitem[onclick*="showP('parking'"],
+body.role-watanabe .nitem[onclick*="showP('rental'"],
+body.role-watanabe .nitem[onclick*="showP('surf'"],
+body.role-watanabe .nitem[onclick*="showP('occupancy'"],
+body.role-watanabe .nitem[onclick*="showP('sales'"],
+body.role-watanabe .nitem[onclick*="showP('cancel'"],
+body.role-watanabe .nitem[onclick*="showP('todo'"],
+body.role-watanabe #sidebar-property-group,
+body.role-watanabe #nitem-cleaning-focus{display:none!important;}
+/* 集計・CSV出力を無効化（セルドラッグはJS側でSea Breezeのみ許可） */
+body.role-watanabe [onclick*="toggleMobileStats"],
+body.role-watanabe [onclick*="toggleFilterPanel"],
+body.role-watanabe #mobile-stats-area,
+body.role-watanabe [onclick*="exportCSV("],
+body.role-watanabe [onclick*="exportRentalCSV"]{display:none!important;}
+
+/* ── 閲覧専用：編集ボタンを非表示 ── */
+body.viewonly [onclick*="openAdd("],
+body.viewonly [onclick*="openCharterNew"],
+body.viewonly [onclick*="openParkAdd"],
+body.viewonly [onclick*="openRentalAdd"],
+body.viewonly [onclick*="openSurfAdd"],
+body.viewonly [onclick*="setCleaningStatus"],
+body.viewonly [onclick*="editSN("],
+body.viewonly [onclick*="deleteSN("],
+body.viewonly [onclick*="openSNTypeEdit"],
+body.viewonly [onclick*="openSNStaffEdit"],
+body.viewonly [onclick*="openPriorityCleaningEdit"],
+body.viewonly [onclick*="togglePriorityCleaningDone"],
+body.viewonly [onclick*="generateCleaningList"],
+body.viewonly [onclick*="copyLineMessage"],
+body.viewonly [onclick*="setPriorityCleaningAlertDays"],
+body.viewonly [onclick*="togglePriorityCleaningThisMonthOnly"],
+body.viewonly #sn-add-form,
+body.viewonly .pc-btn-add,
+body.viewonly #rank-a-panel{display:none!important;}
+body.viewonly .pc-check{pointer-events:none;opacity:.4;}
+/* ── 重点清掃項目 ── */
+.pc-section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:14px 18px;background:linear-gradient(135deg,#fff7e6 0%,#fff 100%);border-left:4px solid #f4b860;border-radius:10px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-section-title{font-size:15px;font-weight:700;color:#7a4f00;}
+.pc-section-stats{margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
+.pc-section-stats strong{color:var(--ink);font-size:13px;font-weight:700;margin-left:3px;}
+.pc-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.pc-btn-add{background:#5fa8a2;color:#fff;border-color:#5fa8a2;font-weight:600;}
+.pc-btn-add:hover{background:#85b7b3;}
+.pc-month-summary{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-month-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.pc-month-title{font-size:13px;font-weight:700;}
+.pc-month-pills{display:flex;flex-wrap:wrap;gap:7px;}
+.pc-month-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:var(--paper);border:1px solid var(--sand-border);border-radius:99px;font-size:11px;}
+.pc-month-pill strong{color:#5fa8a2;font-size:12px;font-weight:700;}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;}
+.pc-cat-card{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(20,30,50,.06);}
+.pc-cat-head{display:flex;align-items:center;gap:8px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--sand-border);}
+.pc-cat-icon{font-size:18px;}
+.pc-cat-name{font-size:13px;font-weight:700;}
+.pc-cat-count{margin-left:auto;font-size:11px;color:var(--muted);background:var(--sand);padding:2px 8px;border-radius:99px;}
+.pc-cat-scheduled{font-size:10px;color:#7a4f00;background:#fff3d6;padding:2px 8px;border-radius:99px;font-weight:700;}
+.pc-task{display:flex;align-items:flex-start;gap:8px;padding:9px 6px;border-radius:6px;transition:background .15s;border-left:3px solid transparent;cursor:grab;}
+.pc-task:hover{background:var(--paper);}
+.pc-task.alert{border-left-color:#e67e6a;background:#fff5f2;}
+.pc-task.recent{border-left-color:#5fa8a2;}
+.pc-task.scheduled{background:#fffbf0;}
+.pc-task.scheduled.alert{background:#fff0eb;}
+.pc-task.pc-drop-over{background:#e8f4f3;box-shadow:inset 0 0 0 2px #5fa8a2;}
+.pc-drag{color:#bbb;font-size:13px;line-height:1.4;cursor:grab;user-select:none;flex-shrink:0;margin-top:1px;}
+.pc-check{width:18px;height:18px;border:2px solid #5fa8a2;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;background:#fff;transition:.15s;}
+.pc-check.done{background:#5fa8a2;}
+.pc-check.done::after{content:'✓';color:#fff;font-size:11px;font-weight:bold;}
+.pc-body{flex:1;min-width:0;cursor:pointer;}
+.pc-title{font-size:13px;font-weight:600;line-height:1.4;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.pc-place{font-size:10px;color:var(--muted);margin-top:1px;}
+.pc-meta{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10px;color:var(--muted);flex-wrap:wrap;}
+.pc-freq{background:#eef5f4;color:#3b6c69;padding:1px 7px;border-radius:99px;font-weight:600;}
+.pc-last{display:flex;align-items:center;gap:2px;}
+.pc-count{background:var(--sand);padding:1px 7px;border-radius:99px;font-weight:600;color:var(--ink);}
+.pc-alert-tag{background:#e67e6a;color:#fff;padding:2px 8px;border-radius:99px;font-weight:700;}
+.pc-scheduled-tag{font-size:10px;color:#7a4f00;background:#fff3d6;padding:1px 7px;border-radius:99px;font-weight:700;}
+.pc-actions{opacity:0;transition:opacity .15s;display:flex;gap:3px;flex-shrink:0;}
+.pc-task:hover .pc-actions{opacity:1;}
+.pc-icon-btn{width:22px;height:22px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.pc-icon-btn:hover{background:var(--sand);color:var(--ink);}
+/* ── 清掃管理 ── */
+.cl-card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:14px 16px;border-left:4px solid #ccc;position:relative;}
+.cl-card.waiting  {border-left-color:#4da3c7;}
+.cl-card.cleaning {border-left-color:#4aa3df;}
+.cl-card.checking {border-left-color:#b89be0;}
+.cl-card.completed{border-left-color:#3d9441;opacity:.75;}
+.cl-room{font-size:13px;font-weight:700;color:var(--ink);}
+.cl-guest{font-size:12px;color:var(--muted);margin:2px 0 8px;}
+.cl-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.cl-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;background:#f1f5f9;color:#475569;}
+.cl-badge.high{background:#fee2e2;color:#991b1b;}
+.cl-badge.mid {background:#fef3c7;color:#92400e;}
+.cl-badge.low {background:#f1f5f9;color:#475569;}
+.cl-status-row{display:flex;gap:5px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.cl-status-btn{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;border:none;cursor:pointer;transition:.15s;}
+.cl-status-btn.waiting  {background:#e0f2fe;color:#0369a1;}
+.cl-status-btn.cleaning {background:#dbeafe;color:#1d4ed8;}
+.cl-status-btn.checking {background:#ede9fe;color:#6d28d9;}
+.cl-status-btn.completed{background:#dcfce7;color:#15803d;}
+.cl-status-btn.active   {filter:brightness(.85);font-weight:800;outline:2px solid currentColor;}
+.cl-assignee{font-size:11px;color:#888;margin-bottom:4px;}
+.cl-memo-btn{font-size:10px;color:#185FA5;cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;}
+.cl-memo-text{font-size:11px;color:#854F0B;background:#FFF8E1;border-radius:4px;padding:3px 6px;margin-top:4px;}
+.cl-alert{background:#fee2e2;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#991b1b;position:absolute;top:10px;right:10px;}
+.cl-summary-chip{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
+
+/* ── レンタルスペース ── */
+.rs-cell-entry{font-size:12px;border-radius:4px;padding:3px 6px;margin-top:2px;cursor:pointer;border-left:3px solid #ccc;line-height:1.4;overflow:hidden;}
+.rs-site-直接{background:#d1fae5;border-left-color:#10b981;color:#065f46;}
+.rs-site-スペースマーケット{background:#dbeafe;border-left-color:#3b82f6;color:#1e40af;}
+.rs-site-インスタベース{background:#ffedd5;border-left-color:#f97316;color:#9a3412;}
+.rs-site-カシカシ{background:#ede9fe;border-left-color:#8b5cf6;color:#5b21b6;}
+.rs-summary-chip{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;display:flex;flex-direction:column;gap:2px;min-width:96px;}
+.rs-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:6px;}
+.rs-opt-grid label{display:flex;align-items:center;gap:5px;font-size:11px;color:#555;cursor:pointer;}
+.cal-cam-icon{font-size:10px;cursor:pointer;margin-left:3px;}
