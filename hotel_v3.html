@@ -1380,6 +1380,11 @@
 
 </div></div></div>
 
+<!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
+     mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
+<script src="hotel_v3.cleaning.js"></script>
+<script src="hotel_v3.calendar.js"></script>
+<script src="hotel_v3.sync.js"></script>
 <script src="hotel_v3.js"></script>
 <div id="notification-container"></div>
 </body>
