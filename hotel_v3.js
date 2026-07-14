@@ -308,36 +308,38 @@ const salesData={
 let sbOpen=false;
 let rooms=[
   // 本館−個室（ダブル・ツイン）
-  {id:0, no:1, type:'本館−ダブル', group:'本館−個室', cap:2, color:'#185FA5', label:'①ダブル'},
-  {id:1, no:2, type:'本館−ツイン', group:'本館−個室', cap:2, color:'#185FA5', label:'②ツイン'},
-  // 本館−男女混合ドミトリー（G H I J K L M N O P の10部屋）
-  {id:2, no:3, type:'本館−男女混合ドミトリー G', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:3, no:4, type:'本館−男女混合ドミトリー H', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:4, no:5, type:'本館−男女混合ドミトリー I', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:5, no:6, type:'本館−男女混合ドミトリー J', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:6, no:7, type:'本館−男女混合ドミトリー K', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:7, no:8, type:'本館−男女混合ドミトリー L', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:8, no:9, type:'本館−男女混合ドミトリー M', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:9, no:10,type:'本館−男女混合ドミトリー N', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:10,no:11,type:'本館−男女混合ドミトリー O', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
-  {id:11,no:12,type:'本館−男女混合ドミトリー P', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  // ※ no は「部屋情報」画面に表示される部屋番号そのもの（表示専用の文字列）。
+  //    チェックインアプリの DEFAULT_ROOMS と必ず同じ値に保つこと（ズレると誤室案内の原因）。
+  {id:0, no:'①', type:'本館−ダブル', group:'本館−個室', cap:2, color:'#185FA5', label:'①ダブル'},
+  {id:1, no:'②', type:'本館−ツイン', group:'本館−個室', cap:2, color:'#185FA5', label:'②ツイン'},
+  // 本館−男女混合ドミトリー（3号室のベッド G H I J K L M N O P の10部屋）
+  {id:2, no:'③−G', type:'本館−男女混合ドミトリー G', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:3, no:'③−H', type:'本館−男女混合ドミトリー H', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:4, no:'③−I', type:'本館−男女混合ドミトリー I', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:5, no:'③−J', type:'本館−男女混合ドミトリー J', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:6, no:'③−K', type:'本館−男女混合ドミトリー K', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:7, no:'③−L', type:'本館−男女混合ドミトリー L', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:8, no:'③−M', type:'本館−男女混合ドミトリー M', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:9, no:'③−N', type:'本館−男女混合ドミトリー N', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:10,no:'③−O', type:'本館−男女混合ドミトリー O', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:11,no:'③−P', type:'本館−男女混合ドミトリー P', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
   // ANNEX−個室（①②の2部屋）
-  {id:12,no:13,type:'ANNEX−個室①',           group:'ANNEX−個室',       cap:4, color:'#993556'},
-  {id:13,no:14,type:'ANNEX−個室②',           group:'ANNEX−個室',       cap:4, color:'#993556'},
-  // ANNEX−ドミトリー（A B C D E F の6部屋）
-  {id:14,no:15,type:'ANNEX−ドミトリー A',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
-  {id:15,no:16,type:'ANNEX−ドミトリー B',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
-  {id:16,no:17,type:'ANNEX−ドミトリー C',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
-  {id:17,no:18,type:'ANNEX−ドミトリー D',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
-  {id:18,no:19,type:'ANNEX−ドミトリー E',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
-  {id:19,no:20,type:'ANNEX−ドミトリー F',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:12,no:'①', type:'ANNEX−個室①',           group:'ANNEX−個室',       cap:4, color:'#993556'},
+  {id:13,no:'②', type:'ANNEX−個室②',           group:'ANNEX−個室',       cap:4, color:'#993556'},
+  // ANNEX−ドミトリー（3号室のベッド A B C D E F の6部屋）
+  {id:14,no:'③−A', type:'ANNEX−ドミトリー A',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:15,no:'③−B', type:'ANNEX−ドミトリー B',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:16,no:'③−C', type:'ANNEX−ドミトリー C',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:17,no:'③−D', type:'ANNEX−ドミトリー D',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:18,no:'③−E', type:'ANNEX−ドミトリー E',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:19,no:'③−F', type:'ANNEX−ドミトリー F',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
   // アパートメント−Southern Court（103・104の2部屋）
-  {id:20,no:21,type:'アパートメント−Southern Court 103', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
-  {id:21,no:22,type:'アパートメント−Southern Court 104', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
+  {id:20,no:'１０３', type:'アパートメント−Southern Court 103', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
+  {id:21,no:'１０４', type:'アパートメント−Southern Court 104', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
   // Sea Breeze 鎌倉・三浦
-  {id:22,no:23,type:'Sea Breeze 鎌倉 101', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
-  {id:23,no:24,type:'Sea Breeze 鎌倉 102', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
-  {id:24,no:25,type:'Sea Breeze 三浦',     group:'Sea Breeze 三浦', cap:4, color:'#0f766e'},
+  {id:22,no:'１０１', type:'Sea Breeze 鎌倉 101', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
+  {id:23,no:'１０２', type:'Sea Breeze 鎌倉 102', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
+  {id:24,no:'25',    type:'Sea Breeze 三浦',     group:'Sea Breeze 三浦', cap:4, color:'#0f766e'},
 ];
 let nextRoomId=25;
 let guestData={};
