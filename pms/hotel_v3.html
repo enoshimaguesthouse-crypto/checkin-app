@@ -4500,7 +4500,10 @@ function guestCountOf(g){
   return g.guests || g.guestCount || g.totalGuests || 1;
 }
 
+// 起動初期化中は再描画を抑制し、初期化完了時に1回だけ描画する（起動時の多重renderReg対策）
+let _suppressRenderReg=false;
 function renderReg(){
+  if(_suppressRenderReg)return;
   const year=parseInt(document.getElementById('sel-year').value)||2026,month=parseInt(document.getElementById('sel-month').value),days=gDays(year,month);
   DISP_YEAR=year; // 以降のgk/addDaysが表示中の年を使うように同期
   // ── モバイル判定・セル幅計算 ──
@@ -9109,6 +9112,9 @@ loadRoomSettingsLS();
 initData();
 renderFilterUI();
 _updateMonthDisplay();
+// GAS連携時は初期描画を抑制し、cloudLoad完了時に1回だけ描画する（起動時の多重renderReg対策）。
+// GAS未設定時はローカルデータで即時描画する。
+_suppressRenderReg=!!GAS_URL;
 renderReg();
 renderRankAPanel();
 // ── 検索バー：氏名・予約ID・国籍・備考・サイト等で絞り込み ──────────
@@ -9234,7 +9240,13 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',adjustR
 const _rrOrig=renderReg;
 renderReg=function(){_rrOrig.apply(this,arguments);setTimeout(adjustRegScrollHeight,100);};
 
-if(GAS_URL){ cloudLoad(true).then(()=>{ autoImportCancelIfNeeded(); generateDueReminders(); renderStaffNotes(); renderRankAPanel(); setTimeout(()=>cloudSave(),3000); }); startPolling(); rentalCloudLoad(true); }
+if(GAS_URL){
+  cloudLoad(true).then(()=>{ _suppressRenderReg=false; autoImportCancelIfNeeded(); generateDueReminders(); renderStaffNotes(); renderRankAPanel(); renderReg(); setTimeout(()=>cloudSave(),3000); });
+  // フォールバック：クラウド応答が遅延/停止しても画面が空白のままにならないよう、
+  // 一定時間経っても初期描画が終わっていなければローカルデータで描画する。
+  setTimeout(()=>{ if(_suppressRenderReg){ _suppressRenderReg=false; renderReg(); } }, 1500);
+  startPolling(); rentalCloudLoad(true);
+}
 else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); generateDueReminders(); }
 
 // reg-scroll の横スクロールをdebounceで保存
