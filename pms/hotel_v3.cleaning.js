@@ -954,7 +954,9 @@ function _ensureTabletDisplay(){
   return tds;
 }
 
-let _tdDraft=null, _tdCur={rt:'honkan_double', lang:'ja'};
+// 上部タブ（自動メール配信設定の送信タイミングタブと同一UI）。UI表示単位のみで、保存データには影響しない。
+const TD_TABS=[{key:'agreement',label:'宿泊約款'},{key:'guide',label:'施設案内'}];
+let _tdDraft=null, _tdCur={rt:'honkan_double', lang:'ja', tab:'agreement'};
 function _tdCurTpl(){ return _tdDraft.roomTypes[_tdCur.rt][_tdCur.lang]; }
 function _tdUpdateCurLabel(){
   const rtLbl=(MAIL_ROOM_TYPES.find(r=>r.key===_tdCur.rt)||{}).label||'';
@@ -969,6 +971,19 @@ function _tdCommitInputs(){
   t.link=document.getElementById('td-link').value;
 }
 function tdOnInput(){ _tdCommitInputs(); }
+// 上部タブ（宿泊約款／施設案内）の描画・切替。表示の出し分けのみでデータは触らない。
+function tdRenderMTabs(){
+  const el=document.getElementById('td-mtabs');
+  if(el)el.innerHTML=TD_TABS.map(t=>
+    `<button type="button" class="ms-mtab ${t.key===_tdCur.tab?'active':''}" onclick="tdSelectTab('${t.key}')">${t.label}</button>`).join('');
+}
+function tdRenderPanels(){
+  const a=document.getElementById('td-panel-agreement');
+  const g=document.getElementById('td-panel-guide');
+  if(a)a.style.display=(_tdCur.tab==='agreement')?'':'none';
+  if(g)g.style.display=(_tdCur.tab==='guide')?'':'none';
+}
+function tdSelectTab(key){ _tdCommitInputs(); _tdCur.tab=key; tdRenderMTabs(); tdRenderPanels(); }
 function tdRenderRTabs(){
   const el=document.getElementById('td-rtabs');
   if(el)el.innerHTML=MAIL_ROOM_TYPES.map(rt=>
@@ -985,16 +1000,18 @@ function tdRenderFields(){
 function tdSelectRoomType(rt){ _tdCommitInputs(); _tdCur.rt=rt; tdRenderRTabs(); tdRenderFields(); }
 function tdSwitchLang(l){
   _tdCommitInputs(); _tdCur.lang=l;
-  document.querySelectorAll('#contract-settings-modal .ca-tab').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+  document.querySelectorAll('#contract-settings-modal .ms-ltab[data-lang]').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
   tdRenderFields();
 }
 function openContractSettings(){
   const tds=_ensureTabletDisplay();
   _tdDraft=JSON.parse(JSON.stringify(tds));
-  _tdCur={rt:'honkan_double', lang:'ja'};
+  _tdCur={rt:'honkan_double', lang:'ja', tab:'agreement'};
   document.getElementById('ca-enabled').checked=!!_tdDraft.enabled;
   document.getElementById('ca-consent-type').value=_tdDraft.consentType||'checkbox';
-  document.querySelectorAll('#contract-settings-modal .ca-tab').forEach(b=>b.classList.toggle('active',b.dataset.lang==='ja'));
+  document.querySelectorAll('#contract-settings-modal .ms-ltab[data-lang]').forEach(b=>b.classList.toggle('active',b.dataset.lang==='ja'));
+  tdRenderMTabs();
+  tdRenderPanels();
   tdRenderRTabs();
   tdRenderFields();
   document.getElementById('contract-settings-modal').classList.add('open');

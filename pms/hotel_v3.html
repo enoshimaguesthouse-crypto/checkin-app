@@ -716,60 +716,77 @@
 </div>
 </div>
 
-<!-- タブレット表示設定 ＞ 契約確認（宿泊約款）設定 -->
+<!-- タブレット表示設定（自動メール配信設定とUI共通化：.ms-mtab／.ms-ltab／.ms-field-label／.ms-sel を共用） -->
 <style>
-.ca-tab{font-size:12px;font-weight:700;padding:6px 14px;border:1.5px solid var(--sand-border);background:#fff;color:#888;border-radius:8px;cursor:pointer;font-family:inherit;}
-.ca-tab.active{background:#185FA5;color:#fff;border-color:#185FA5;}
+/* 施設案内タブのカード表示（白背景＋枠線＋角丸、カード間に余白） */
+.td-card{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+.td-card:last-child{margin-bottom:0;}
 </style>
 <div class="mbg" id="contract-settings-modal" onclick="if(event.target===this)closeM('contract-settings-modal')">
-<div class="modal" onclick="event.stopPropagation()" style="width:640px;max-width:94vw;max-height:92vh;overflow-y:auto;padding:24px 26px;">
-  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;">📱 タブレット表示設定</div>
+<div class="modal" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;flex-shrink:0;">📱 タブレット表示設定</div>
 
-  <!-- 部屋タイプタブ（部屋タイプ×言語でタブレット表示内容を管理） -->
-  <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">部屋タイプ</label>
-  <div id="td-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
+  <!-- 上部タブ（宿泊約款／施設案内）：自動メール配信設定の送信タイミングタブと同一UI(.ms-mtab) -->
+  <div id="td-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid #185FA5;flex-shrink:0;"></div>
 
-  <!-- 言語タブ -->
-  <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">言語</label>
-  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
-    <button type="button" class="ca-tab active" data-lang="ja" onclick="tdSwitchLang('ja')">日本語</button>
-    <button type="button" class="ca-tab" data-lang="en" onclick="tdSwitchLang('en')">英語</button>
-    <button type="button" class="ca-tab" data-lang="zh" onclick="tdSwitchLang('zh')">中国語</button>
-    <button type="button" class="ca-tab" data-lang="ko" onclick="tdSwitchLang('ko')">韓国語</button>
+  <!-- フィルター（タブ直下）：部屋タイプ／言語 -->
+  <div style="padding:14px 2px 0;flex-shrink:0;">
+    <div style="margin-bottom:10px;">
+      <label class="ms-field-label">部屋タイプ</label>
+      <div id="td-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+    </div>
+    <div>
+      <label class="ms-field-label">言語</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="ms-ltab active" data-lang="ja" onclick="tdSwitchLang('ja')">日本語</button>
+        <button type="button" class="ms-ltab" data-lang="en" onclick="tdSwitchLang('en')">英語</button>
+        <button type="button" class="ms-ltab" data-lang="zh" onclick="tdSwitchLang('zh')">中国語</button>
+        <button type="button" class="ms-ltab" data-lang="ko" onclick="tdSwitchLang('ko')">韓国語</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#999;margin-top:10px;">▼ 選択中の <span id="td-cur-label" style="font-weight:700;color:#185FA5;">本館 ダブル × 日本語</span> の設定内容 ▼</div>
   </div>
 
-  <div style="font-size:11px;color:#999;margin-bottom:12px;">▼ 選択中の <span id="td-cur-label" style="font-weight:700;color:#185FA5;">本館 ダブル × 日本語</span> の設定内容 ▼</div>
+  <!-- 選択中タブの内容（この領域のみスクロール） -->
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:12px 2px 4px;">
 
-  <div style="margin-bottom:12px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">① 宿泊約款</label>
-    <textarea id="td-agreement" rows="7" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+    <!-- タブ①：宿泊約款 -->
+    <div id="td-panel-agreement">
+      <div class="td-card">
+        <label class="ms-field-label">宿泊約款</label>
+        <textarea id="td-agreement" rows="10" placeholder="宿泊約款の本文" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+      </div>
+      <div class="td-card">
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
+          <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認（宿泊約款）を利用する（現地タブレットに表示する）
+        </label>
+        <label class="ms-field-label">同意方法</label>
+        <select id="ca-consent-type" class="ms-sel" style="width:100%;">
+          <option value="checkbox">チェックボックス</option>
+          <option value="signature">署名</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- タブ②：施設案内（施設案内／チェックイン動画／外部リンクの3カード） -->
+    <div id="td-panel-guide" style="display:none;">
+      <div class="td-card">
+        <label class="ms-field-label">施設案内</label>
+        <textarea id="td-guide" rows="8" placeholder="当施設はセルフチェックインです。鍵は..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
+      </div>
+      <div class="td-card">
+        <label class="ms-field-label">チェックイン動画URL（YouTube / Google Drive / 動画 等）</label>
+        <input id="td-video" placeholder="https://youtu.be/..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
+      </div>
+      <div class="td-card">
+        <label class="ms-field-label">外部リンクURL</label>
+        <input id="td-link" placeholder="https://..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
+      </div>
+    </div>
+
   </div>
 
-  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:600;cursor:pointer;">
-    <input type="checkbox" id="ca-enabled" style="width:16px;height:16px;"> 契約確認（宿泊約款）を利用する（現地タブレットに表示する）
-  </label>
-
-  <div style="margin-bottom:16px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;">同意方法</label>
-    <select id="ca-consent-type" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;">
-      <option value="checkbox">チェックボックス</option>
-      <option value="signature">署名</option>
-    </select>
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">② 施設案内</label>
-    <textarea id="td-guide" rows="5" placeholder="当施設はセルフチェックインです。鍵は..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;line-height:1.7;resize:vertical;" oninput="tdOnInput()"></textarea>
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">③ チェックイン動画URL（YouTube / Google Drive / 動画 等）</label>
-    <input id="td-video" placeholder="https://youtu.be/..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
-  </div>
-  <div style="margin-bottom:12px;">
-    <label style="font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:4px;">④ 外部リンクURL</label>
-    <input id="td-link" placeholder="https://..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
-  </div>
-
-  <div style="display:flex;gap:10px;margin-top:16px;">
+  <div style="display:flex;gap:10px;margin-top:16px;flex-shrink:0;">
     <button class="btn" onclick="closeM('contract-settings-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
     <button class="btn btn-blue" onclick="saveTabletSettings()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
