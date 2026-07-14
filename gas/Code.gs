@@ -150,6 +150,7 @@ function doGet(e) {
         propertySettings: data.propertySettings || {},
         roomSettings:     data.roomSettings     || {},
         rooms:            data.rooms            || [],
+        roomTypeRules:    ROOM_TYPE_RULES_,        // 部屋タイプ判定ルールを配布（一元化・レビュー#12）
         updatedAt:        data.updatedAt        || ''
       }));
     }
@@ -179,6 +180,7 @@ function doGet(e) {
     // 重いパスポート画像は除外して軽量化。画像は type=search（予約編集を開いた時）でのみ取得する。
     const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
     stripPassportImages(data.guestData);
+    data.roomTypeRules = ROOM_TYPE_RULES_; // 部屋タイプ判定ルールを配布（応答にのみ付与・保存JSONは不変）
     return jsonOut(JSON.stringify(data));
   } catch(err) {
     return jsonOut(JSON.stringify({ error: err.message }));
@@ -500,34 +502,55 @@ function _mailRoomId_(key){
   var p=String(key).split(':');
   return p.length===4 ? p[2] : p[1];
 }
-// rooms[].group → メールテンプレートの部屋タイプキー（PMS側 MAIL_ROOM_TYPES と対応）
-// ※本館個室はクイーン/ツインに分割したため、グループではなく部屋タイプ名で判定する
-var MAIL_ROOM_TYPE_GROUPS_ = {
-  '本館−男女混合ドミトリー':'honkan_dormitory',
-  'ANNEX−個室':'annex_private',
-  'ANNEX−ドミトリー':'annex_dormitory',
-  'アパートメント−Southern Court':'apartment',
-  'Sea Breeze 鎌倉':'sb_kamakura',
-  'Sea Breeze 三浦':'sb_miura'
+// ── 部屋タイプ判定ルール（唯一の権威ソース）──────────────────────────────
+// PMS(メール/タブレット表示)・チェックインアプリ・GAS で重複していた判定ロジックを
+// ここに一元化し、doGet 応答に roomTypeRules として含めて全クライアントへ配布する（レビュー#12）。
+// 仕様変更時はこの ROOM_TYPE_RULES_ を編集して再デプロイするだけで全画面へ反映される。
+// rules は順序付きリスト：先頭から順に、指定された全条件を満たした最初のルールの key を採用。
+//   groupEquals … group が完全一致 / groupStartsWith … group が前方一致
+//   groupContains … group が部分一致 / typeContains … type が部分一致
+// ※本館個室はダブル/ツインに分割したため、group ではなく type 名（ツイン有無）で判定する
+var ROOM_TYPE_RULES_ = {
+  version: 1,
+  rules: [
+    { groupStartsWith:'本館', groupContains:'個室', typeContains:'ツイン', key:'honkan_twin' },
+    { groupStartsWith:'本館', groupContains:'個室', key:'honkan_double' },
+    { groupEquals:'本館−男女混合ドミトリー', key:'honkan_dormitory' },
+    { groupEquals:'ANNEX−個室', key:'annex_private' },
+    { groupEquals:'ANNEX−ドミトリー', key:'annex_dormitory' },
+    { groupEquals:'アパートメント−Southern Court', key:'apartment' },
+    { groupEquals:'Sea Breeze 鎌倉', key:'sb_kamakura' },
+    { groupEquals:'Sea Breeze 三浦', key:'sb_miura' },
+    { groupStartsWith:'Sea Breeze', groupContains:'三浦', key:'sb_miura' },
+    { groupStartsWith:'Sea Breeze', key:'sb_kamakura' },
+    { groupStartsWith:'アパートメント', key:'apartment' },
+    { groupStartsWith:'ANNEX', groupContains:'個室', key:'annex_private' },
+    { groupStartsWith:'ANNEX', key:'annex_dormitory' },
+    { groupStartsWith:'本館', key:'honkan_dormitory' } // 本館の非個室=ドミトリー
+  ],
+  // 未移行データ向けフォールバック：ダブル/ツインが空なら旧キー（honkan_queen→honkan_private）を参照
+  fallback: { honkan_double:['honkan_queen','honkan_private'], honkan_twin:['honkan_queen','honkan_private'] }
 };
-// 未移行データ向けフォールバック：ダブル/ツインが空なら旧キー（honkan_queen→honkan_private）を参照
-var MAIL_RT_FALLBACK_ = { honkan_double:['honkan_queen','honkan_private'], honkan_twin:['honkan_queen','honkan_private'] };
+// 汎用エバリュエータ：room と rules から部屋タイプキーを求める（全クライアント共通仕様）
+function _roomTypeKeyByRules_(room, rules){
+  if(!room)return null;
+  var g=String(room.group||''), ty=String(room.type||'');
+  var list=(rules&&rules.rules)||[];
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    if(r.groupEquals!=null && g!==r.groupEquals)continue;
+    if(r.groupStartsWith!=null && g.indexOf(r.groupStartsWith)!==0)continue;
+    if(r.groupContains!=null && g.indexOf(r.groupContains)<0)continue;
+    if(r.typeContains!=null && ty.indexOf(r.typeContains)<0)continue;
+    return r.key;
+  }
+  return null;
+}
+// 互換エイリアス：既存参照（テンプレート解決）はフォールバック表をそのまま利用
+var MAIL_RT_FALLBACK_ = ROOM_TYPE_RULES_.fallback;
 function _mailRoomTypeKey_(data, roomId){
   var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0];
-  if(!r)return null;
-  var g=String(r.group||'');
-  var ty=String(r.type||'');
-  // 本館個室：ダブル/ツインを部屋タイプ名で分岐（「ツイン」を含めばツイン、それ以外はダブル）
-  if(g.indexOf('本館')===0 && g.indexOf('個室')>=0){
-    return ty.indexOf('ツイン')>=0 ? 'honkan_twin' : 'honkan_double';
-  }
-  if(MAIL_ROOM_TYPE_GROUPS_[g])return MAIL_ROOM_TYPE_GROUPS_[g];
-  // グループ名の表記ゆれに備えた部分一致フォールバック
-  if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
-  if(g.indexOf('アパートメント')===0)return 'apartment';
-  if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
-  if(g.indexOf('本館')===0)return 'honkan_dormitory'; // 本館の非個室=ドミトリー
-  return null;
+  return _roomTypeKeyByRules_(r, ROOM_TYPE_RULES_);
 }
 // テンプレート解決：部屋タイプ×言語 → 同部屋タイプの日本語 → 旧部屋タイプ(honkan_private等) → 旧構造（言語→日本語）の順でフォールバック。
 // 本文が全て空なら null（＝送信スキップ）。件名・本文・添付は同じ言語ソースから一貫して取得する。
