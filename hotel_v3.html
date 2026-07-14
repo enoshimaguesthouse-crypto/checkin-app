@@ -5279,6 +5279,19 @@ function onDrop(e,rid,day){
   // 同月内キーも追加（念のため）
   for(let n=0;n<srcMonthNights;n++) srcKeys.add(gk(month,srcRoom,srcDay+n));
 
+  // ── ②-0 貸切セルガード：移動先に貸切があれば中断（レビュー#10）──
+  // 貸切は複数部屋に跨るためスワップ不可。ここで弾かないと下の !g2.charter 除外により
+  // 「空きセル」と誤判定され、貸切予約を黙って上書きしてしまう。
+  for(let n=0;n<srcMonthNights;n++){
+    const k2=gk(month,rid,day+n);
+    if(srcKeys.has(k2))continue;
+    const g2=guestData[k2];
+    if(g2&&g2.charter){
+      showToast('⚠ 移動先が貸切期間のため移動できません');
+      dragSrc=null;return;
+    }
+  }
+
   // ── ② 移動先の全日程を事前スキャン（同月内、アトミック保証）──
   const dstBlockedKeys=new Set();
   for(let n=0;n<srcMonthNights;n++){
@@ -8983,6 +8996,19 @@ function saveCharter(){
     if(newGroup==='ANNEX')return r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー';
     return r.group==='本館−個室'||r.group==='本館−男女混合ドミトリー';
   });
+
+  // ── 衝突チェック：貸切の書込先セルに既存予約（通常/別の貸切）が無いか ──
+  // 編集時は自分の旧セルを上で削除済みのため、ここで残っているのは他予約のみ。
+  // これが無いと貸切作成で既存の通常予約を黙って上書きしてしまう（レビュー#10）。
+  for(const room of newGroupRooms){
+    for(let n=0;n<newNights;n++){
+      if(guestData[gk(m,room.id,newDay+n)]){
+        showToast('⚠ 貸切期間に既存の予約があるため保存できません（先に該当予約を移動・削除してください）');
+        return;
+      }
+    }
+  }
+
   const gBase={
     name:newName, site:newSite, pay:newPay, price:newPrice,
     nat:newNat, sex:newSex, cat:newGroup==='ANNEX'?'ANNEX貸切':'本館貸切',
