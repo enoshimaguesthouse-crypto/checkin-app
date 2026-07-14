@@ -5084,7 +5084,6 @@ function renderReg(){
   window._lastRenderRegYear=year;
   window._lastRenderRegMonth=month;
   window._lastUsedCells=usedCells; // 名簿の今月予約数と完全一致
-  console.log('renderReg usedCells:',usedCells,'→ autoCalcTodayOccに渡す');
 
   // 予算・進捗
   const budget=budgets[month]||0;
@@ -6710,11 +6709,6 @@ function autoCalcTodayOcc(force=false){
   // 当日(d日)に usedCells を書き込む（d-1より前は変更しない）
   cumul[d-1]=usedCells;
   occCumul[y][m]=cumul;
-
-  console.log('=== 今すぐ反映 ===');
-  console.log('対象:', `${y}年${m}月${d}日`);
-  console.log('書き込み値:', usedCells, '（名簿の今月予約数と同一）');
-  console.log('17日以前の値:', cumul.slice(0,d-1).filter(v=>v!=null));
 
   if(force){
     showToast(`📊 ${m}月${d}日に${usedCells}セルを反映しました`);
