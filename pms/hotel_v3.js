@@ -3376,7 +3376,6 @@ function applyRegSearch(opts){
 function runRegSearch(){
   const value=(document.getElementById('reg-search-input').value||'').trim();
   const terms=value.toLowerCase().split(/\s+/).filter(Boolean);
-  console.log('Search query:',value,terms);
   if(terms.length===0){applyRegSearch();return;}
   const curY=parseInt(document.getElementById('sel-year').value)||2026;
   const curM=parseInt(document.getElementById('sel-month').value);
