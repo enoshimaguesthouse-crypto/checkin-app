@@ -3818,18 +3818,48 @@ function _tdEmptyLang(){ return {agreement:'',guide:'',video:'',link:''}; }
 function _tdEmptyRT(){ return {ja:_tdEmptyLang(),en:_tdEmptyLang(),zh:_tdEmptyLang(),ko:_tdEmptyLang()}; }
 // roomSettings.languages のキー（zhは zh-CN）へ変換
 function _tdRoomLangKey(l){ return l==='zh'?'zh-CN':l; }
-// ある部屋がどの部屋タイプキーに属するか（GAS _mailRoomTypeKey_ と同一ロジック）
-function _tdRoomTypeKeyOf(room){
+// ── 部屋タイプ判定（一元化・レビュー#12）───────────────────────────────
+// 判定ルールの権威ソースは GAS の ROOM_TYPE_RULES_。GAS応答(roomTypeRules)を優先し、
+// 未取得/オフライン時のみ下記の DEFAULT_ROOM_TYPE_RULES（GASと同一内容）へフォールバックする。
+// エバリュエータ自体は汎用でめったに変わらないため、仕様変更はGAS側1箇所の編集で全画面へ伝播する。
+const DEFAULT_ROOM_TYPE_RULES={
+  version:1,
+  rules:[
+    {groupStartsWith:'本館',groupContains:'個室',typeContains:'ツイン',key:'honkan_twin'},
+    {groupStartsWith:'本館',groupContains:'個室',key:'honkan_double'},
+    {groupEquals:'本館−男女混合ドミトリー',key:'honkan_dormitory'},
+    {groupEquals:'ANNEX−個室',key:'annex_private'},
+    {groupEquals:'ANNEX−ドミトリー',key:'annex_dormitory'},
+    {groupEquals:'アパートメント−Southern Court',key:'apartment'},
+    {groupEquals:'Sea Breeze 鎌倉',key:'sb_kamakura'},
+    {groupEquals:'Sea Breeze 三浦',key:'sb_miura'},
+    {groupStartsWith:'Sea Breeze',groupContains:'三浦',key:'sb_miura'},
+    {groupStartsWith:'Sea Breeze',key:'sb_kamakura'},
+    {groupStartsWith:'アパートメント',key:'apartment'},
+    {groupStartsWith:'ANNEX',groupContains:'個室',key:'annex_private'},
+    {groupStartsWith:'ANNEX',key:'annex_dormitory'},
+    {groupStartsWith:'本館',key:'honkan_dormitory'}
+  ],
+  fallback:{honkan_double:['honkan_queen','honkan_private'],honkan_twin:['honkan_queen','honkan_private']}
+};
+let roomTypeRules=null; // GAS応答で配布される判定ルール（applyServerDataで格納）
+// 汎用エバリュエータ（GAS _roomTypeKeyByRules_ と同一仕様）
+function roomTypeKeyByRules(room,rules){
   if(!room)return null;
   const g=String(room.group||''), ty=String(room.type||'');
-  if(g.indexOf('本館')===0 && g.indexOf('個室')>=0) return ty.indexOf('ツイン')>=0?'honkan_twin':'honkan_double';
-  const map={'本館−男女混合ドミトリー':'honkan_dormitory','ANNEX−個室':'annex_private','ANNEX−ドミトリー':'annex_dormitory','アパートメント−Southern Court':'apartment','Sea Breeze 鎌倉':'sb_kamakura','Sea Breeze 三浦':'sb_miura'};
-  if(map[g])return map[g];
-  if(g.indexOf('Sea Breeze')===0)return g.indexOf('三浦')>=0?'sb_miura':'sb_kamakura';
-  if(g.indexOf('アパートメント')===0)return 'apartment';
-  if(g.indexOf('ANNEX')===0)return g.indexOf('個室')>=0?'annex_private':'annex_dormitory';
-  if(g.indexOf('本館')===0)return 'honkan_dormitory';
+  const list=(rules&&rules.rules)||[];
+  for(const r of list){
+    if(r.groupEquals!=null && g!==r.groupEquals)continue;
+    if(r.groupStartsWith!=null && g.indexOf(r.groupStartsWith)!==0)continue;
+    if(r.groupContains!=null && g.indexOf(r.groupContains)<0)continue;
+    if(r.typeContains!=null && ty.indexOf(r.typeContains)<0)continue;
+    return r.key;
+  }
   return null;
+}
+// ある部屋がどの部屋タイプキーに属するか（配布ルール優先・未取得時はデフォルト）
+function _tdRoomTypeKeyOf(room){
+  return roomTypeKeyByRules(room, roomTypeRules||DEFAULT_ROOM_TYPE_RULES);
 }
 // 指定部屋タイプに属する部屋一覧
 function _tdRoomsOfType(rtKey){ return (rooms||[]).filter(r=>_tdRoomTypeKeyOf(r)===rtKey); }
@@ -8390,6 +8420,7 @@ function applyServerData(data) {
     // 新データで checked_in になったレコードを検知して通知
     try{ detectCheckInNotifications(prevGuestData, guestData); }catch(e){ console.warn('通知検知エラー:',e); }
   }
+  if (data.roomTypeRules && Array.isArray(data.roomTypeRules.rules)) { roomTypeRules = data.roomTypeRules; } // 部屋タイプ判定ルール（GAS配布・一元化）
   if (data.cancelList) { cancelList = data.cancelList;  }
   if (data.roomSettings) { roomSettings = data.roomSettings; saveRoomSettingsLS(); }
   if (data.roomPriorityMaster && typeof data.roomPriorityMaster==='object') {
