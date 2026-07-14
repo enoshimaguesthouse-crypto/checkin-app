@@ -46,12 +46,102 @@ let isSyncing      = false;  // 二重リクエスト防止
 let isDirty        = false;  // 未保存の変更あり（保存成功でfalse・ポーリング上書き/離脱警告の判定に使用）
 
 // すべてのデータをオブジェクトにまとめる
+// ══════════════════════════════════════════════
+//  監査ログ（誰が・いつ・何を変更したか）
+// ══════════════════════════════════════════════
+// cloudData 内の auditLog テーブルに保持し、既存の cloudSave() 経路でDriveへ保存する。
+// （localStorage・別JSONファイル・独自save関数は使わない）
+// logAudit は記録のみを行い保存はしない。呼び出し元が既に autoSave()/cloudSave() を実行するため。
+const AUDIT_LOG_MAX=500;   // JSON肥大化防止：直近500件のみ保持（超過分は古い順に破棄）
+let auditLog=[];
+function logAudit(action,target,detail){
+  try{
+    auditLog.push({
+      ts:     new Date().toISOString(),
+      user:   (typeof currentUserName!=='undefined' && currentUserName) || '未認証',
+      role:   (typeof currentRole!=='undefined' && currentRole) || '-',
+      action: String(action||''),
+      target: String(target||''),
+      detail: String(detail||'')
+    });
+    if(auditLog.length>AUDIT_LOG_MAX) auditLog.splice(0, auditLog.length-AUDIT_LOG_MAX);
+  }catch(e){ console.warn('監査ログの記録に失敗:',e); }
+}
+
+// ── 監査ログ ビューア（閲覧専用。ログの改変はできない） ──────────────
+function openAuditLog(){
+  const mx=document.getElementById('al-max'); if(mx)mx.textContent=String(AUDIT_LOG_MAX);
+  // フィルタ選択肢を実データから生成
+  const fill=(id,vals)=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">すべて</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if(vals.includes(cur))el.value=cur;
+  };
+  fill('al-filter-action',[...new Set(auditLog.map(e=>e.action).filter(Boolean))].sort());
+  fill('al-filter-user',  [...new Set(auditLog.map(e=>e.user).filter(Boolean))].sort());
+  renderAuditLog();
+  document.getElementById('audit-log-modal').classList.add('open');
+}
+function _auditFiltered(){
+  const fa=(document.getElementById('al-filter-action')||{}).value||'';
+  const fu=(document.getElementById('al-filter-user')||{}).value||'';
+  const q=((document.getElementById('al-filter-q')||{}).value||'').trim().toLowerCase();
+  return auditLog.filter(e=>{
+    if(fa&&e.action!==fa)return false;
+    if(fu&&e.user!==fu)return false;
+    if(q&&!((e.target||'')+' '+(e.detail||'')).toLowerCase().includes(q))return false;
+    return true;
+  }).slice().reverse(); // 新しい順
+}
+function _auditFmtTs(iso){
+  const d=new Date(iso);
+  if(isNaN(d))return String(iso||'');
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function renderAuditLog(){
+  const tb=document.getElementById('al-body'); if(!tb)return;
+  const list=_auditFiltered();
+  const cnt=document.getElementById('al-count');
+  if(cnt)cnt.textContent=`${list.length}件 / 全${auditLog.length}件`;
+  if(!list.length){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">記録がありません</td></tr>';
+    return;
+  }
+  tb.innerHTML=list.map((e,i)=>`
+    <tr style="border-top:1px solid var(--sand-border);${i%2===1?'background:var(--sand);':''}">
+      <td style="padding:8px 12px;white-space:nowrap;color:#666;">${esc(_auditFmtTs(e.ts))}</td>
+      <td style="padding:8px 12px;white-space:nowrap;font-weight:600;">${esc(e.user||'')}</td>
+      <td style="padding:8px 12px;white-space:nowrap;">${esc(e.action||'')}</td>
+      <td style="padding:8px 12px;">${esc(e.target||'')}</td>
+      <td style="padding:8px 12px;color:#666;">${esc(e.detail||'')}</td>
+    </tr>`).join('');
+}
+function exportAuditLogCSV(){
+  const list=_auditFiltered();
+  let csv='﻿日時,操作者,権限,操作,対象,詳細\n';
+  list.forEach(e=>{
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    csv+=[q(_auditFmtTs(e.ts)),q(e.user),q(e.role),q(e.action),q(e.target),q(e.detail)].join(',')+'\n';
+  });
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='監査ログ.csv';a.click();
+}
+
+// 監査ログ用の予約ラベル（部屋番号・日付・氏名）
+function _auditGuestLabel(g){
+  if(!g)return '-';
+  const r=(rooms||[]).find(x=>x.id===g.roomId);
+  return `${r?r.no:('部屋'+g.roomId)} ${g.day||'?'}日 ${g.name||'(無名)'}`;
+}
+
 function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
-    rentalSpaceReservations,propertySettings,repeatReminders,
+    rentalSpaceReservations,propertySettings,repeatReminders,auditLog,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -236,6 +326,7 @@ function applyServerData(data) {
     repeatReminders = data.repeatReminders;
     nextReminderId = Math.max(0,...repeatReminders.map(r=>r.id||0))+1;
   }
+  if (Array.isArray(data.auditLog)) { auditLog = data.auditLog; } // 監査ログ
   if(Array.isArray(data.priorityCleaningItems)){
     priorityCleaningItems=data.priorityCleaningItems;
     nextPriorityCleaningId=Math.max(0,...priorityCleaningItems.map(x=>x.id||0))+1;

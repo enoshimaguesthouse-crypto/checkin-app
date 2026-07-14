@@ -924,6 +924,9 @@ function onDrop(e,rid,day){
     showToast('⇄ 予約を入れ替えました');
   }
 
+  const _dstRoom=(rooms||[]).find(x=>x.id===rid);
+  logAudit('予約移動', _auditGuestLabel(src),
+           `移動先: ${_dstRoom?_dstRoom.no:('部屋'+rid)} ${day}日`);
   saveHistory(); // Undo履歴保存
   dragSrc=null;renderReg();autoSave();
 }
@@ -1317,6 +1320,8 @@ function saveGuest(){
   if(useSurf){ addAutoSurf(base,month); }
   else { removeAutoSurf(base); }
 
+  logAudit(editKey?'予約更新':'予約作成', _auditGuestLabel({...base,roomId:rid,day}),
+           `${nights}泊 料金:${base.price||0} 予約ID:${base.reservationId||'-'}`);
   closeM('modal');renderReg();autoSave();
 }
 // 予約削除時に関連リスト（駐車場・サーフィン）を連動削除
@@ -1344,6 +1349,7 @@ function deleteGuest(){
   if(!g)return;
   saveHistory();
   const month=parseInt(document.getElementById('sel-month').value);
+  logAudit('予約削除', _auditGuestLabel(g), `予約ID:${g.reservationId||g.id||'-'} 料金:${g.price||0}`);
   syncDeleteRelated(g,month);
   // 月跨ぎ対応：findAllKeysで全泊分（翌月含む）のキーを削除
   findAllKeys(g.roomId,month,g.day).forEach(({k})=>delete guestData[k]);

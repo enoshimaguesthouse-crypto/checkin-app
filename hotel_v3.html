@@ -573,6 +573,9 @@
       <button class="btn btn-blue" onclick="openAutoAssignModal()" style="font-size:13px;padding:10px 18px;">
         🔀 自動部屋割り設定
       </button>
+      <button class="btn" onclick="openAuditLog()" style="background:#fdf6ec;color:#854F0B;border:1.5px solid #f0d9b5;font-size:13px;padding:10px 18px;">
+        📜 監査ログ
+      </button>
     </div>
   </div>
 </div>
@@ -713,6 +716,50 @@
   <div id="property-stub-label" style="font-size:16px;font-weight:700;margin-bottom:8px;"></div>
   <p style="font-size:13px;color:#aaa;">この機能は今後実装予定です。</p>
   <button class="btn btn-blue" style="margin-top:20px;" onclick="closeM('property-stub-modal')">閉じる</button>
+</div>
+</div>
+
+<!-- 監査ログ（閲覧専用。誰が・いつ・何を変更したか） -->
+<div class="mbg" id="audit-log-modal" onclick="if(event.target===this)closeM('audit-log-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:860px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+  <div style="font-size:16px;font-weight:800;color:#854F0B;margin-bottom:12px;flex-shrink:0;">📜 監査ログ</div>
+
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;flex-shrink:0;">
+    <div>
+      <label class="ms-field-label">操作種別</label>
+      <select id="al-filter-action" class="ms-sel" onchange="renderAuditLog()"></select>
+    </div>
+    <div>
+      <label class="ms-field-label">操作者</label>
+      <select id="al-filter-user" class="ms-sel" onchange="renderAuditLog()"></select>
+    </div>
+    <div style="flex:1;min-width:160px;">
+      <label class="ms-field-label">キーワード（対象・詳細）</label>
+      <input id="al-filter-q" placeholder="氏名・部屋番号など" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;" oninput="renderAuditLog()">
+    </div>
+    <div id="al-count" style="font-size:12px;color:#888;padding-bottom:10px;white-space:nowrap;"></div>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;border:1.5px solid var(--sand-border);border-radius:10px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+      <thead style="position:sticky;top:0;background:var(--sand);z-index:1;">
+        <tr>
+          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">日時</th>
+          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">操作者</th>
+          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">操作</th>
+          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;">対象</th>
+          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;">詳細</th>
+        </tr>
+      </thead>
+      <tbody id="al-body"></tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:14px;align-items:center;flex-shrink:0;">
+    <span style="font-size:11px;color:#999;">直近 <span id="al-max">500</span> 件を保持（古い記録は自動的に破棄されます）</span>
+    <button class="btn" onclick="exportAuditLogCSV()" style="margin-left:auto;padding:9px 16px;font-size:13px;">CSV出力</button>
+    <button class="btn btn-blue" onclick="closeM('audit-log-modal')" style="padding:9px 22px;font-size:13px;font-weight:700;">閉じる</button>
+  </div>
 </div>
 </div>
 
