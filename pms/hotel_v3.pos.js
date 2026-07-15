@@ -111,7 +111,7 @@ function renderPosCart(){
     el.innerHTML=_posCart.map((c,i)=>`
       <div class="pos-cart-row">
         <span class="pcr-name">${esc(c.name)}</span>
-        <span class="pcr-price">${_posYen(c.price*c.qty)}</span>
+        <span class="pcr-price pcr-editable" onclick="posCartEditPrice(${i})" title="タップして金額を編集">${_posYen(c.price*c.qty)}</span>
         <button class="pos-qbtn" onclick="posCartQty(${i},-1)">－</button>
         <span class="pcr-qty">${c.qty}</span>
         <button class="pos-qbtn" onclick="posCartQty(${i},1)">＋</button>
@@ -122,6 +122,18 @@ function renderPosCart(){
   document.getElementById('pos-cart-total').textContent=_posYen(_posCartTotal());
 }
 function posCartQty(i,d){ const c=_posCart[i]; if(!c)return; c.qty+=d; if(c.qty<=0)_posCart.splice(i,1); renderPosCart(); }
+// 金額（単価）をタップして編集。数量>1のときは1個あたりの単価を編集する。
+function posCartEditPrice(i){
+  const c=_posCart[i]; if(!c)return;
+  const label=c.qty>1?`「${c.name}」の単価を入力してください（現在 ¥${c.price.toLocaleString()}／個）`:`「${c.name}」の金額を入力してください（現在 ¥${c.price.toLocaleString()}）`;
+  const input=prompt(label, c.price);
+  if(input===null)return; // キャンセル
+  const cleaned=String(input).replace(/[^\d.-]/g,'');
+  const v=Math.round(Number(cleaned));
+  if(cleaned===''||isNaN(v)||v<0){ showToast('⚠ 0以上の数値を入力してください'); return; }
+  c.price=v;
+  renderPosCart();
+}
 function posCartDel(i){ _posCart.splice(i,1); renderPosCart(); }
 function posClearCart(){ if(_posCart.length&&!confirm('会計内容をクリアしますか？'))return; _posCart=[]; renderPosCart(); }
 
