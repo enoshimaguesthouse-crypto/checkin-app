@@ -65,6 +65,7 @@ function getHotelFile() {
     propertySettings:{},                                           // ←契約確認設定などタブレット表示設定
     repeatReminders:[],                                            // ←定期リマインド設定
     auditLog:[],                                                   // ←監査ログ（誰が・いつ・何を変更したか）
+    posCategories:[], posProducts:[], posSales:[], posSettings:{}, // ←レジ（簡易POS）
     updatedAt: new Date().toISOString(), updatedBy:'init'
   });
 }
@@ -455,6 +456,10 @@ function doPost(e) {
   propertySettings:        payload.propertySettings        || {},   // ←契約確認設定などタブレット表示設定
   repeatReminders:         payload.repeatReminders         || [],   // ←定期リマインド設定
   auditLog:                payload.auditLog                || [],   // ←監査ログ（誰が・いつ・何を変更したか）
+  posCategories:           payload.posCategories           || [],   // ←レジ：カテゴリー
+  posProducts:             payload.posProducts             || [],   // ←レジ：商品マスター
+  posSales:                payload.posSales                || [],   // ←レジ：売上データ
+  posSettings:             payload.posSettings             || {},   // ←レジ：店舗設定（PayPay QR等）
   updatedAt:   new Date().toISOString(),
   updatedBy:   payload.updatedBy   || '不明'
 };

@@ -3345,6 +3345,7 @@ loadRoomPriority();
 loadSalesEvents();
 loadRoomSettingsLS();
 initData();
+posInit(); // レジ（簡易POS）初期化・初期データ投入
 renderFilterUI();
 _updateMonthDisplay();
 // GAS連携時は初期描画を抑制し、cloudLoad完了時に1回だけ描画する（起動時の多重renderReg対策）。

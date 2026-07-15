@@ -142,6 +142,7 @@ function collectAllData() {
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
     rentalSpaceReservations,propertySettings,repeatReminders,auditLog,
+    posCategories,posProducts,posSales,posSettings,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -327,6 +328,11 @@ function applyServerData(data) {
     nextReminderId = Math.max(0,...repeatReminders.map(r=>r.id||0))+1;
   }
   if (Array.isArray(data.auditLog)) { auditLog = data.auditLog; } // 監査ログ
+  // レジ（簡易POS）
+  if (Array.isArray(data.posCategories)) { posCategories = data.posCategories; nextPosCatId = Math.max(0,...posCategories.map(c=>c.id||0))+1; }
+  if (Array.isArray(data.posProducts))   { posProducts   = data.posProducts;   nextPosProdId = Math.max(0,...posProducts.map(p=>p.id||0))+1; }
+  if (Array.isArray(data.posSales))      { posSales      = data.posSales;      nextPosSaleId = Math.max(0,...posSales.map(s=>s.id||0))+1; }
+  if (data.posSettings && typeof data.posSettings==='object') { posSettings = data.posSettings; }
   if(Array.isArray(data.priorityCleaningItems)){
     priorityCleaningItems=data.priorityCleaningItems;
     nextPriorityCleaningId=Math.max(0,...priorityCleaningItems.map(x=>x.id||0))+1;

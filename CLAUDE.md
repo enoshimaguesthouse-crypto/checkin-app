@@ -6,7 +6,7 @@
 - PMSは複数ファイル構成に分割済み（`<link>`/`<script src>`で相対参照。ビルド不要）。デプロイ時は下記すべてを main へコピーする：
   - `pms/hotel_v3.html`（本体）
   - `pms/hotel_v3.css`（スタイル）
-  - JS（機能別・読込順に依存）：`pms/hotel_v3.cleaning.js` → `pms/hotel_v3.calendar.js` → `pms/hotel_v3.sync.js` → `pms/hotel_v3.js`（main。定数/その他/BOOTを含み最後に読込）
+  - JS（機能別・読込順に依存）：`pms/hotel_v3.cleaning.js` → `pms/hotel_v3.calendar.js` → `pms/hotel_v3.sync.js` → `pms/hotel_v3.pos.js` → `pms/hotel_v3.js`（main。定数/その他/BOOTを含み最後に読込）
   - ※HTMLの`<script>`タグ順を変えないこと（mainは必ず最後。BOOT時点で全関数が揃う必要があるため）
 - デプロイ手順：
   1. `master` ブランチで commit
