@@ -3,7 +3,7 @@
 // ============================================================
 // 今日の列を強調する色（チェックイン済みのアンバー・部屋色のブルー等と被らないティール系）
 const TODAY_COLOR='#0e7490';
-const TODAY_COLOR_WASH='#e3f4f6';
+const TODAY_COLOR_WASH='#f4fbfc';
 function toggleFilterPanel(e){
   e.stopPropagation();
   const p=document.getElementById('filter-panel');
