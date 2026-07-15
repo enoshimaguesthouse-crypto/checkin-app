@@ -576,10 +576,14 @@ function showToast(msg, duration=3000) {
 }
 let autoSaveTimer=null;
 let pendingSave=false; // isSyncing中にautoSaveが来た場合のフラグ
+// 保存デバウンス（ms）。編集直後の保存ラグを最小化。
+// 連続操作は cloudSave 内の isSyncing / pendingSave ガードで自動的に集約されるため、
+// 短くしてもGASへの過剰リクエストにはならない。
+const AUTOSAVE_DEBOUNCE_MS=400;
 function autoSave(){
   if(!GAS_URL)return;
   isDirty=true; // 未保存の変更あり（保存成功でクリア）
-  updateSyncStatus('saving','変更あり（自動保存待機中...）');
+  updateSyncStatus('saving','保存中...');
   clearTimeout(autoSaveTimer);
   autoSaveTimer=setTimeout(async()=>{
     if(isSyncing){
@@ -588,7 +592,7 @@ function autoSave(){
       return;
     }
     await cloudSave();
-  },2000);
+  },AUTOSAVE_DEBOUNCE_MS);
 }
 function renderRankAPanel(){
   const el=document.getElementById('rank-a-list');if(!el)return;
