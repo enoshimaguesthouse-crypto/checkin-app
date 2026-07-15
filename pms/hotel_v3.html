@@ -1272,6 +1272,46 @@
 </div>
 </div>
 
+<!-- レジ：取引明細一覧（日別売上の行クリックで表示） -->
+<div class="mbg" id="pos-sale-list-modal" onclick="if(event.target===this)closeM('pos-sale-list-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:560px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;">
+  <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:4px;flex-shrink:0;" id="pos-sale-list-title">取引明細</div>
+  <div style="font-size:11px;color:#999;margin-bottom:10px;flex-shrink:0;">各取引の「編集」から内容変更、「削除」で取り消せます</div>
+  <div id="pos-sale-list-body" style="flex:1;min-height:0;overflow-y:auto;"></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-shrink:0;">
+    <button class="btn" onclick="closeM('pos-sale-list-modal')" style="margin-left:auto;">閉じる</button>
+  </div>
+</div>
+</div>
+
+<!-- レジ：売上編集モーダル -->
+<div class="mbg" id="pos-sale-edit-modal" onclick="if(event.target===this)closeM('pos-sale-edit-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:480px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;">
+  <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:4px;flex-shrink:0;">取引を編集</div>
+  <div style="font-size:11px;color:#999;margin-bottom:10px;flex-shrink:0;" id="pos-sale-edit-ts"></div>
+  <div style="flex:1;min-height:0;overflow-y:auto;">
+    <div id="pos-sale-edit-items" style="margin-bottom:10px;"></div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <select id="pos-sale-edit-addprod" class="ms-sel" style="flex:1;"></select>
+      <button class="btn btn-xs" onclick="posSaleEditAddItem()">＋ 商品追加</button>
+    </div>
+    <label class="ms-field-label">支払方法</label>
+    <select id="pos-sale-edit-pay" class="ms-sel" style="width:100%;margin-bottom:12px;">
+      <option value="cash">現金</option><option value="paypay">PayPay</option><option value="other">その他</option>
+    </select>
+    <label class="ms-field-label">担当者</label>
+    <select id="pos-sale-edit-staff" class="ms-sel" style="width:100%;margin-bottom:12px;"></select>
+    <div style="display:flex;justify-content:space-between;padding:10px 2px;border-top:1px solid var(--sand-border);">
+      <span style="color:#666;">合計</span><span style="font-weight:800;font-size:18px;" id="pos-sale-edit-total">¥0</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-shrink:0;">
+    <button class="btn" onclick="closeM('pos-sale-edit-modal')" style="margin-left:auto;">キャンセル</button>
+    <button class="btn btn-blue" onclick="savePosSaleEdit()">保存</button>
+  </div>
+</div>
+</div>
+
 <!-- スタッフ名編集モーダル -->
 <div class="mbg" id="sn-staff-modal" onclick="if(event.target===this)closeM('sn-staff-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:360px;">
