@@ -359,8 +359,9 @@ function renderPosSales(){
   // 集計キー
   const keyOf=s=>{ const d=new Date(s.ts); const p=n=>String(n).padStart(2,'0'); if(mode==='day')return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`; if(mode==='month')return `${d.getFullYear()}/${p(d.getMonth()+1)}`; return `${d.getFullYear()}`; };
   const groups={};
-  sales.forEach(s=>{ const k=keyOf(s); (groups[k]=groups[k]||{count:0,total:0,cash:0,paypay:0,other:0}); const g=groups[k]; g.count++; g.total+=s.total; g[s.pay]=(g[s.pay]||0)+s.total; });
+  sales.forEach(s=>{ const k=keyOf(s); (groups[k]=groups[k]||{count:0,total:0,cash:0,paypay:0,other:0,ids:[]}); const g=groups[k]; g.count++; g.total+=s.total; g[s.pay]=(g[s.pay]||0)+s.total; g.ids.push(s.id); });
   const keys=Object.keys(groups).sort().reverse();
+  _posSalesGroupsCache=groups; // 行クリック時に該当取引を引くためのキャッシュ
   // サマリー
   let sum={count:0,total:0,cash:0,paypay:0,other:0};
   sales.forEach(s=>{ sum.count++; sum.total+=s.total; sum[s.pay]=(sum[s.pay]||0)+s.total; });
@@ -372,14 +373,121 @@ function renderPosSales(){
   // テーブル
   const tb=document.getElementById('pos-sales-list'); if(!tb)return;
   if(!keys.length){ tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#bbb;padding:20px;">売上データがありません</td></tr>`; return; }
-  tb.innerHTML=keys.map((k,i)=>{ const g=groups[k]; return `<tr style="border-bottom:1px solid var(--sand-border);${i%2?'background:var(--sand);':''}">
-    <td style="padding:9px 14px;font-weight:600;">${esc(k)}</td>
+  tb.innerHTML=keys.map((k,i)=>{ const g=groups[k]; return `<tr style="border-bottom:1px solid var(--sand-border);cursor:pointer;${i%2?'background:var(--sand);':''}" onclick="openPosSaleList('${k}')" title="クリックで取引明細を表示">
+    <td style="padding:9px 14px;font-weight:600;color:var(--ocean);text-decoration:underline;">${esc(k)}</td>
     <td style="padding:9px 14px;text-align:right;">${g.count}</td>
     <td style="padding:9px 14px;text-align:right;font-weight:700;">${_posYen(g.total)}</td>
     <td style="padding:9px 14px;text-align:right;">${_posYen(g.cash)}</td>
     <td style="padding:9px 14px;text-align:right;">${_posYen(g.paypay)}</td>
     <td style="padding:9px 14px;text-align:right;">${_posYen(g.other)}</td>
   </tr>`; }).join('');
+}
+let _posSalesGroupsCache={};
+
+// ── 取引明細一覧（行クリックで開く）──
+function openPosSaleList(key){
+  const g=_posSalesGroupsCache[key]; if(!g)return;
+  document.getElementById('pos-sale-list-title').textContent=`取引明細（${key}）`;
+  _posRenderSaleList(g.ids);
+  document.getElementById('pos-sale-list-modal').classList.add('open');
+}
+function _posPayLabel(p){ return p==='cash'?'現金':p==='paypay'?'PayPay':'その他'; }
+function _posRenderSaleList(ids){
+  const body=document.getElementById('pos-sale-list-body'); if(!body)return;
+  const list=ids.map(id=>posSales.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>b.ts.localeCompare(a.ts));
+  if(!list.length){ body.innerHTML=`<div style="color:#bbb;text-align:center;padding:20px;">取引がありません</div>`; closeM('pos-sale-list-modal'); renderPosSales(); return; }
+  body.innerHTML=list.map(s=>{
+    const d=new Date(s.ts); const p=n=>String(n).padStart(2,'0'); const time=`${p(d.getHours())}:${p(d.getMinutes())}`;
+    const itemsStr=s.items.map(it=>`${esc(it.name)}×${it.qty}`).join('、');
+    return `<div style="padding:10px 4px;border-bottom:1px solid var(--sand);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span style="font-weight:700;">${time}</span>
+        <span style="font-weight:800;font-size:15px;">${_posYen(s.total)}</span>
+      </div>
+      <div style="font-size:12px;color:#666;margin:3px 0;">${itemsStr}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:#999;">${_posPayLabel(s.pay)}・担当:${esc(s.staff||'—')}</span>
+        <span style="display:flex;gap:6px;">
+          <button class="btn btn-xs" onclick="openPosSaleEdit(${s.id})">編集</button>
+          <button class="btn btn-xs btn-red" onclick="posDeleteSale(${s.id})">削除</button>
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function posDeleteSale(id){
+  const s=posSales.find(x=>x.id===id); if(!s)return;
+  if(!confirm(`この取引（${_posYen(s.total)}）を削除しますか？`))return;
+  logAudit('レジ売上削除', _posYen(s.total), `${_posPayLabel(s.pay)} 担当:${s.staff||'—'}`);
+  posSales=posSales.filter(x=>x.id!==id);
+  cloudSave();
+  // 明細一覧を再描画（同一グループの他取引が残っていればそのまま表示、無ければ閉じる）
+  renderPosSales();
+  const cur=document.getElementById('pos-sale-list-title').textContent.match(/（(.+)）/);
+  if(cur&&_posSalesGroupsCache[cur[1]]){ _posRenderSaleList(_posSalesGroupsCache[cur[1]].ids); }
+  else { closeM('pos-sale-list-modal'); }
+  showToast('🗑 取引を削除しました');
+}
+
+// ── 取引編集 ──
+let _posSaleEditId=null, _posSaleEditItems=[];
+function openPosSaleEdit(id){
+  const s=posSales.find(x=>x.id===id); if(!s)return;
+  _posSaleEditId=id;
+  _posSaleEditItems=s.items.map(it=>({...it})); // 作業用コピー
+  document.getElementById('pos-sale-edit-ts').textContent=new Date(s.ts).toLocaleString('ja-JP');
+  document.getElementById('pos-sale-edit-pay').value=s.pay;
+  const staffSel=document.getElementById('pos-sale-edit-staff');
+  const names=(typeof staffNames!=='undefined'&&staffNames.length)?staffNames:['オーナー'];
+  staffSel.innerHTML=names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  staffSel.value=names.includes(s.staff)?s.staff:names[0];
+  const addSel=document.getElementById('pos-sale-edit-addprod');
+  addSel.innerHTML=posProducts.slice().sort((a,b)=>a.order-b.order).map(p=>`<option value="${p.id}">${esc(p.name)}（${_posYen(p.price)}）</option>`).join('');
+  _posRenderSaleEditItems();
+  document.getElementById('pos-sale-list-modal').classList.remove('open');
+  document.getElementById('pos-sale-edit-modal').classList.add('open');
+}
+function _posRenderSaleEditItems(){
+  const el=document.getElementById('pos-sale-edit-items'); if(!el)return;
+  if(!_posSaleEditItems.length){ el.innerHTML=`<div style="color:#bbb;text-align:center;padding:12px;font-size:12px;">商品がありません</div>`; }
+  else {
+    el.innerHTML=_posSaleEditItems.map((it,i)=>`
+      <div class="pos-cart-row">
+        <span class="pcr-name">${esc(it.name)}</span>
+        <span class="pcr-price">${_posYen(it.price*it.qty)}</span>
+        <button class="pos-qbtn" onclick="posSaleEditQty(${i},-1)">－</button>
+        <span class="pcr-qty">${it.qty}</span>
+        <button class="pos-qbtn" onclick="posSaleEditQty(${i},1)">＋</button>
+        <span class="pcr-del" onclick="posSaleEditRemoveItem(${i})" title="削除">×</span>
+      </div>`).join('');
+  }
+  const total=_posSaleEditItems.reduce((s,it)=>s+it.price*it.qty,0);
+  document.getElementById('pos-sale-edit-total').textContent=_posYen(total);
+}
+function posSaleEditQty(i,d){ const it=_posSaleEditItems[i]; if(!it)return; it.qty+=d; if(it.qty<=0)_posSaleEditItems.splice(i,1); _posRenderSaleEditItems(); }
+function posSaleEditRemoveItem(i){ _posSaleEditItems.splice(i,1); _posRenderSaleEditItems(); }
+function posSaleEditAddItem(){
+  const pid=parseInt(document.getElementById('pos-sale-edit-addprod').value); if(!pid)return;
+  const p=posProducts.find(x=>x.id===pid); if(!p)return;
+  const ex=_posSaleEditItems.find(it=>it.name===p.name&&it.price===p.price);
+  if(ex)ex.qty++; else _posSaleEditItems.push({name:p.name,price:p.price,qty:1});
+  _posRenderSaleEditItems();
+}
+function savePosSaleEdit(){
+  if(_posSaleEditId==null)return;
+  if(!_posSaleEditItems.length){ showToast('⚠ 商品が0件です。削除する場合は「削除」ボタンをご利用ください'); return; }
+  const s=posSales.find(x=>x.id===_posSaleEditId); if(!s)return;
+  const total=_posSaleEditItems.reduce((sum,it)=>sum+it.price*it.qty,0);
+  const pay=document.getElementById('pos-sale-edit-pay').value;
+  const staff=document.getElementById('pos-sale-edit-staff').value;
+  s.items=_posSaleEditItems.map(it=>({...it}));
+  s.total=total; s.pay=pay; s.staff=staff;
+  s.paid=Math.max(s.paid||0,total); s.change=Math.max(0,(s.paid||total)-total);
+  logAudit('レジ売上編集', _posYen(total), `${_posPayLabel(pay)} 担当:${staff}`);
+  cloudSave();
+  closeM('pos-sale-edit-modal');
+  renderPosSales();
+  showToast('✅ 取引を更新しました');
 }
 function exportPosSalesCSV(){
   const y=parseInt((document.getElementById('pos-sales-year')||{}).value)||new Date().getFullYear();
