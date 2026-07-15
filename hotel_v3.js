@@ -3505,7 +3505,7 @@ setTimeout(adjustRegScrollHeight,300);
 const PIN_ROLES={
   '739ec77b846ad913811cc124579cc44f902f83f5bd4e89256ff0e826ddb64ce4':{role:'admin',    name:'管理者',       pages:'all'},
   '9b8f2fa45e4b5f1962f98a562df2f105c9b3bd7b9ef70aca4bc2fd07692b7958':{role:'cleaning', name:'清掃スタッフ', pages:['cleaning']},
-  '52a6932d5af5316a815af86286167054ebaa4953cedb82e3914a5c126e363ea4':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning']},
+  '52a6932d5af5316a815af86286167054ebaa4953cedb82e3914a5c126e363ea4':{role:'reception',name:'接客スタッフ', pages:['register','parking','rental','surf','cleaning','pos-order']},
   // 渡辺千尋：宿泊者名簿・清掃予定表の閲覧のみ。ただしSea Breeze 鎌倉/三浦のセル移動は可能
   'ae9123de2fc403666c9f48a6546fffc5257ff69536f7c4d8f8d5d327d6a4e061':{role:'watanabe', name:'渡辺千尋',     pages:['register','cleaning']},
 };
