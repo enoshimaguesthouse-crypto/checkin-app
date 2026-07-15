@@ -8,6 +8,7 @@
   - `pms/hotel_v3.css`（スタイル）
   - JS（機能別・読込順に依存）：`pms/hotel_v3.cleaning.js` → `pms/hotel_v3.calendar.js` → `pms/hotel_v3.sync.js` → `pms/hotel_v3.pos.js` → `pms/hotel_v3.js`（main。定数/その他/BOOTを含み最後に読込）
   - ※HTMLの`<script>`タグ順を変えないこと（mainは必ず最後。BOOT時点で全関数が揃う必要があるため）
+  - ※CSS/JSの読込は `?v=YYYYMMDD<連番>` のキャッシュバスティング付き。**JS/CSSを変更してデプロイするたびに hotel_v3.html 内の全`?v=`値を新しい値へ更新すること**（古いキャッシュで新機能が反映されない事故を防ぐ）
 - デプロイ手順：
   1. `master` ブランチで commit
   2. `git show master:pms/<file> > /tmp/<file>`（html/css/js計6ファイルを取り出す）
