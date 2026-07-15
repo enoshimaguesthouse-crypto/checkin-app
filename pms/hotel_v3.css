@@ -836,7 +836,9 @@ body.role-reception .nitem[onclick*="showP('sales'"],
 body.role-reception .nitem[onclick*="showP('cancel'"],
 body.role-reception .nitem[onclick*="showP('todo'"],
 body.role-reception #sidebar-property-group,
-body.role-reception #nitem-cleaning-focus{display:none!important;}
+body.role-reception #nitem-cleaning-focus,
+body.role-reception .nitem[onclick*="showP('pos-products'"],
+body.role-reception .nitem[onclick*="showP('pos-sales'"]{display:none!important;}
 /* 接客スタッフ：集計・CSV出力・セルドラッグを無効化 */
 body.role-reception [onclick*="toggleMobileStats"],
 body.role-reception [onclick*="toggleFilterPanel"],
