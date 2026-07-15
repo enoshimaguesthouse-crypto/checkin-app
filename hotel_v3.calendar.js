@@ -1,6 +1,9 @@
 // ============================================================
 // REGISTER
 // ============================================================
+// 今日の列を強調する色（チェックイン済みのアンバー・部屋色のブルー等と被らないティール系）
+const TODAY_COLOR='#0e7490';
+const TODAY_COLOR_WASH='#e3f4f6';
 function toggleFilterPanel(e){
   e.stopPropagation();
   const p=document.getElementById('filter-panel');
@@ -98,10 +101,12 @@ function renderReg(){
     const rentalBg=rsCnt>0?'background:#fff3e0;':'';
     const isToday=(year===_ty&&month===_tm&&d===_td);
     const todayId=isToday?' id="th-today"':'';
+    // 今日の列：チェックイン済み(アンバー)・部屋色(ブルー等)と被らないティール系で強調（レビュー要望）
     const todayNumHtml=isToday
-      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#185FA5;color:#fff;border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
+      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#fff;color:${TODAY_COLOR};border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
-    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};position:sticky;top:0;z-index:20;background:${isToday?'#ffedd5':'var(--white)'};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
+    const todayBorder=isToday?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
+    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};${todayBorder}position:sticky;top:0;z-index:20;background:${isToday?TODAY_COLOR:'var(--white)'};color:${isToday?'#fff':''};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
   html+=`</tr>`;
   // 曜日行（sticky top:日付行高さ分）
@@ -111,7 +116,8 @@ function renderReg(){
     const rsCnt2=rentalCountOnDate(year,month,d);
     const rentalBg2=rsCnt2>0?'background:#fff3e0;':'';
     const isToday2=(year===_ty&&month===_tm&&d===_td);
-    html+=`<th style="font-size:10px;color:${isToday2?'#9a3412':dow===0||hol?'#c0392b':dow===6?'#2980b9':'#aaa'};font-weight:${isToday2?'700':'400'};position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?'#ffedd5':rsCnt2>0?'#fff3e0':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
+    const todayBorder2=isToday2?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
+    html+=`<th style="font-size:10px;color:${isToday2?'#fff':dow===0||hol?'#c0392b':dow===6?'#2980b9':'#aaa'};font-weight:${isToday2?'700':'400'};${todayBorder2}position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?TODAY_COLOR:rsCnt2>0?'#fff3e0':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
   }
   html+='</tr></thead><tbody>';
   let tM=0,tF=0,cS=0,cG=0,cC=0,cF=0,tS=0,tCash=0;
@@ -392,9 +398,10 @@ function renderReg(){
             : '';
 
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
+          const todayColBorder=isTodayCol?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
 
-          
-          row+=`<td colspan="${span}" class="${tdCls}" style="padding:0;${isTodayCol&&!bg?'background:#ffedd5;':bg?'background:'+bg:''}" `
+
+          row+=`<td colspan="${span}" class="${tdCls}" style="padding:0;${todayColBorder}${isTodayCol&&!bg?'background:'+TODAY_COLOR_WASH+';':bg?'background:'+bg:''}" `
             +`ondragover="event.preventDefault();this.classList.add('dt-swap')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -454,9 +461,9 @@ function renderReg(){
           // 空きセル（または貸切のcont行: rowspanで既に描画済みなのでスキップ）
           if(g&&g.charter)continue; // 貸切cont行はスキップ
           const isTodayColE=(year===_ty&&month===_tm&&d===_td);
+          const todayColBorderE=isTodayColE?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
 
-          
-          row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${isTodayColE&&!bg?'background:#ffedd5;':bg?'background:'+bg:''};max-height:62px;" `
+          row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${todayColBorderE}${isTodayColE&&!bg?'background:'+TODAY_COLOR_WASH+';':bg?'background:'+bg:''};max-height:62px;" `
             +`ondragover="event.preventDefault();this.classList.add('dt')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -470,7 +477,8 @@ function renderReg(){
         const _dw=gDow(year,month,d),_hl=isHoliday(year,month,d);
         const _pbg=_dw===0||_hl?'rgba(255,240,240,.45)':_dw===6?'rgba(240,247,255,.45)':'';
         const _pToday=(year===_ty&&month===_tm&&d===_td);
-        row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${_pToday?'background:#ffedd5;':_pbg?'background:'+_pbg:''};max-height:62px;" `
+        const _pTodayBorder=_pToday?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
+        row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${_pTodayBorder}${_pToday?'background:'+TODAY_COLOR_WASH+';':_pbg?'background:'+_pbg:''};max-height:62px;" `
           +`ondragover="event.preventDefault();this.classList.add('dt')" `
           +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
           +`ondrop="onDrop(event,${room.id},${d})">`
