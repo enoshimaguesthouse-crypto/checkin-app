@@ -3562,8 +3562,9 @@ function _applyRole(role,name){
       if(e.target.closest&&e.target.closest('.gc'))e.preventDefault();
     },true);
   }
+  // ログアウトボタン（サイドバー下部。LINE等と同様に役割名は表示せずアイコンのみ）
   const badge=document.getElementById('role-badge');
-  if(badge){badge.textContent=name+' ログイン中';badge.style.display='';}
+  if(badge)badge.style.display='';
   // 許可ページ以外にいたら先頭許可ページへ移動
   if(role==='cleaning'){
     showP('cleaning',document.getElementById('nitem-cleaning'));
