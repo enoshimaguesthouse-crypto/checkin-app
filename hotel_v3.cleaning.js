@@ -1451,6 +1451,14 @@ function showP(n,el){
   if(n==='occupancy')renderOcc();if(n==='cancel')renderCancel();if(n==='surf')renderSurf();
   if(n==='parking')renderParking();if(n==='sales')renderSales();
   if(n==='rental')renderRental();
+  // レジ（簡易POS）
+  if(n==='pos-order'||n==='pos-products'||n==='pos-sales'){
+    if(n==='pos-order')renderPosOrder();
+    if(n==='pos-products')renderPosProducts();
+    if(n==='pos-sales')renderPosSales();
+    const sub=document.getElementById('pos-submenu'); if(sub)sub.style.display='block';
+    const cc=document.querySelector('#pos-menu-btn .pos-chevron'); if(cc)cc.style.transform='rotate(0deg)';
+  }
   if(n==='cleaning'){
     generateCleaningList();
     // 清掃管理サブメニューを開く

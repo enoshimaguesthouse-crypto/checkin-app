@@ -965,3 +965,46 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .rs-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:6px;}
 .rs-opt-grid label{display:flex;align-items:center;gap:5px;font-size:11px;color:#555;cursor:pointer;}
 .cal-cam-icon{font-size:10px;cursor:pointer;margin-left:3px;}
+
+/* =====================================================
+   レジ（簡易POS）
+   ===================================================== */
+.pos-order-wrap{display:flex;gap:14px;align-items:stretch;height:calc(100vh - 130px);}
+.pos-left{flex:1.6;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.pos-right{flex:1;min-width:280px;max-width:380px;display:flex;flex-direction:column;background:var(--white);border:1.5px solid var(--sand-border);border-radius:12px;overflow:hidden;}
+.pos-cat-filter{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;}
+.pos-catbtn{font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;border:1.5px solid var(--sand-border);background:#fff;color:#666;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.pos-catbtn.active{color:#fff;border-color:transparent;}
+.pos-tiles{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;align-content:start;padding:2px;}
+.pos-tile{aspect-ratio:1/1;border-radius:10px;border:none;cursor:pointer;color:#fff;font-size:12.5px;font-weight:700;line-height:1.25;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:inherit;overflow:hidden;word-break:break-word;transition:transform .1s,box-shadow .1s;box-shadow:var(--shadow-sm);}
+.pos-tile:active{transform:scale(.95);}
+.pos-tile .pos-tile-price{font-size:11px;font-weight:600;opacity:.92;margin-top:3px;}
+.pos-tile.editing{cursor:grab;outline:2px dashed rgba(0,0,0,.25);}
+.pos-tile.dragging{opacity:.4;}
+.pos-cart-head{padding:12px 14px;font-weight:700;color:var(--ocean);border-bottom:1.5px solid var(--sand-border);flex-shrink:0;}
+.pos-cart{flex:1;min-height:0;overflow-y:auto;padding:6px 10px;}
+.pos-cart-empty{color:#bbb;text-align:center;padding:30px 0;font-size:13px;}
+.pos-cart-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--sand);}
+.pos-cart-row .pcr-name{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pos-cart-row .pcr-price{font-size:12px;color:#888;width:64px;text-align:right;}
+.pos-qbtn{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--sand-border);background:#fff;cursor:pointer;font-size:15px;font-weight:700;color:var(--ocean);line-height:1;}
+.pos-qbtn:hover{background:var(--sand);}
+.pos-cart-row .pcr-qty{width:22px;text-align:center;font-weight:700;font-size:13px;}
+.pos-cart-row .pcr-del{color:var(--coral);cursor:pointer;font-weight:700;font-size:15px;padding:0 4px;}
+.pos-cart-foot{flex-shrink:0;border-top:1.5px solid var(--sand-border);padding:12px 14px;display:flex;flex-direction:column;gap:10px;}
+.pos-cart-total{display:flex;justify-content:space-between;align-items:baseline;}
+.pos-cart-total span:first-child{font-size:13px;color:#888;}
+.pos-cart-total span:last-child{font-size:24px;font-weight:800;color:var(--ocean);}
+.pos-pm{flex:1;font-size:14px;font-weight:700;padding:11px;border-radius:9px;border:1.5px solid var(--sand-border);background:#fff;color:#666;cursor:pointer;font-family:inherit;}
+.pos-pm.active{background:var(--ocean);color:#fff;border-color:var(--ocean);}
+.pos-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.pos-key{padding:16px;font-size:20px;font-weight:700;border-radius:10px;border:none;background:#f5f7fa;color:#1a3a4a;cursor:pointer;font-family:inherit;}
+.pos-key:hover{background:#e8eef5;}
+.pos-key:active{transform:scale(.95);}
+.pos-key.wide{grid-column:span 1;}
+.pos-quick{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;border:1.5px solid var(--sand-border);background:#fff;color:var(--ocean);cursor:pointer;font-family:inherit;flex:1;}
+.pos-quick:hover{background:var(--ocean-light);}
+@media(max-width:820px){
+  .pos-order-wrap{flex-direction:column;height:auto;}
+  .pos-right{max-width:none;}
+}

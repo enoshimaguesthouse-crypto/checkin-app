@@ -54,6 +54,18 @@
   <button class="nitem" onclick="showP('occupancy',this)"><span class="nico">&#128200;</span><span class="nlbl">稼働率</span></button>
   <button class="nitem" onclick="showP('sales',this)"><span class="nico">&#128181;</span><span class="nlbl">売上高</span></button>
   <button class="nitem" onclick="showP('cancel',this)"><span class="nico">&#10060;</span><span class="nlbl">キャンセル</span></button>
+  <!-- レジ（簡易POS）折りたたみ -->
+  <div id="sidebar-pos-group">
+    <button class="nitem" onclick="togglePosMenu(this)" id="pos-menu-btn" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:8px;"><span class="nico">🧾</span><span class="nlbl">レジ</span></span>
+      <span class="nlbl pos-chevron" style="font-size:10px;transition:transform .2s;">▾</span>
+    </button>
+    <div id="pos-submenu" style="display:none;">
+      <button class="nitem" onclick="showP('pos-order',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🛒</span><span class="nlbl">注文入力</span></button>
+      <button class="nitem" onclick="showP('pos-products',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🏷</span><span class="nlbl">商品設定</span></button>
+      <button class="nitem" onclick="showP('pos-sales',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">📊</span><span class="nlbl">日別売上</span></button>
+    </div>
+  </div>
   <!-- 清掃管理 折りたたみ -->
   <div id="sidebar-cleaning-group">
     <button class="nitem" onclick="toggleCleaningMenu(this)" id="cleaning-menu-btn" style="justify-content:space-between;">
@@ -1083,6 +1095,183 @@
   <div id="sn-list"></div>
 </div>
 
+<!-- ═══════════════════ レジ（簡易POS） ═══════════════════ -->
+<!-- ① 注文入力 -->
+<div id="page-pos-order" class="page">
+  <div class="topbar">
+    <div><div class="ttl">🧾 注文入力</div><div class="sub">タイルをタップして会計内容へ追加</div></div>
+    <div class="ctr">
+      <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:5px;">担当
+        <select id="pos-staff" class="ms-sel" style="padding:5px 8px;"></select>
+      </label>
+      <button class="btn" id="pos-tileedit-btn" onclick="posToggleTileEdit()">⚙ タイル配置変更</button>
+    </div>
+  </div>
+  <div class="pos-order-wrap">
+    <div class="pos-left">
+      <div id="pos-cat-filter" class="pos-cat-filter"></div>
+      <div id="pos-tiles" class="pos-tiles"></div>
+    </div>
+    <div class="pos-right">
+      <div class="pos-cart-head">会計内容</div>
+      <div id="pos-cart" class="pos-cart"></div>
+      <div class="pos-cart-foot">
+        <div class="pos-cart-total"><span id="pos-cart-count">0点</span><span id="pos-cart-total">¥0</span></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="posClearCart()">クリア</button>
+          <button class="btn btn-blue" style="flex:1;font-size:15px;font-weight:700;" onclick="posOpenPay()">支払い</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑥ 商品設定 -->
+<div id="page-pos-products" class="page">
+  <div class="topbar">
+    <div><div class="ttl">🧾 商品設定</div><div class="sub">商品マスター・カテゴリー・店舗設定（PayPay QR）</div></div>
+    <div class="ctr">
+      <button class="btn" onclick="openPosCategoryModal()">🎨 カテゴリー設定</button>
+      <button class="btn btn-blue" onclick="openPosProductEdit(null)">＋ 商品を追加</button>
+    </div>
+  </div>
+  <!-- 店舗設定：PayPay QR -->
+  <div class="card">
+    <div style="font-weight:700;color:var(--ocean);margin-bottom:10px;">🏪 店舗設定</div>
+    <label class="ms-field-label">店舗用 PayPay QRコード画像（PNG / JPG / SVG）</label>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+      <div id="pos-qr-preview" style="width:140px;height:140px;border:1.5px dashed var(--sand-border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:12px;overflow:hidden;background:#fff;">未登録</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <input type="file" id="pos-qr-input" accept="image/png,image/jpeg,image/svg+xml" onchange="posUploadQR(this.files)" style="font-size:12px;">
+        <div style="font-size:11px;color:#888;">注文入力の「PayPay」選択時に、この画像を客に提示します。</div>
+        <button class="btn btn-xs" onclick="posRemoveQR()" style="width:fit-content;">画像を削除</button>
+      </div>
+    </div>
+  </div>
+  <!-- 商品一覧 -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="background:var(--sand);border-bottom:1px solid var(--sand-border);">
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">カテゴリー</th>
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">商品名</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">金額(税込)</th>
+        <th style="padding:10px 14px;text-align:center;font-size:12px;color:#888;">表示</th>
+        <th style="padding:10px 14px;text-align:center;font-size:12px;color:#888;"></th>
+      </tr></thead>
+      <tbody id="pos-product-list"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ⑦ 日別売上 -->
+<div id="page-pos-sales" class="page">
+  <div class="topbar">
+    <div><div class="ttl">🧾 日別売上</div><div class="sub">売上集計・支払方法内訳・CSV出力</div></div>
+    <div class="ctr">
+      <select id="pos-sales-mode" class="ms-sel" onchange="renderPosSales()"><option value="day">日別</option><option value="month">月別</option><option value="year">年度別</option></select>
+      <select id="pos-sales-year" class="ms-sel" onchange="renderPosSales()"></select>
+      <select id="pos-sales-month" class="ms-sel" onchange="renderPosSales()"></select>
+      <button class="btn" onclick="exportPosSalesCSV()">CSVデータをダウンロードする</button>
+    </div>
+  </div>
+  <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div><div style="font-size:11px;color:#999;font-weight:700;">総売上</div><div style="font-size:22px;font-weight:800;" id="pos-sum-total">¥0</div></div>
+    <div><div style="font-size:11px;color:#999;font-weight:700;">会計数</div><div style="font-size:22px;font-weight:800;" id="pos-sum-count">0</div></div>
+    <div><div style="font-size:11px;color:#999;font-weight:700;">現金</div><div style="font-size:22px;font-weight:800;color:#1a7a40;" id="pos-sum-cash">¥0</div></div>
+    <div><div style="font-size:11px;color:#999;font-weight:700;">PayPay</div><div style="font-size:22px;font-weight:800;color:#d4126a;" id="pos-sum-paypay">¥0</div></div>
+    <div><div style="font-size:11px;color:#999;font-weight:700;">その他</div><div style="font-size:22px;font-weight:800;color:#666;" id="pos-sum-other">¥0</div></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="background:var(--sand);border-bottom:1px solid var(--sand-border);">
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">日付</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">件数</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">総売上</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">現金</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">PayPay</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">その他</th>
+      </tr></thead>
+      <tbody id="pos-sales-list"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- レジ：支払いモーダル（電卓・PayPay QR） -->
+<div class="mbg" id="pos-pay-modal" onclick="if(event.target===this)closeM('pos-pay-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:94vh;display:flex;flex-direction:column;padding:20px 22px;">
+  <div style="font-size:16px;font-weight:800;color:var(--ocean);margin-bottom:10px;flex-shrink:0;">お支払い</div>
+  <div id="pos-pay-methods" style="display:flex;gap:6px;margin-bottom:12px;flex-shrink:0;">
+    <button type="button" class="pos-pm active" data-pm="cash" onclick="posSetPay('cash')">💴 現金</button>
+    <button type="button" class="pos-pm" data-pm="paypay" onclick="posSetPay('paypay')">📱 PayPay</button>
+    <button type="button" class="pos-pm" data-pm="other" onclick="posSetPay('other')">その他</button>
+  </div>
+  <div style="display:flex;gap:20px;flex-wrap:wrap;flex:1;min-height:0;overflow:auto;">
+    <!-- 現金：電卓 -->
+    <div id="pos-pay-cash" style="flex:1;min-width:280px;">
+      <div style="text-align:center;font-size:13px;color:#888;">合計</div>
+      <div style="text-align:center;font-size:34px;font-weight:800;color:var(--ocean);margin-bottom:6px;" id="pos-pay-total">¥0</div>
+      <div style="display:flex;justify-content:space-between;background:#f5f7fa;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+        <span style="color:#666;">預り金</span><span style="font-weight:800;font-size:18px;" id="pos-pay-received">¥0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:2px 14px 10px;">
+        <span style="color:#666;">おつり</span><span style="font-weight:800;font-size:18px;color:#d85a30;" id="pos-pay-change">¥0</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;" id="pos-quick-amounts"></div>
+      <div id="pos-keypad" class="pos-keypad"></div>
+    </div>
+    <!-- PayPay QR -->
+    <div id="pos-pay-paypay" style="flex:1;min-width:280px;display:none;text-align:center;">
+      <div style="font-size:13px;color:#888;">お客様のPayPayアプリで読み取ってください</div>
+      <div style="font-size:34px;font-weight:800;color:#d4126a;margin-bottom:10px;" id="pos-paypay-total">¥0</div>
+      <div id="pos-paypay-qr-wrap" style="display:inline-flex;align-items:center;justify-content:center;width:260px;height:260px;border:1.5px solid var(--sand-border);border-radius:12px;background:#fff;overflow:hidden;"></div>
+    </div>
+    <!-- その他 -->
+    <div id="pos-pay-other" style="flex:1;min-width:280px;display:none;text-align:center;">
+      <div style="font-size:13px;color:#888;">合計</div>
+      <div style="font-size:34px;font-weight:800;color:#666;" id="pos-other-total">¥0</div>
+      <div style="font-size:12px;color:#999;margin-top:10px;">「その他」の支払方法として記録します。</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;">
+    <button class="btn" onclick="closeM('pos-pay-modal')" style="margin-left:auto;padding:10px 20px;">キャンセル</button>
+    <button class="btn btn-blue" onclick="posComplete()" style="padding:10px 28px;font-size:15px;font-weight:700;">会計する</button>
+  </div>
+</div>
+</div>
+
+<!-- レジ：商品編集モーダル -->
+<div class="mbg" id="pos-product-modal" onclick="if(event.target===this)closeM('pos-product-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:420px;max-width:94vw;">
+  <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:14px;" id="pos-product-title">商品を追加</div>
+  <label class="ms-field-label">商品名</label>
+  <input id="pos-prod-name" class="ms-sel" style="width:100%;margin-bottom:12px;">
+  <label class="ms-field-label">カテゴリー</label>
+  <select id="pos-prod-cat" class="ms-sel" style="width:100%;margin-bottom:12px;"></select>
+  <label class="ms-field-label">金額（税込）</label>
+  <input id="pos-prod-price" type="number" min="0" class="ms-sel" style="width:100%;margin-bottom:12px;">
+  <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;cursor:pointer;">
+    <input type="checkbox" id="pos-prod-visible" checked style="width:16px;height:16px;"> 注文入力に表示する
+  </label>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-red" id="pos-prod-del" onclick="deletePosProduct()" style="display:none;">削除</button>
+    <button class="btn" onclick="closeM('pos-product-modal')" style="margin-left:auto;">キャンセル</button>
+    <button class="btn btn-blue" onclick="savePosProduct()">保存</button>
+  </div>
+</div>
+</div>
+
+<!-- レジ：カテゴリー設定モーダル -->
+<div class="mbg" id="pos-category-modal" onclick="if(event.target===this)closeM('pos-category-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:560px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;">
+  <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:12px;flex-shrink:0;">🎨 カテゴリー設定</div>
+  <div id="pos-category-list" style="flex:1;min-height:0;overflow-y:auto;"></div>
+  <div style="display:flex;gap:10px;margin-top:12px;flex-shrink:0;">
+    <button class="btn" onclick="addPosCategory()">＋ カテゴリーを追加</button>
+    <button class="btn btn-blue" onclick="savePosCategories()" style="margin-left:auto;">保存</button>
+  </div>
+</div>
+</div>
+
 <!-- スタッフ名編集モーダル -->
 <div class="mbg" id="sn-staff-modal" onclick="if(event.target===this)closeM('sn-staff-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:360px;">
@@ -1497,6 +1686,7 @@
 <script src="hotel_v3.cleaning.js"></script>
 <script src="hotel_v3.calendar.js"></script>
 <script src="hotel_v3.sync.js"></script>
+<script src="hotel_v3.pos.js"></script>
 <script src="hotel_v3.js"></script>
 <div id="notification-container"></div>
 </body>
