@@ -1006,7 +1006,18 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .pos-key.wide{grid-column:span 1;}
 .pos-quick{font-size:13px;font-weight:700;padding:9px 12px;border-radius:8px;border:1.5px solid var(--sand-border);background:#fff;color:var(--ocean);cursor:pointer;font-family:inherit;flex:1;}
 .pos-quick:hover{background:var(--ocean-light);}
-@media(max-width:820px){
-  .pos-order-wrap{flex-direction:column;height:auto;}
-  .pos-right{max-width:none;}
+/* スマホ・タブレット：会計内容（合計＋支払いボタン）を画面下部に固定して常に見えるように */
+@media(max-width:1024px){
+  .pos-order-wrap{flex-direction:column;height:auto;gap:10px;padding-bottom:calc(44vh + 20px);}
+  .pos-left{flex:none;width:100%;}
+  .pos-tiles{overflow:visible;}
+  .pos-right{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;
+    max-width:none;max-height:44vh;
+    border:1.5px solid var(--sand-border);border-bottom:none;
+    border-radius:14px 14px 0 0;
+    box-shadow:0 -6px 20px rgba(28,40,51,.16);
+  }
+  .pos-cart-head{padding:9px 14px;font-size:13px;}
+  .pos-cart-foot{padding:10px 14px;}
 }
