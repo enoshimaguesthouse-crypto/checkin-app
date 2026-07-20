@@ -481,6 +481,10 @@ function cellClick(e,k){
     updateSelectionUI();
     openEdit(k);
   } else {
+    // トグル：既に同じセルの予約詳細が開いていれば閉じる。別セル/未オープンなら開く
+    // （別パネルからの排他制御・他セルからの切替は openEdit 内の closeAllPanels で担保）
+    const modalOpen=document.getElementById('modal').classList.contains('open');
+    if(modalOpen && _openPanelType==='reservation' && editKey===k){ closeAllPanels(); return; }
     openEdit(k);
   }
 }
