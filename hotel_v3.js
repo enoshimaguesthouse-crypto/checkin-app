@@ -2225,6 +2225,7 @@ function rentalCountOnDate(y,m,d){
 }
 function showRentalDay(y,m,d){
   const dk=dateKey(y,m,d);
+  if(_isDetailOpen('rentalday','rentalday:'+dk,'rental-day-modal')){ closeAllPanels(); return; } // トグル：同じ日付を再クリックで閉じる
   const list=rentalSpaceReservations.filter(r=>rentalDateOf(r)===dk);
   document.getElementById('rdm-title').textContent=`📷 ${m}/${d} のレンタルスペース予約`;
   let html='';
@@ -2239,7 +2240,7 @@ function showRentalDay(y,m,d){
         +`</div>`;
   });
   document.getElementById('rdm-list').innerHTML=html;
-  document.getElementById('rental-day-modal').classList.add('open');
+  closeAllPanels();document.getElementById('rental-day-modal').classList.add('open');_openPanelType='rentalday';_openPanelKey='rentalday:'+dk;
 }
 
 function parkPrev(){parkMonth--;if(parkMonth<1){parkMonth=12;parkYear--;}renderParking();}
