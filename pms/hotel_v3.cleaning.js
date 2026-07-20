@@ -1438,7 +1438,7 @@ function _saveRegScroll(){
 function showP(n,el){
   // サイドバーからの画面遷移時は、開いている全てのモーダル（予約詳細・部屋詳細・各種編集ポップアップ等）を必ず閉じる
   // （予約内容保存・ステータス変更・メモ編集・QR表示・メール送信などモーダル内操作はshowPを呼ばないため対象外）
-  document.querySelectorAll('.mbg.open').forEach(m=>m.classList.remove('open'));
+  closeAllPanels(); // .mbg.open を全て閉じ、トグル状態(_openPanelType)もリセット（整合性維持）
   // 名簿から離れる直前にスクロール位置を保存
   const activePage=document.querySelector('.page.active');
   if(activePage&&activePage.id==='page-register'&&n!=='register'){
@@ -1508,7 +1508,32 @@ function findAllKeys(rid,startM,startD){
   }
   return keys;
 }
-function closeM(id){document.getElementById(id).classList.remove('open');}
+// ── 右側スライドパネルの共通トグル/排他制御 ─────────────────────────
+// 仕様：開いたボタンをもう一度押すと閉じる（トグル）。別のパネルを開く時は
+// 既存を必ず閉じてから開く（排他制御）。×/キャンセル（closeM）でも閉じられる。
+// 画面遷移（showP）時のクリアとも整合させるため、_openPanelType を単一の真実とする。
+let _openPanelType=null;
+// panelType → 開く関数名。今後パネルを追加する時はここに1行足すだけでトグル/排他に対応。
+// ※関数名を文字列で保持し呼び出し時に解決する（openAuditLog等が後続ファイルで定義されるため、
+//   モジュール読込時に関数参照するとTDZ/未定義エラーになるのを回避）。
+const _PANEL_OPENERS={
+  tablet:     'openContractSettings', // タブレット表示設定
+  email:      'openMailSettings',     // 自動メール配信設定
+  autoassign: 'openAutoAssignModal',  // 自動部屋割り設定
+  audit:      'openAuditLog'          // 監査ログ
+};
+function closeAllPanels(){
+  document.querySelectorAll('.mbg.open').forEach(m=>m.classList.remove('open'));
+  _openPanelType=null;
+}
+function togglePanel(type){
+  if(_openPanelType===type){ closeAllPanels(); return; } // 同じボタン → 閉じる
+  closeAllPanels();                                       // 別パネル → 一度すべてクリア
+  const fn=window[_PANEL_OPENERS[type]];
+  if(typeof fn==='function'){ fn(); _openPanelType=type; } // 新パネルを開く
+}
+// ×/キャンセルで閉じた時もトグル状態をリセット（次に同じボタンで再度開けるように）
+function closeM(id){document.getElementById(id).classList.remove('open'); _openPanelType=null;}
 
 // populate nationality select
 function populateNat(selId, selected){
