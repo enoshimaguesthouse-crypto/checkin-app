@@ -1513,6 +1513,11 @@ function findAllKeys(rid,startM,startD){
 // 既存を必ず閉じてから開く（排他制御）。×/キャンセル（closeM）でも閉じられる。
 // 画面遷移（showP）時のクリアとも整合させるため、_openPanelType を単一の真実とする。
 let _openPanelType=null;
+let _openPanelKey=null; // セル/明細ごとの識別子（同一なら再クリックで閉じるトグル用）
+// 指定タイプ・キーの詳細モーダルが現在開いているか（トグル判定用）
+function _isDetailOpen(type,key,modalId){
+  return _openPanelType===type && _openPanelKey===key && document.getElementById(modalId).classList.contains('open');
+}
 // panelType → 開く関数名。今後パネルを追加する時はここに1行足すだけでトグル/排他に対応。
 // ※関数名を文字列で保持し呼び出し時に解決する（openAuditLog等が後続ファイルで定義されるため、
 //   モジュール読込時に関数参照するとTDZ/未定義エラーになるのを回避）。
@@ -1525,6 +1530,7 @@ const _PANEL_OPENERS={
 function closeAllPanels(){
   document.querySelectorAll('.mbg.open').forEach(m=>m.classList.remove('open'));
   _openPanelType=null;
+  _openPanelKey=null;
 }
 function togglePanel(type){
   if(_openPanelType===type){ closeAllPanels(); return; } // 同じボタン → 閉じる

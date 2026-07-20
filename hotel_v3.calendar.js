@@ -960,7 +960,7 @@ function openAdd(){
   const qrRow=document.getElementById('f-qr-row'); if(qrRow)qrRow.style.display='none'; // 追加時はQR欄を隠す（保存後に表示）
   const mailPanel=document.getElementById('f-mail-panel'); if(mailPanel)mailPanel.style.display='none'; // 追加時はメール欄を隠す
   populateNat('f-nat','日本');populateRS(-1);
-  closeAllPanels();document.getElementById('modal').classList.add('open');_openPanelType='reservation'; // 排他制御：他パネルを閉じて予約詳細を開く
+  closeAllPanels();document.getElementById('modal').classList.add('open');_openPanelType='reservation';_openPanelKey='reservation:add'; // 排他制御：他パネルを閉じて予約詳細を開く
 }
 function openAddAt(rid,day){
   openAdd();
@@ -1002,7 +1002,7 @@ function openEdit(k){
   document.getElementById('f-address').value=g.address||'';
   document.getElementById('f-email').value=g.email||'';
   populateNat('f-nat',g.nat||'日本');populateRS(g.roomId);
-  closeAllPanels();document.getElementById('modal').classList.add('open');_openPanelType='reservation'; // 排他制御：他パネルを閉じて予約詳細を開く
+  closeAllPanels();document.getElementById('modal').classList.add('open');_openPanelType='reservation';_openPanelKey='reservation:'+k; // 排他制御：他パネルを閉じて予約詳細を開く
   // チェックイン用QRコードを表示（保存済みURL優先、無ければ予約IDから生成）
   renderCheckinQr(g);
   // パスポート写真を遅延取得（起動データには画像を含めず、開いた予約の分だけ取得）
