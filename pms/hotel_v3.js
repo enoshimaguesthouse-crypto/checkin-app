@@ -2132,6 +2132,7 @@ function rentalPrev(){rentalMonth--;if(rentalMonth<1){rentalMonth=12;rentalYear-
 function rentalNext(){rentalMonth++;if(rentalMonth>12){rentalMonth=1;rentalYear++;}renderRental();}
 
 function openRentalAdd(dk){
+  if(_isDetailOpen('rental','rental:add:'+(dk||''),'rental-modal')){ closeAllPanels(); return; } // トグル
   editRentalId=null;
   document.getElementById('rsm-title').textContent='レンタルスペース予約追加';
   document.getElementById('rsm-del-btn').style.display='none';
@@ -2147,11 +2148,12 @@ function openRentalAdd(dk){
   document.getElementById('rsm-mode').value='';
   document.getElementById('rsm-detail').value='';
   document.querySelectorAll('#rsm-options input').forEach(c=>c.checked=false);
-  document.getElementById('rental-modal').classList.add('open');
+  closeAllPanels();document.getElementById('rental-modal').classList.add('open');_openPanelType='rental';_openPanelKey='rental:add:'+(dk||'');
 }
 
 function openRentalEdit(id){
   const r=rentalSpaceReservations.find(x=>x.id===id);if(!r)return;
+  if(_isDetailOpen('rental','rental:edit:'+id,'rental-modal')){ closeAllPanels(); return; } // トグル
   editRentalId=id;
   document.getElementById('rsm-title').textContent='レンタルスペース予約編集';
   document.getElementById('rsm-del-btn').style.display='block';
@@ -2167,7 +2169,7 @@ function openRentalEdit(id){
   document.getElementById('rsm-detail').value=r.detail||'';
   const opts=r.options||[];
   document.querySelectorAll('#rsm-options input').forEach(c=>c.checked=opts.includes(c.value));
-  document.getElementById('rental-modal').classList.add('open');
+  closeAllPanels();document.getElementById('rental-modal').classList.add('open');_openPanelType='rental';_openPanelKey='rental:edit:'+id;
 }
 
 function saveRental(){
@@ -2244,6 +2246,7 @@ function parkPrev(){parkMonth--;if(parkMonth<1){parkMonth=12;parkYear--;}renderP
 function parkNext(){parkMonth++;if(parkMonth>12){parkMonth=1;parkYear++;}renderParking();}
 
 function openParkAdd(dk){
+  if(_isDetailOpen('parking','park:add:'+(dk||''),'park-modal')){ closeAllPanels(); return; } // トグル
   editParkDate=dk;editParkEntryId=null;
   document.getElementById('pm-title').textContent='駐車場利用追加';
   document.getElementById('pm-del-btn').style.display='none';
@@ -2261,9 +2264,11 @@ function openParkAdd(dk){
     const parts=this.value.split('-').map(Number);
     if(parts.length===3){const p=parkPrice(parts[0],parts[1],parts[2]);document.getElementById('pm-price').value=p;document.getElementById('pm-auto-price').textContent=`（自動: ¥${p.toLocaleString()}）`;}
   });
-  document.getElementById('park-modal').classList.add('open');
+  closeAllPanels();document.getElementById('park-modal').classList.add('open');_openPanelType='parking';_openPanelKey='park:add:'+(dk||'');
 }
 function openParkEdit(dk,entryId){
+  const pk0=parkData[dk]||[];const e0=pk0.find(x=>x.id===entryId);if(!e0)return;
+  if(_isDetailOpen('parking','park:edit:'+dk+':'+entryId,'park-modal')){ closeAllPanels(); return; } // トグル
   editParkDate=dk;editParkEntryId=entryId;
   const pk=parkData[dk]||[];const e=pk.find(x=>x.id===entryId);if(!e)return;
   document.getElementById('pm-title').textContent='駐車場利用編集';
@@ -2271,7 +2276,7 @@ function openParkEdit(dk,entryId){
   document.getElementById('pm-date').value=dk;document.getElementById('pm-name').value=e.name;
   document.getElementById('pm-price').value=e.price||'';document.getElementById('pm-note').value=e.note||'';
   document.getElementById('pm-auto-price').textContent='';
-  document.getElementById('park-modal').classList.add('open');
+  closeAllPanels();document.getElementById('park-modal').classList.add('open');_openPanelType='parking';_openPanelKey='park:edit:'+dk+':'+entryId;
 }
 function saveParkEntry(){
   const dk=document.getElementById('pm-date').value;if(!dk)return;
@@ -3084,6 +3089,7 @@ function snDrop(e,targetId){
 let editCharterGroup=null, editCharterStartDay=null, editCharterMonth=null;
 
 function openCharterNew(){
+  if(_isDetailOpen('charter','charter:new','charter-modal')){ closeAllPanels(); return; } // トグル
   editCharterGroup=null;
   editCharterStartDay=null;
   editCharterMonth=parseInt(document.getElementById('sel-month').value);
@@ -3115,11 +3121,12 @@ function openCharterNew(){
   document.getElementById('cm2-yshoku').checked=false;
   document.getElementById('cm2-late').checked=false;
   document.getElementById('cm2-del-btn').style.display='none';
-  document.getElementById('charter-modal').classList.add('open');
+  closeAllPanels();document.getElementById('charter-modal').classList.add('open');_openPanelType='charter';_openPanelKey='charter:new';
 }
 
 function openCharterEdit(charterGroup, startDay, month){
   if(currentRole==='reception'||currentRole==='watanabe')return;
+  if(_isDetailOpen('charter','charter:'+charterGroup+':'+startDay+':'+month,'charter-modal')){ closeAllPanels(); return; } // トグル
   editCharterGroup=charterGroup;
   editCharterStartDay=parseInt(startDay);
   editCharterMonth=parseInt(month);
@@ -3176,7 +3183,7 @@ function openCharterEdit(charterGroup, startDay, month){
   document.getElementById('cm2-wshoku').checked=metaNote.includes('和食');
   document.getElementById('cm2-yshoku').checked=metaNote.includes('洋食');
   document.getElementById('cm2-late').checked=metaNote.includes('レイトチェックアウト');
-  document.getElementById('charter-modal').classList.add('open');
+  closeAllPanels();document.getElementById('charter-modal').classList.add('open');_openPanelType='charter';_openPanelKey='charter:'+charterGroup+':'+startDay+':'+month;
 }
 
 function saveCharter(){
