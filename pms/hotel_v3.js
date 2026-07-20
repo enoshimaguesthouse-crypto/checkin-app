@@ -3316,8 +3316,15 @@ function _deleteCharterData(charterGroup, startDay, m){
 function openBudgetEdit(){
   const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   document.getElementById('budget-inputs').innerHTML=months.map((mn,i)=>`
-    <div class="fl"><label>${mn}</label><input type="number" id="bgt-${i+1}" value="${budgets[i+1]||''}" placeholder="0"></div>`).join('');
+    <div class="fl"><label>${mn}</label><input type="number" id="bgt-${i+1}" value="${budgets[i+1]||''}" placeholder="0" oninput="updateBudgetTotal()"></div>`).join('');
+  updateBudgetTotal();
   document.getElementById('budget-modal').classList.add('open');
+}
+function updateBudgetTotal(){
+  let sum=0;
+  for(let m=1;m<=12;m++){ sum+=parseInt(document.getElementById(`bgt-${m}`)?.value)||0; }
+  const el=document.getElementById('budget-total');
+  if(el)el.textContent='¥'+sum.toLocaleString();
 }
 function saveBudget(){
   for(let m=1;m<=12;m++){
