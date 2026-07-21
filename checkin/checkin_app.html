@@ -1303,8 +1303,16 @@ async function selectLang(l) {
   lang = l;
   document.body.className = l === 'zh' ? 'lang-zh' : l === 'ko' ? 'lang-ko' : '';
   applyLang();
-  // 契約確認設定を読み込み、利用ONなら予約ID入力の前に同意画面を挿入
-  const cs = await loadContractSettings();
+  // 契約確認設定：言語選択画面を表示した時点でプリフェッチ済みのキャッシュがあれば
+  // ネットワーク待ちなしで即座に遷移する（タイムラグ短縮）。未取得の初回のみawaitする。
+  // キャッシュがTTL切れでも一旦それで遷移し、裏で最新値を取り直す（次回タップ時に反映）。
+  let cs;
+  if (contractSettings !== null) {
+    cs = contractSettings;
+    if ((Date.now() - _contractFetchedAt) >= CONTRACT_TTL_MS) loadContractSettings();
+  } else {
+    cs = await loadContractSettings();
+  }
   if (cs && cs.enabled) {
     showAgreementScreen();
   } else {
@@ -2917,6 +2925,7 @@ function restartApp() {
   el('contactError').style.display = 'none';
   document.querySelectorAll('.has-error').forEach(e => e.classList.remove('has-error'));
   showScreen('screen-lang');
+  loadContractSettings(); // 次のゲストの言語選択に備えてキャッシュを更新（タイムラグ短縮）
 }
 
 // ═══════════════════════════════════════
@@ -2928,6 +2937,11 @@ document.querySelectorAll('input, select').forEach(e => {
     if (e.id==='phone'||e.id==='email') el('contactError').style.display='none';
   });
 });
+
+// 起動時に契約確認設定をプリフェッチしてキャッシュを温めておく。
+// これにより言語選択→約款画面の遷移で毎回ネットワーク待ちが発生しない
+// （selectLang はキャッシュがあれば即座に遷移し、TTL切れの裏更新のみ行う）。
+loadContractSettings();
 </script>
 </body>
 </html>
