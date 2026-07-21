@@ -537,6 +537,43 @@ input.needs-input::placeholder { color:#d08a3a; }
 }
 
 /* ════════════════════════════════════════════════════════════════
+   言語選択画面のみ：中央1列・大型ボタン（#screen-lang にスコープを限定し、
+   他の入力画面・検索画面のスタイルには一切影響させない）
+   画面高さが狭い横向きでも1画面に収まるよう、サイズは clamp(最小, vh, 最大) で可変。
+   ════════════════════════════════════════════════════════════════ */
+#screen-lang.active{
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;   /* ④ 上下左右中央寄せ */
+  gap:clamp(8px, 2vh, 22px);
+  padding:clamp(4px, 1.2vh, 18px) 0;
+}
+#screen-lang .header{ padding:0; }
+#screen-lang .header::after{ margin:clamp(6px,1.2vh,14px) auto 0; }
+#screen-lang .header-ja{ font-size:clamp(20px, 3vh, 32px); margin-bottom:2px; }
+/* ③ 「言語を選択してください」を大きく強調 */
+#screen-lang .header-sub{
+  font-size:clamp(20px, 4.9vh, 40px); font-weight:700; line-height:1.35;
+  color:var(--ocean-deep); text-align:center; margin-top:clamp(4px,1vh,10px);
+}
+/* ① 2列×2行 → 中央1列（縦並び） */
+#screen-lang .lang-grid{
+  grid-template-columns:1fr;
+  gap:clamp(14px, 2.9vh, 25px);            /* ② ボタン間隔 20〜25px */
+  width:min(500px, 92vw);                  /* ② 横幅 420〜500px（可変） */
+  margin:0 auto;
+}
+/* ② ボタン：高さ90〜100px・中央揃え・誤動作防止 */
+#screen-lang .lang-btn{
+  min-height:clamp(64px, 12.4vh, 100px);
+  padding:8px 18px; gap:2px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  user-select:none; -webkit-user-select:none;  /* 連打時のテキスト選択を防止 */
+  touch-action:manipulation;                    /* ダブルタップ拡大を防止 */
+}
+#screen-lang .lang-name{ font-size:clamp(20px, 3.9vh, 32px); font-weight:600; }
+#screen-lang .lang-sub { font-size:clamp(13px, 2.2vh, 18px); }
+
+/* ════════════════════════════════════════════════════════════════
    タブレット専用最適化（10インチ想定・Kioskモード）
    幅768〜1366pxのみに適用し、スマホ／PC管理画面には影響させない。
    ・余白削減＆フル幅／フル高さ ・タッチ領域と文字の大型化
@@ -565,6 +602,8 @@ input.needs-input::placeholder { color:#d08a3a; }
   .screen.active > *{ flex-shrink:0; }
   /* 言語選択・完了画面は内容が短いので縦中央に寄せて余白を有効活用 */
   #screen-lang.active, #screen-complete.active{ justify-content:center; }
+  /* 言語選択：横向きで画面高さが狭くても縦スクロールを発生させない（1画面に収める） */
+  #screen-lang.active{ height:100%; min-height:0; overflow:hidden; }
   .btn-group{
     position:sticky; bottom:0; z-index:20;
     margin-top:auto; flex-shrink:0;
