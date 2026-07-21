@@ -535,6 +535,128 @@ input.needs-input::placeholder { color:#d08a3a; }
   .field-group { margin-bottom:18px; }
   .agreement-text { max-height:52vh; font-size:14px; padding:18px 20px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   タブレット専用最適化（10インチ想定・Kioskモード）
+   幅768〜1366pxのみに適用し、スマホ／PC管理画面には影響させない。
+   ・余白削減＆フル幅／フル高さ ・タッチ領域と文字の大型化
+   ・メインをスクロール、操作ボタンを画面下部に固定（キーボード表示でも崩れない）
+   ════════════════════════════════════════════════════════════════ */
+@media (min-width:768px) and (max-width:1366px){
+  html, body { height:100%; }
+  body { overflow:hidden; } /* 画面全体は動かさずメインだけスクロール */
+
+  /* ① 幅を最大化（max-width撤廃）／④ 左右余白は10px */
+  /* ② 高さを最大化しflex縦構造に（ソフトキーボード表示でも潰れない） */
+  .app-wrapper{
+    max-width:none; width:100%;
+    margin:0; padding:0 10px;
+    height:100dvh; height:100vh; /* dvh未対応端末はvhにフォールバック */
+    display:flex; flex-direction:column; min-height:0;
+  }
+  /* ⑧ メイン＝スクロール領域／.btn-group＝下部固定フッター（コンテンツ被り防止） */
+  .screen.active{
+    display:flex; flex-direction:column;
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:4px;
+  }
+  /* flex縦積みで各要素が押し潰されないように（潰れると内容が見切れる） */
+  .screen.active > *{ flex-shrink:0; }
+  /* 言語選択・完了画面は内容が短いので縦中央に寄せて余白を有効活用 */
+  #screen-lang.active, #screen-complete.active{ justify-content:center; }
+  .btn-group{
+    position:sticky; bottom:0; z-index:20;
+    margin-top:auto; flex-shrink:0;
+    gap:14px; padding:12px 0 14px;
+    background:linear-gradient(180deg, rgba(238,246,249,0) 0%, #eef6f9 22%);
+  }
+
+  /* ③ 主要ボタン：高さ60px以上・22〜24px／⑥ 多言語で崩れない */
+  .btn-next, .btn-submit, .btn-back, .btn-search, .btn-restart, .cam-btn{
+    min-height:64px; font-size:22px; border-radius:14px;
+    touch-action:manipulation; /* ③ ダブルタップズーム防止 */
+    word-break:break-word; overflow-wrap:anywhere; line-height:1.3; white-space:normal;
+  }
+  .btn-back{ flex:0 0 auto; min-width:150px; padding:14px 18px; }
+  .btn-next, .btn-submit, .btn-search{ flex:1 1 auto; }
+  .btn-restart{ padding:16px 40px; }
+
+  /* ③ 入力欄：高さ55〜60px・20px */
+  input[type="text"], input[type="tel"], input[type="email"],
+  input[type="date"], input[type="number"], select, textarea{
+    min-height:58px; font-size:20px; padding:14px 16px; border-radius:10px;
+    touch-action:manipulation;
+  }
+  input::placeholder{ font-size:18px; }
+  /* タップ操作するUI全般もダブルタップズームを抑止 */
+  button, a, label, .lang-btn, .entry-card, .nat-tab, input, select, textarea{ touch-action:manipulation; }
+
+  /* ④ コンポーネント間の余白を12〜16pxへ短縮 */
+  .header{ padding:16px 0 12px; }
+  .header::after{ margin:10px auto 0; }
+  .card{ padding:16px 18px; margin-bottom:14px; border-radius:14px; }
+  .progress-container{ margin-bottom:14px; }
+  .field-group{ margin-bottom:14px; }
+  .field-row{ gap:14px; }
+  .guest-block{ padding:14px 16px; margin-bottom:14px; }
+  .entry-grid{ gap:16px; margin-bottom:12px; }
+  .entry-card{ padding:20px 18px; }
+  #resResult{ margin-top:14px; }
+  .res-found{ padding:16px 18px; margin-bottom:14px; }
+  .room-display{ padding:18px 12px; }
+
+  /* ⑥ フォント規定（ユニバーサルデザイン） */
+  .header-ja{ font-size:30px; }              /* メインタイトル 28〜32px */
+  .header-en{ font-size:14px; }
+  .header-sub{ font-size:16px; }             /* 注意書き 16px以上 */
+  .card-title, .entry-title{ font-size:22px; }   /* 見出し 22px */
+  .card-title-en{ font-size:13px; margin-bottom:10px; }
+  label{ font-size:17px; }
+  .res-value, .confirm-table td{ font-size:20px; }  /* 本文 18〜20px */
+  .confirm-table th{ font-size:17px; width:150px; }
+  .room-note, .contact-note, .field-error, .opt, .req{ font-size:16px; }
+  /* 約款は自前でスクロールする枠のまま高さを確保（max-heightを外すと本文が見切れる） */
+  .agreement-text{ font-size:19px; line-height:1.9; padding:16px 18px; max-height:58vh; overflow-y:auto; }
+  .nat-tab{ font-size:19px; padding:16px 10px; }
+  .lang-btn{ padding:22px 16px; border-radius:16px; }
+  .lang-flag{ font-size:46px; }
+  .lang-name{ font-size:23px; }
+  .lang-sub{ font-size:16px; }
+  .lang-grid{ gap:14px; }
+  .complete-title{ font-size:30px; }
+  .complete-sub{ font-size:19px; margin-bottom:16px; }
+  .guest-block-title{ font-size:19px; }
+  .guest-block-badge, .gb-pp-status{ font-size:16px; }
+
+  /* ⑤ QR読取：ガイド枠を300〜360pxへ拡大／予約IDは大きく太字 */
+  .qr-frame{ width:min(80%, 340px); }
+  .pp-frame{ width:min(88%, 440px); }
+  .cam-title{ font-size:22px; }
+  #reservationId{ font-size:30px; font-weight:700; text-align:center; letter-spacing:0.08em; min-height:66px; }
+  .room-number{ font-size:64px; }
+  .pin-number{ font-size:44px; }
+  .room-number-label, .pin-label{ font-size:17px; }
+
+  /* ⑦ 横向き（Landscape）＝2カラム：左＝操作／右＝案内 */
+  @media (orientation:landscape){
+    /* 言語選択は4枚を1行に */
+    .lang-grid{ grid-template-columns:repeat(4, 1fr); }
+    /* 予約ID入力とQRスキャンを左右に */
+    .entry-grid{ grid-template-columns:1fr 1fr; }
+    /* 宿泊者情報：氏名などの2項目行を活かしつつ横幅を有効活用 */
+    .field-row{ grid-template-columns:1fr 1fr; }
+    /* 完了画面：部屋情報（左）と案内カード（右）を2カラムに */
+    #screen-complete.active .card{ margin-bottom:0; }
+    #screen-complete.active > .card,
+    #screen-complete.active > #guide-card{ min-width:0; }
+  }
+  /* ⑦ 縦向き（Portrait）＝1カラム */
+  @media (orientation:portrait){
+    .lang-grid{ grid-template-columns:1fr 1fr; }
+    .entry-grid{ grid-template-columns:1fr; }
+  }
+}
 </style>
 <!-- QRコード読み取り用の軽量ライブラリ（カメラスキャン用） -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
