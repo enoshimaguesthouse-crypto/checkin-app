@@ -940,6 +940,7 @@ function onDrop(e,rid,day){
 }
 
 function openAdd(){
+  if(currentRole==='reception')return; // 閲覧専用：新規予約の追加は不可
   editKey=null;document.getElementById('modal-title').textContent='予約追加';document.getElementById('del-btn').style.display='none';
   ['f-name','f-price','f-note','f-arrival','f-resid'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   // 電話番号・住所をクリア
@@ -1009,6 +1010,24 @@ function openEdit(k){
   loadPassportPhotos(g.reservationId);
   // 手動メール送信パネルを更新
   renderMailPanel(g);
+  _applyReservationViewMode();
+}
+// 接客スタッフ（reception）は予約詳細を閲覧専用で開く：全項目は表示するが編集不可にし、
+// 保存・削除・メール送信は隠して「閉じる」のみ残す（管理者ロールはフル操作のまま）。
+function _applyReservationViewMode(){
+  const modal=document.getElementById('modal');
+  const readOnly=currentRole==='reception';
+  modal.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=readOnly; });
+  if(readOnly){
+    document.getElementById('del-btn').style.display='none';
+    document.getElementById('save-btn').style.display='none';
+    const mailPanel=document.getElementById('f-mail-panel');
+    if(mailPanel)mailPanel.style.display='none'; // 送信操作は管理操作のため非表示
+  } else {
+    document.getElementById('save-btn').style.display='';
+    // del-btn / f-mail-panel は openEdit / renderMailPanel が既に適切に設定済み
+  }
+  document.getElementById('cancel-btn').textContent=readOnly?'閉じる':'キャンセル';
 }
 
 // 予約詳細のQR表示。checkinUrlは保存済み優先・無ければ予約IDから生成。画像は外部APIで描画。
@@ -1193,6 +1212,7 @@ async function loadPassportPhotos(resId){
   }catch(e){ console.warn('パスポート写真の取得に失敗:',e); }
 }
 function saveGuest(){
+  if(currentRole==='reception')return; // 閲覧専用：保存不可（多重防御。ボタンは非表示済み）
   const dateVal=document.getElementById('f-day').value; // YYYY-MM-DD
   const dateParts=dateVal?dateVal.split('-'):null;
   const yearSel=dateParts?parseInt(dateParts[0]):DISP_YEAR;   // 選択された年（キー生成に使用）
@@ -1354,6 +1374,7 @@ function syncDeleteRelated(g, month){
 }
 
 function deleteGuest(){
+  if(currentRole==='reception')return; // 閲覧専用：削除不可（多重防御。ボタンは非表示済み）
   if(!editKey)return;
   const g=guestData[editKey];
   if(!g)return;

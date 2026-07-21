@@ -846,6 +846,9 @@ body.role-reception #mobile-stats-area,
 body.role-reception [onclick*="exportCSV("],
 body.role-reception [onclick*="exportRentalCSV"]{display:none!important;}
 body.role-reception .gc[draggable="true"]{-webkit-user-drag:none;}
+/* 接客スタッフ：閲覧専用のため新規予約・新規貸切の追加ボタンは非表示 */
+body.role-reception [onclick*="openAdd("],
+body.role-reception [onclick*="openCharterNew("]{display:none!important;}
 
 /* 渡辺千尋：宿泊者名簿・清掃予定表のみ表示（駐車場・レンタル・サーフィン等も非表示） */
 body.role-watanabe .nitem[onclick*="showP('import'"],
