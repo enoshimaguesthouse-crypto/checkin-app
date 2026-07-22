@@ -818,6 +818,8 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 /* ── ロール別サイドバー制御 ── */
 /* 清掃スタッフ：左サイドバー自体を非表示（許可ページが清掃関連のみのため画面遷移UIは不要） */
 body.role-cleaning #sb{display:none!important;}
+/* 左サイドバー(ログアウト含む)が非表示のため、清掃予定表画面のログアウトボタンを表示 */
+body.role-cleaning #cleaning-logout-btn{display:inline-block!important;}
 /* 接客スタッフ：宿泊名簿・駐車場・レンタル・サーフィン・清掃予定表 */
 body.role-reception .nitem[onclick*="showP('import'"],
 body.role-reception .nitem[onclick*="showP('occupancy'"],
