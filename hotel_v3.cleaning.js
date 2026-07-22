@@ -207,9 +207,14 @@ function renderCleaning(){
   });
 
   // サマリー：進捗ゲージ（旧データのcleaning/checkingはwaiting扱いに正規化して集計）
+  // 連泊中(stayover)は清掃対象外のため分母・分子から除外する
   const counts={waiting:0,completed:0};
-  Object.values(cleaningData).forEach(d=>{counts[_normalizeCleaningStatus(d.status)]++;});
-  const total=Object.keys(cleaningData).length;
+  let total=0;
+  Object.values(cleaningData).forEach(d=>{
+    if(d._info&&d._info.type==='stayover')return;
+    counts[_normalizeCleaningStatus(d.status)]++;
+    total++;
+  });
   const done=counts.completed;
   const pct=total>0?Math.round(done/total*100):0;
   const allDone=total>0&&done===total;
@@ -262,8 +267,8 @@ function renderCleaning(){
       'ANNEX−個室':'ANNEX 個室','ANNEX−ドミトリー':'ANNEX ドミ',
       'アパートメント−Southern Court':'アパートメント',
       'Sea Breeze 鎌倉':'SB 鎌倉','Sea Breeze 三浦':'SB 三浦'}[area]||area;
-    // セクション見出し：エリア名を大きく＋そのエリアの残室数を表示
-    const areaRemain=list.filter(e=>_normalizeCleaningStatus(e.d.status)!=='completed').length;
+    // セクション見出し：エリア名を大きく＋そのエリアの残室数を表示（連泊中は清掃対象外のため除外）
+    const areaRemain=list.filter(e=>e.d._info?.type!=='stayover'&&_normalizeCleaningStatus(e.d.status)!=='completed').length;
     html+=`<div class="cl-area-head">
       <span class="cl-area-name">${esc(areaShort)}</span>
       <span class="cl-area-remain${areaRemain===0?' done':''}">${areaRemain===0?'✓ 完了':'残 '+areaRemain+'室'}</span>
