@@ -41,7 +41,8 @@ const PRIORITY_CLEAN_DEFAULTS=[
   {category:'整理',       name:'不要品整理',                                            place:'',               frequency:'半年',  scheduledMonths:[4,10]},
   {category:'補充',       name:'アルコール・消臭剤の補充（トイレ・玄関）',                place:'本館・ANNEX',    frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
 ];
-const CLEANING_STAFF=['木村','鈴木','田中','佐藤','その他'];
+// 清掃担当者一覧（cloudData経由でDriveへ保存・編集可能。staffNamesと同様のパターン）
+let cleaningStaffList=['木村','鈴木','田中','佐藤','その他'];
 // ボタンは「清掃待ち」「清掃済」の2つのみ。旧データに残る cleaning/checking は
 // _normalizeCleaningStatus() で表示上 waiting とみなす（保存データ自体は書き換えない）。
 function _normalizeCleaningStatus(s){ return s==='completed'?'completed':'waiting'; }
@@ -175,13 +176,13 @@ function renderCleaning(){
   const staffSel=document.getElementById('cleaning-filter-staff');
   const curVal=staffSel.value;
   staffSel.innerHTML='<option value="">全担当者</option>';
-  const staffSet=new Set(CLEANING_STAFF);
+  const staffSet=new Set(cleaningStaffList);
   Object.values(cleaningData).forEach(d=>{if(d.assignedTo)staffSet.add(d.assignedTo);});
   staffSet.forEach(s=>staffSel.innerHTML+=`<option value="${s}"${s===curVal?' selected':''}>${s}</option>`);
 
   // datalist更新
   const dl=document.getElementById('cm-staff-list');
-  if(dl)dl.innerHTML=CLEANING_STAFF.map(s=>`<option value="${s}">`).join('');
+  if(dl)dl.innerHTML=cleaningStaffList.map(s=>`<option value="${s}">`).join('');
 
   // rooms配列順（=宿泊名簿順）でエントリを並べる
   const orderedEntries=[];

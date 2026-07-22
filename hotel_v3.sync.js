@@ -142,7 +142,7 @@ function collectAllData() {
     occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
     rentalSpaceReservations,propertySettings,repeatReminders,auditLog,
-    posCategories,posProducts,posSales,posSettings,
+    posCategories,posProducts,posSales,posSettings,cleaningStaffList,
     updatedBy:(staffNames&&staffNames[0])||'操作者',
     baseUpdatedAt:cloudUpdatedAt,
   };
@@ -319,6 +319,9 @@ function applyServerData(data) {
   }
   if (data.staffNames && Array.isArray(data.staffNames) && data.staffNames.length > 0) {
     staffNames = data.staffNames;
+  }
+  if (data.cleaningStaffList && Array.isArray(data.cleaningStaffList) && data.cleaningStaffList.length > 0) {
+    cleaningStaffList = data.cleaningStaffList;
   }
   if (data.snTypes && Array.isArray(data.snTypes) && data.snTypes.length > 0) {
     snTypes = data.snTypes;
@@ -730,6 +733,24 @@ function saveSNStaff(){
     return el?el.value.trim()||`スタッフ${i+1}`:`スタッフ${i+1}`;
   }).filter(Boolean);
   closeM('sn-staff-modal');renderStaffNotes();saveToLS();autoSave();
+}
+// 清掃担当者編集（スタッフ名編集と同じパターン）
+function openCleaningStaffEdit(){
+  document.getElementById('cleaning-staff-inputs').innerHTML=cleaningStaffList.map((name,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" value="${esc(name)}" id="cleaning-staff-${i}" style="flex:1;">
+      <button class="btn btn-xs btn-red" onclick="removeCleaningStaff(${i})">削除</button>
+    </div>`).join('');
+  document.getElementById('cleaning-staff-modal').classList.add('open');
+}
+function addCleaningStaff(){cleaningStaffList.push('新しい担当者');openCleaningStaffEdit();}
+function removeCleaningStaff(i){cleaningStaffList.splice(i,1);openCleaningStaffEdit();}
+function saveCleaningStaff(){
+  cleaningStaffList=cleaningStaffList.map((_,i)=>{
+    const el=document.getElementById(`cleaning-staff-${i}`);
+    return el?el.value.trim()||`担当者${i+1}`:`担当者${i+1}`;
+  }).filter(Boolean);
+  closeM('cleaning-staff-modal');renderCleaning();autoSave();
 }
 // 旧TODO互換
 function renderTodos(){renderStaffNotes();}
