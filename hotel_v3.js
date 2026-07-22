@@ -3584,7 +3584,10 @@ function _applyRole(role,name){
   currentUserName=name||role;
   document.body.classList.remove('role-admin','role-cleaning','role-reception','role-watanabe','viewonly');
   document.body.classList.add('role-'+role);
-  if(role!=='admin')document.body.classList.add('viewonly');
+  // viewonlyは「編集禁止・閲覧専用」ロール向け。清掃スタッフは清掃予定表の操作
+  // （清掃待ち⇄清掃済のトグル・重点清掃の実施記録・リスト生成等）が本来業務のため対象外にする
+  // （viewonlyのCSSが[onclick*="setCleaningStatus"]等を丸ごと非表示にしてしまうため）。
+  if(role!=='admin'&&role!=='cleaning')document.body.classList.add('viewonly');
   if(role==='reception'){
     document.addEventListener('dragstart',function _receptionNoDrag(e){
       if(e.target.closest&&e.target.closest('.gc'))e.preventDefault();
