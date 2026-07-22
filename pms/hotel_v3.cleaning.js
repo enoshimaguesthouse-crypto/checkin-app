@@ -311,7 +311,7 @@ function renderCleaning(){
         </div>
         ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
         <button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
-          ${isCompleted?'✅ 清掃済（タップで戻す）':'🟦 清掃待ち（タップで完了）'}
+          ${isCompleted?'✅ 清掃済':'🟦 清掃待ち'}
         </button>
       </div>`;
     });
