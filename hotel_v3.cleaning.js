@@ -310,9 +310,9 @@ function renderCleaning(){
           <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
         </div>
         ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
-        <button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
+        ${isStayover?'':`<button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
           ${isCompleted?'✅ 清掃済':'🟦 清掃待ち'}
-        </button>
+        </button>`}
       </div>`;
     });
   });
