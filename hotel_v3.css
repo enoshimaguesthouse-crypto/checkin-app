@@ -950,8 +950,6 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .cl-status-row{display:flex;gap:5px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
 .cl-status-btn{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;border:none;cursor:pointer;transition:.15s;}
 .cl-status-btn.waiting  {background:#e0f2fe;color:#0369a1;}
-.cl-status-btn.cleaning {background:#dbeafe;color:#1d4ed8;}
-.cl-status-btn.checking {background:#ede9fe;color:#6d28d9;}
 .cl-status-btn.completed{background:#dcfce7;color:#15803d;}
 .cl-status-btn.active   {filter:brightness(.85);font-weight:800;outline:2px solid currentColor;}
 .cl-assignee{font-size:11px;color:#888;margin-bottom:4px;}
