@@ -816,19 +816,8 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 }
 
 /* ── ロール別サイドバー制御 ── */
-/* 清掃スタッフ：清掃予定表のみ */
-body.role-cleaning .nitem[onclick*="showP('register'"],
-body.role-cleaning .nitem[onclick*="showP('import'"],
-body.role-cleaning .nitem[onclick*="showP('parking'"],
-body.role-cleaning .nitem[onclick*="showP('rental'"],
-body.role-cleaning .nitem[onclick*="showP('surf'"],
-body.role-cleaning .nitem[onclick*="showP('occupancy'"],
-body.role-cleaning .nitem[onclick*="showP('sales'"],
-body.role-cleaning .nitem[onclick*="showP('cancel'"],
-body.role-cleaning .nitem[onclick*="showP('todo'"],
-body.role-cleaning #sidebar-property-group,
-body.role-cleaning #nitem-cleaning-focus,
-body.role-cleaning .sb-div{display:none!important;}
+/* 清掃スタッフ：左サイドバー自体を非表示（許可ページが清掃関連のみのため画面遷移UIは不要） */
+body.role-cleaning #sb{display:none!important;}
 /* 接客スタッフ：宿泊名簿・駐車場・レンタル・サーフィン・清掃予定表 */
 body.role-reception .nitem[onclick*="showP('import'"],
 body.role-reception .nitem[onclick*="showP('occupancy'"],
