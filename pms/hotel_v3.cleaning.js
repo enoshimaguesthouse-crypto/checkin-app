@@ -42,10 +42,11 @@ const PRIORITY_CLEAN_DEFAULTS=[
   {category:'補充',       name:'アルコール・消臭剤の補充（トイレ・玄関）',                place:'本館・ANNEX',    frequency:'1ヶ月', scheduledMonths:[1,2,3,4,5,6,7,8,9,10,11,12]},
 ];
 const CLEANING_STAFF=['木村','鈴木','田中','佐藤','その他'];
+// ボタンは「清掃待ち」「清掃済」の2つのみ。旧データに残る cleaning/checking は
+// _normalizeCleaningStatus() で表示上 waiting とみなす（保存データ自体は書き換えない）。
+function _normalizeCleaningStatus(s){ return s==='completed'?'completed':'waiting'; }
 const CLEANING_STATUS={
   waiting: {label:'清掃待ち', cls:'waiting'},
-  cleaning:{label:'清掃中',   cls:'cleaning'},
-  checking:{label:'確認待ち', cls:'checking'},
   completed:{label:'清掃済',  cls:'completed'},
 };
 let editingCleaningRoomId=null;
@@ -177,7 +178,7 @@ function renderCleaning(){
       const d=cleaningData[coKey];
       if(d._info?.type==='checkout'){
         if(filterStaff&&d.assignedTo!==filterStaff)return;
-        if(filterStatus&&d.status!==filterStatus)return;
+        if(filterStatus&&_normalizeCleaningStatus(d.status)!==filterStatus)return;
         orderedEntries.push({rid:coKey,d,room});
       }
     }
@@ -186,17 +187,17 @@ function renderCleaning(){
     if(cleaningData[stayKey]&&showStayover){
       const d=cleaningData[stayKey];
       if(filterStaff&&d.assignedTo!==filterStaff)return;
-      if(filterStatus&&d.status!==filterStatus)return;
+      if(filterStatus&&_normalizeCleaningStatus(d.status)!==filterStatus)return;
       orderedEntries.push({rid:stayKey,d,room});
     }
   });
 
-  // サマリー
-  const counts={waiting:0,cleaning:0,checking:0,completed:0};
-  Object.values(cleaningData).forEach(d=>{if(counts[d.status]!==undefined)counts[d.status]++;});
+  // サマリー（旧データのcleaning/checkingはwaiting扱いに正規化して集計）
+  const counts={waiting:0,completed:0};
+  Object.values(cleaningData).forEach(d=>{counts[_normalizeCleaningStatus(d.status)]++;});
   const total=Object.keys(cleaningData).length;
-  const summaryColors={waiting:'#e0f2fe',cleaning:'#dbeafe',checking:'#ede9fe',completed:'#dcfce7'};
-  const summaryTxt={waiting:'#0369a1',cleaning:'#1d4ed8',checking:'#6d28d9',completed:'#15803d'};
+  const summaryColors={waiting:'#e0f2fe',completed:'#dcfce7'};
+  const summaryTxt={waiting:'#0369a1',completed:'#15803d'};
   document.getElementById('cleaning-summary').innerHTML=
     `<div class="cl-summary-chip" style="background:#f1f5f9;color:#475569;">合計 ${total}部屋</div>`+
     Object.entries(counts).map(([s,c])=>c>0
@@ -254,8 +255,9 @@ function renderCleaning(){
       const isAlert=h>=14&&d.status!=='completed'&&!isStayover;
       const isCompleted=d.status==='completed';
 
+      const normStatus=_normalizeCleaningStatus(d.status);
       const statusBtns=Object.entries(CLEANING_STATUS).map(([s,{label}])=>
-        `<button class="cl-status-btn ${s}${d.status===s?' active':''}" onclick="setCleaningStatus('${rid}','${s}')">${label}</button>`
+        `<button class="cl-status-btn ${s}${normStatus===s?' active':''}" onclick="setCleaningStatus('${rid}','${s}')">${label}</button>`
       ).join('');
       const elapsed=d.startAt&&d.completedAt
         ?`（${Math.round((new Date('2000/01/01 '+d.completedAt)-new Date('2000/01/01 '+d.startAt))/60000)}分）`:'';
@@ -625,7 +627,6 @@ function setCleaningStatus(roomId,status){
   const now=new Date();
   const jst=new Date(now.getTime()+9*60*60*1000);
   const t=`${String(jst.getUTCHours()).padStart(2,'0')}:${String(jst.getUTCMinutes()).padStart(2,'0')}`;
-  if(status==='cleaning'&&!cleaningData[rid].startAt)cleaningData[rid].startAt=t;
   if(status==='completed')cleaningData[rid].completedAt=t;
   if(status!=='completed'&&prev==='completed')cleaningData[rid].completedAt=null;
   renderCleaning();autoSave();
