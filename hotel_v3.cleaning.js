@@ -45,6 +45,20 @@ const CLEANING_STAFF=['木村','鈴木','田中','佐藤','その他'];
 // ボタンは「清掃待ち」「清掃済」の2つのみ。旧データに残る cleaning/checking は
 // _normalizeCleaningStatus() で表示上 waiting とみなす（保存データ自体は書き換えない）。
 function _normalizeCleaningStatus(s){ return s==='completed'?'completed':'waiting'; }
+// 清掃カード用の部屋識別記号。セクション見出し（グループ名）と重複する部分を取り除き、
+// 「H」「A」「103」「ダブル」など識別に必要な部分だけを返す。
+// 例: type='本館−男女混合ドミトリー H', group='本館−男女混合ドミトリー' → 'H'
+function _clRoomLabel(room){
+  if(!room)return '—';
+  const type=String(room.type||'').trim();
+  const group=String(room.group||'').trim();
+  if(group&&type.startsWith(group)){
+    const rest=type.slice(group.length).replace(/^[\s−\-–—]+/,'').trim();
+    if(rest)return rest;
+  }
+  // 差し引くと空になる場合（例: type と group が同一の Sea Breeze 三浦）は部屋番号で代替
+  return room.no?String(room.no):(type||'—');
+}
 const CLEANING_STATUS={
   waiting: {label:'清掃待ち', cls:'waiting'},
   completed:{label:'清掃済',  cls:'completed'},
@@ -192,17 +206,22 @@ function renderCleaning(){
     }
   });
 
-  // サマリー（旧データのcleaning/checkingはwaiting扱いに正規化して集計）
+  // サマリー：進捗ゲージ（旧データのcleaning/checkingはwaiting扱いに正規化して集計）
   const counts={waiting:0,completed:0};
   Object.values(cleaningData).forEach(d=>{counts[_normalizeCleaningStatus(d.status)]++;});
   const total=Object.keys(cleaningData).length;
-  const summaryColors={waiting:'#e0f2fe',completed:'#dcfce7'};
-  const summaryTxt={waiting:'#0369a1',completed:'#15803d'};
-  document.getElementById('cleaning-summary').innerHTML=
-    `<div class="cl-summary-chip" style="background:#f1f5f9;color:#475569;">合計 ${total}部屋</div>`+
-    Object.entries(counts).map(([s,c])=>c>0
-      ?`<div class="cl-summary-chip" style="background:${summaryColors[s]};color:${summaryTxt[s]};">${CLEANING_STATUS[s].label} ${c}</div>`:''
-    ).join('');
+  const done=counts.completed;
+  const pct=total>0?Math.round(done/total*100):0;
+  const allDone=total>0&&done===total;
+  document.getElementById('cleaning-summary').innerHTML=`
+    <div class="cl-progress-wrap">
+      <div class="cl-progress-head">
+        <span class="cl-progress-count">${done} <span class="cl-progress-slash">/</span> ${total} <span class="cl-progress-unit">部屋 完了</span></span>
+        <span class="cl-progress-pct${allDone?' done':''}">${allDone?'🎉 全部屋 完了！':pct+'%'}</span>
+      </div>
+      <div class="cl-progress-bar"><div class="cl-progress-fill" style="width:${pct}%;"></div></div>
+      <div class="cl-progress-sub">残り <b>${counts.waiting}</b> 部屋</div>
+    </div>`;
 
   if(orderedEntries.length===0){
     document.getElementById('cleaning-cards').innerHTML=
@@ -243,9 +262,12 @@ function renderCleaning(){
       'ANNEX−個室':'ANNEX 個室','ANNEX−ドミトリー':'ANNEX ドミ',
       'アパートメント−Southern Court':'アパートメント',
       'Sea Breeze 鎌倉':'SB 鎌倉','Sea Breeze 三浦':'SB 三浦'}[area]||area;
-    html+=`<div style="grid-column:1/-1;font-size:11px;font-weight:700;color:var(--muted);
-      letter-spacing:.08em;padding:6px 0 2px;border-bottom:1px solid var(--sand-border);margin-top:4px;">
-      ■ ${areaShort}</div>`;
+    // セクション見出し：エリア名を大きく＋そのエリアの残室数を表示
+    const areaRemain=list.filter(e=>_normalizeCleaningStatus(e.d.status)!=='completed').length;
+    html+=`<div class="cl-area-head">
+      <span class="cl-area-name">${esc(areaShort)}</span>
+      <span class="cl-area-remain${areaRemain===0?' done':''}">${areaRemain===0?'✓ 完了':'残 '+areaRemain+'室'}</span>
+    </div>`;
 
     list.forEach(({rid,d,room})=>{
       const info=d._info||{};
@@ -256,39 +278,41 @@ function renderCleaning(){
       const isCompleted=d.status==='completed';
 
       const normStatus=_normalizeCleaningStatus(d.status);
-      const statusBtns=Object.entries(CLEANING_STATUS).map(([s,{label}])=>
-        `<button class="cl-status-btn ${s}${normStatus===s?' active':''}" onclick="setCleaningStatus('${rid}','${s}')">${label}</button>`
-      ).join('');
       const elapsed=d.startAt&&d.completedAt
         ?`（${Math.round((new Date('2000/01/01 '+d.completedAt)-new Date('2000/01/01 '+d.startAt))/60000)}分）`:'';
 
       // カードのボーダー色
       const borderColor=isStayover?'#22c55e':isCompleted?'#3d9441':'#ef4444';
       const cardBg=isStayover?'#f0fdf4':isCompleted?'#f9f9f9':'#fff';
+      // 部屋の識別記号（セクション見出しと重複するグループ名を除いた残り。例:「H」「A」「103」）
+      const roomLabel=_clRoomLabel(room);
+      // ワンタップで清掃待ち⇄清掃済を切り替える
+      const nextStatus=isCompleted?'waiting':'completed';
 
-      html+=`<div class="cl-card ${d.status}" id="cl-card-${rid}"
-        style="border-left-color:${borderColor};background:${cardBg};${isCompleted?'opacity:.7;':''}" >
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-          <span class="cl-room">${room.type}</span>
+      html+=`<div class="cl-card ${normStatus}" id="cl-card-${rid}"
+        style="border-left-color:${borderColor};background:${cardBg};" >
+        <div class="cl-card-head">
+          <span class="cl-room-code">${esc(roomLabel)}</span>
           ${isStayover
             ?'<span class="cl-badge" style="background:#dcfce7;color:#15803d;">🏠 連泊中</span>'
             :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
-        <div class="cl-guest">${esc(guest.name||'—')}　${guestCountOf(guest)}名　${info.nights||1}泊</div>
-        <div class="cl-badges">
-          ${info.hasNextBooking
-          ? `<span class="cl-badge mid">📅 次予約あり ${info.nextGuest?guestCountOf(info.nextGuest)+'名':''}</span>`
+        ${info.hasNextBooking
+          ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名）':''}</div>`
           : ''}
+        <div class="cl-guest">👤 ${esc(guest.name||'—')}（${guestCountOf(guest)}名 / ${info.nights||1}泊）</div>
+        ${(guest.charter||info.nights>=3)?`<div class="cl-badges">
           ${guest.charter?'<span class="cl-badge high">🔒 貸切</span>':''}
           ${info.nights>=3?'<span class="cl-badge">長期'+info.nights+'泊</span>':''}
+        </div>`:''}
+        <div class="cl-meta-row">
+          <span class="cl-assignee">📝 担当：${esc(d.assignedTo||'未割当')}${d.completedAt?` ／ 完了 ${esc(d.completedAt)}${elapsed}`:''}</span>
+          <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
         </div>
-        <div class="cl-status-row">${statusBtns}</div>
-        <div class="cl-assignee">担当：${esc(d.assignedTo||'未割当')}
-          ${d.startAt?` ／ 開始 ${esc(d.startAt)}`:''}
-          ${d.completedAt?` ／ 完了 ${esc(d.completedAt)}${elapsed}`:''}
-        </div>
-        <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">📝 メモ編集</button>
         ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
+        <button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
+          ${isCompleted?'✅ 清掃済（タップで戻す）':'🟦 清掃待ち（タップで完了）'}
+        </button>
       </div>`;
     });
   });
