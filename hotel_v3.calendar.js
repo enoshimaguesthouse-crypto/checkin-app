@@ -48,6 +48,14 @@ function guestCountOf(g){
   return g.guests || g.guestCount || g.totalGuests || 1;
 }
 
+// スマホ名簿の拡大縮小倍率（±ボタンで調整、localStorageに保持）
+let _calZoom=(function(){const v=parseFloat(localStorage.getItem('calZoom'));return (v>=0.5&&v<=2.5)?v:1;})();
+function calZoom(delta){
+  _calZoom=Math.min(2.5,Math.max(0.5,Math.round((_calZoom+delta)*10)/10));
+  localStorage.setItem('calZoom',_calZoom);
+  renderReg();
+}
+
 // 起動初期化中は再描画を抑制し、初期化完了時に1回だけ描画する（起動時の多重renderReg対策）
 let _suppressRenderReg=false;
 function renderReg(){
@@ -67,9 +75,10 @@ function renderReg(){
   if(!isMob){
     DAY_W=270;
   } else if(isPhone){
-    DAY_W=Math.max(210, _sw-C1-C2-28);
+    // スマホ：初期表示で2日分が見えるよう画面幅の半分を基準にし、拡大縮小(_calZoom)で調整可能
+    DAY_W=Math.round(Math.floor((_sw-C1-C2-16)/2)*_calZoom);
   } else {
-    DAY_W=Math.max(210, Math.floor((_sw-C1-C2-28)/2));
+    DAY_W=Math.round(Math.max(210, Math.floor((_sw-C1-C2-28)/2))*_calZoom);
   }
   // ヘッダー：グループ縦結合列＋部屋名列＋日付列
   const _now=new Date(),_ty=_now.getFullYear(),_tm=_now.getMonth()+1,_td=_now.getDate();
