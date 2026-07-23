@@ -727,8 +727,23 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 #mobile-stats-area.open{display:block;}
 
 /* ── スマホ最適化（768px以下） ── */
+/* スマホ名簿ズームボタン：既定は非表示、スマホ幅のみ表示 */
+#cal-zoom-ctrl{display:none;}
 @media(max-width:768px){
   body,html{min-width:0;}
+  /* 名簿の拡大縮小ボタン（右下フローティング） */
+  #cal-zoom-ctrl{
+    display:flex;flex-direction:column;gap:8px;
+    position:fixed;right:12px;bottom:16px;z-index:60;
+  }
+  #cal-zoom-ctrl button{
+    width:46px;height:46px;border-radius:50%;
+    border:none;background:rgba(24,95,165,.92);color:#fff;
+    font-size:26px;font-weight:700;line-height:1;
+    box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #cal-zoom-ctrl button:active{background:rgba(24,95,165,1);transform:scale(.94);}
   /* mainのpadding削除：テーブルを端まで表示 */
   .main{padding:0!important;}
   /* register topbar をスクロール中も固定 */
@@ -1036,27 +1051,27 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .pos-quick:hover{background:var(--ocean-light);}
 /* スマホ・タブレット：会計内容（合計＋支払いボタン）を画面下部に固定して常に見えるように */
 @media(max-width:1024px){
-  .pos-order-wrap{flex-direction:column;height:auto;gap:10px;padding-bottom:calc(52vh + 20px);}
+  .pos-order-wrap{flex-direction:column;height:auto;gap:10px;padding-bottom:calc(44vh + 20px);}
   .pos-left{flex:none;width:100%;}
   .pos-tiles{overflow:visible;}
   .pos-right{
     position:fixed;left:0;right:0;bottom:0;z-index:60;
-    max-width:none;max-height:52vh;
+    max-width:none;max-height:44vh;
     border:1.5px solid var(--sand-border);border-bottom:none;
     border-radius:14px 14px 0 0;
     box-shadow:0 -6px 20px rgba(28,40,51,.16);
   }
-  /* スマホ：会計内容の視認性を上げるため文字を約2倍・行を拡大 */
-  .pos-cart-head{padding:12px 16px;font-size:22px;}
-  .pos-cart{padding:4px 12px;}
-  .pos-cart-row{padding:14px 4px;gap:12px;}
-  .pos-cart-row .pcr-name{font-size:24px;}
-  .pos-cart-row .pcr-price{font-size:22px;width:auto;white-space:nowrap;margin-left:6px;}
-  .pos-cart-row .pcr-qty{font-size:24px;width:34px;}
-  .pos-qbtn{width:42px;height:42px;font-size:26px;border-radius:8px;}
-  .pos-cart-row .pcr-del{font-size:30px;padding:0 8px;}
-  .pos-cart-empty{font-size:20px;line-height:1.6;}
-  .pos-cart-foot{padding:12px 14px;gap:12px;}
-  .pos-cart-total span:first-child{font-size:22px;}
-  .pos-cart-total span:last-child{font-size:40px;}
+  /* スマホ：会計内容はタップしやすさを保ちつつ、視認性優先で適度なサイズに */
+  .pos-cart-head{padding:8px 14px;font-size:16px;}
+  .pos-cart{padding:2px 12px;}
+  .pos-cart-row{padding:9px 4px;gap:10px;}
+  .pos-cart-row .pcr-name{font-size:16px;}
+  .pos-cart-row .pcr-price{font-size:15px;width:auto;white-space:nowrap;margin-left:6px;}
+  .pos-cart-row .pcr-qty{font-size:16px;width:28px;}
+  .pos-qbtn{width:34px;height:34px;font-size:20px;border-radius:8px;}
+  .pos-cart-row .pcr-del{font-size:22px;padding:0 6px;}
+  .pos-cart-empty{font-size:14px;line-height:1.6;padding:18px 0;}
+  .pos-cart-foot{padding:10px 14px;gap:8px;}
+  .pos-cart-total span:first-child{font-size:15px;}
+  .pos-cart-total span:last-child{font-size:26px;}
 }
