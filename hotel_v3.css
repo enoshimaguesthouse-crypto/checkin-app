@@ -667,15 +667,17 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 /* =====================================================
    駐車場カレンダー
    ===================================================== */
-.park-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:1.25rem;}
+.park-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:1.25rem;}
 .park-day-header{text-align:center;font-size:10.5px;color:var(--muted);padding:5px 0;font-weight:600;letter-spacing:.04em;}
 .park-cell{
   min-height:76px;
+  min-width:0;
   border:1.5px solid var(--sand-border);
   border-radius:var(--radius-sm);
   padding:5px;background:var(--white);
   font-size:10px;cursor:pointer;
   transition:background .15s,box-shadow .15s;
+  overflow:hidden;
 }
 .park-cell:hover{background:var(--sand);box-shadow:var(--shadow-sm);}
 .park-cell.today{border-color:var(--ocean);background:var(--ocean-light);}
@@ -701,6 +703,16 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
   transition:background .15s,border-color .15s;
 }
 .park-nav-btn:hover{background:var(--ocean-light);border-color:var(--ocean);color:var(--ocean);}
+/* スマホ：駐車場・レンタルスペースカレンダーの7列を画面幅に収める */
+@media(max-width:640px){
+  .park-grid{gap:3px;}
+  .park-day-header{font-size:9px;padding:3px 0;}
+  .park-cell{min-height:56px;padding:3px 2px;font-size:8px;}
+  .park-date{font-size:11px;margin-bottom:1px;}
+  .park-price{font-size:7.5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .park-entry{font-size:8.5px;padding:2px 3px;margin-bottom:1px;border-left-width:2px;}
+  .park-hol{font-size:7.5px;}
+}
 
 /* =====================================================
    Aランク固定パネル
@@ -989,13 +1001,23 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .cl-progress-fill{height:100%;background:linear-gradient(90deg,#4ade80,#16a34a);border-radius:99px;transition:width .45s ease;}
 .cl-progress-sub{font-size:12px;color:var(--muted);margin-top:6px;}
 .cl-progress-sub b{color:#b45309;font-size:14px;}
-/* スマホ：1カラム＆さらに大きく */
+/* スマホ：2カラムでコンパクトに表示 */
 @media(max-width:640px){
-  #cleaning-cards{grid-template-columns:1fr!important;gap:14px!important;}
-  .cl-room-code{font-size:34px;}
-  .cl-toggle-btn{min-height:68px;font-size:18px;}
-  .cl-area-name{font-size:18px;}
-  .cl-progress-count{font-size:22px;}
+  #cleaning-cards{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+  .cl-card{padding:10px 10px;}
+  .cl-room-code{font-size:24px;}
+  .cl-card-head{gap:5px;margin-bottom:4px;}
+  .cl-guest{font-size:11px;margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cl-badges{gap:4px;margin-bottom:5px;}
+  .cl-badge{font-size:10px;padding:2px 7px;}
+  .cl-next-alert{font-size:11px;padding:5px 8px;margin-bottom:6px;}
+  .cl-meta-row{margin-bottom:6px;gap:4px;}
+  .cl-assignee{font-size:11px;}
+  .cl-memo-btn{font-size:11px;padding:5px 9px;}
+  .cl-toggle-btn{min-height:48px;font-size:14px;padding:6px;}
+  .cl-area-name{font-size:15px;}
+  .cl-area-head{grid-column:1/-1;padding:10px 2px 5px;}
+  .cl-progress-count{font-size:20px;}
 }
 
 /* ── レンタルスペース ── */
