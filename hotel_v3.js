@@ -1963,9 +1963,10 @@ function renderParking(){
     const price=parkPrice(y,m,d);
     const dowCls=dow===0||hol?'sun':dow===6?'sat':'';
     const holCls=hol?'holiday':'';
+    const todayCls=(dk===dateKey(new Date().getFullYear(),new Date().getMonth()+1,new Date().getDate()))?'today':'';
     const entries=(parkData[dk]||[]).filter(e=>e.type!=='surf-auto');
     entries.forEach(e=>{monthTotal+=(e.price||0);});
-    html+=`<div class="park-cell ${dowCls} ${holCls}" ondblclick="openParkAdd('${dk}')">`;
+    html+=`<div class="park-cell ${dowCls} ${holCls} ${todayCls}" ondblclick="openParkAdd('${dk}')">`;
     html+=`<div class="park-date">${d}</div>`;
     if(hol)html+=`<div class="park-hol">${HOLIDAY_NAMES[dk]||'祝'}</div>`;
     html+=`<div class="park-price">¥${price.toLocaleString()}/日</div>`;
@@ -2109,8 +2110,9 @@ function renderRental(){
     const dk=dateKey(y,m,d);
     const hol=HOLIDAYS_2026.has(dk);
     const dowCls=dow===0||hol?'sun':dow===6?'sat':'';
+    const todayCls=(dk===dateKey(new Date().getFullYear(),new Date().getMonth()+1,new Date().getDate()))?'today':'';
     const dayRes=monthList.filter(r=>rentalDateOf(r)===dk);
-    html+=`<div class="park-cell ${dowCls} ${hol?'holiday':''}" ondblclick="openRentalAdd('${dk}')">`;
+    html+=`<div class="park-cell ${dowCls} ${hol?'holiday':''} ${todayCls}" ondblclick="openRentalAdd('${dk}')">`;
     html+=`<div class="park-date">${d}</div>`;
     if(hol)html+=`<div class="park-hol">${HOLIDAY_NAMES[dk]||'祝'}</div>`;
     dayRes.forEach(r=>{

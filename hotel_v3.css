@@ -680,7 +680,8 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
   overflow:hidden;
 }
 .park-cell:hover{background:var(--sand);box-shadow:var(--shadow-sm);}
-.park-cell.today{border-color:var(--ocean);background:var(--ocean-light);}
+.park-cell.today{border:2px solid #0e7490;background:#f4fbfc;}
+.park-cell.today .park-date{color:#0e7490;}
 .park-cell.other-month{opacity:.3;pointer-events:none;}
 .park-cell.holiday .park-date,.park-cell.sun .park-date{color:#c0392b;}
 .park-cell.sat .park-date{color:var(--ocean);}
