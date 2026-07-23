@@ -787,27 +787,19 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 #main-table tbody .st2{ z-index:11; }
 /* ── PIN認証オーバーレイ ── */
 #pin-overlay{position:fixed;top:0;right:0;bottom:0;left:0;background:linear-gradient(135deg,#0f3443 0%,#1a5276 100%);z-index:99999;display:flex;align-items:center;justify-content:center;}
-#pin-box{background:#fff;border-radius:20px;padding:32px 28px;width:min(340px,calc(100vw - 32px));text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);box-sizing:border-box;}
+#pin-box{background:#fff;border-radius:20px;padding:32px 28px;width:min(300px,calc(100vw - 32px));text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);box-sizing:border-box;}
 #pin-logo{font-size:32px;margin-bottom:6px;}
 #pin-title{font-size:15px;font-weight:700;color:#1a3a4a;margin-bottom:3px;}
 #pin-sub{font-size:11px;color:#999;margin-bottom:20px;}
-#pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:10px;}
-.pin-dot{width:15px;height:15px;border-radius:50%;background:#e0e0e0;transition:.15s;}
+#pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:8px;}
+.pin-dot{width:13px;height:13px;border-radius:50%;background:#e0e0e0;transition:.15s;}
 .pin-dot.filled{background:#1a5276;}
 #pin-error{font-size:12px;color:#e74c3c;height:18px;margin-bottom:10px;font-weight:600;}
-#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.pin-key{background:#f5f7fa;border:none;border-radius:14px;padding:22px;font-size:26px;font-weight:600;cursor:pointer;transition:.1s;color:#1a3a4a;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.pin-key{background:#f5f7fa;border:none;border-radius:10px;padding:15px;font-size:20px;font-weight:600;cursor:pointer;transition:.1s;color:#1a3a4a;font-family:inherit;}
 .pin-key:hover{background:#e0eaf5;}
 .pin-key:active{background:#c8d8ec;transform:scale(.95);}
-.pin-key.del{font-size:20px;color:#888;}
-/* スマホ：さらに大きく・タップしやすく */
-@media(max-width:480px){
-  #pin-box{width:min(400px,calc(100vw - 24px));padding:32px 22px;}
-  .pin-key{padding:26px;font-size:30px;border-radius:16px;}
-  .pin-key.del{font-size:22px;}
-  #pin-pad{gap:14px;}
-  .pin-dot{width:16px;height:16px;}
-}
+.pin-key.del{font-size:16px;color:#888;}
 /* #role-badge はサイドバー下部のログアウトボタン（.nitem 共通スタイルを使用） */
 @media(max-width:900px){
   body.role-admin .main,body.role-cleaning .main,body.role-reception .main,body.role-watanabe .main{padding-bottom:56px;}
