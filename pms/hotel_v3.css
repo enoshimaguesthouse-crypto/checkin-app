@@ -1002,23 +1002,32 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .cl-progress-fill{height:100%;background:linear-gradient(90deg,#4ade80,#16a34a);border-radius:99px;transition:width .45s ease;}
 .cl-progress-sub{font-size:12px;color:var(--muted);margin-top:6px;}
 .cl-progress-sub b{color:#b45309;font-size:14px;}
-/* スマホ：2カラムでコンパクトに表示 */
+/* スマホ：2カラムでコンパクトに表示（余白を確保して視認性を優先） */
 @media(max-width:640px){
-  #cleaning-cards{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  .cl-card{padding:10px 10px;}
+  #page-cleaning{padding:10px 10px 16px!important;}
+  #cleaning-summary{margin-bottom:14px!important;}
+  #cleaning-cards{grid-template-columns:1fr 1fr!important;gap:12px!important;}
+  .cl-card{padding:12px 12px;}
   .cl-room-code{font-size:24px;}
-  .cl-card-head{gap:5px;margin-bottom:4px;}
-  .cl-guest{font-size:11px;margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cl-badges{gap:4px;margin-bottom:5px;}
-  .cl-badge{font-size:10px;padding:2px 7px;}
-  .cl-next-alert{font-size:11px;padding:5px 8px;margin-bottom:6px;}
-  .cl-meta-row{margin-bottom:6px;gap:4px;}
+  .cl-card-head{gap:5px;margin-bottom:6px;}
+  .cl-guest{font-size:11px;margin:0 0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cl-badges{gap:5px;margin-bottom:7px;}
+  .cl-badge{font-size:10px;padding:3px 8px;}
+  .cl-next-alert{font-size:11px;padding:6px 9px;margin-bottom:8px;}
+  .cl-meta-row{margin-bottom:8px;gap:5px;}
   .cl-assignee{font-size:11px;}
-  .cl-memo-btn{font-size:11px;padding:5px 9px;}
+  .cl-memo-btn{font-size:11px;padding:6px 10px;}
   .cl-toggle-btn{min-height:48px;font-size:14px;padding:6px;}
   .cl-area-name{font-size:15px;}
-  .cl-area-head{grid-column:1/-1;padding:10px 2px 5px;}
+  .cl-area-head{grid-column:1/-1;padding:16px 2px 8px;margin-top:10px;}
   .cl-progress-count{font-size:20px;}
+  .cl-progress-wrap{padding:12px 14px;}
+  /* ⭐ 今月の重点清掃：見出し行を折り返し可能にし、文字サイズを縮小して画面幅に収める */
+  #priority-cleaning-preview > div:first-child{flex-wrap:wrap!important;gap:6px!important;}
+  #priority-cleaning-preview div[style*="font-size:14px;font-weight:700;color:#7a4f00"]{
+    font-size:12px!important;white-space:normal!important;line-height:1.35;
+  }
+  #priority-cleaning-preview .btn-xs{font-size:10px!important;padding:4px 8px!important;}
 }
 
 /* ── レンタルスペース ── */
