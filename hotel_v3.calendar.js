@@ -200,7 +200,7 @@ function renderReg(){
       // ── 部屋名列 ──
       const roomLabel=isSingle?'':(room.label||shortName(room.type));
       const _rs=roomSettings[room.id]||{};
-      const _kc=_rs.keycode||'';
+      const _kc=_rs.roomCode||''; // 部屋詳細＞「部屋：暗証番号」（各部屋固有のドア暗証番号）
       row+=`<td class="st2 ri" style="width:${C2}px;min-width:${C2}px;max-width:${C2}px;padding:${isMob?'2px 3px':'4px 6px'};vertical-align:middle;left:${C1}px;overflow:hidden;background:var(--white);">`
         +`<span style="font-size:${isMob?'9':'10'}px;font-weight:600;color:${grp.color};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${roomLabel}</span>`
         +(_kc?`<span style="font-size:9px;color:#888;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">🔑${_kc}</span>`:'')
