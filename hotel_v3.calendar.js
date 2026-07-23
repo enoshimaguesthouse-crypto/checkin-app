@@ -75,8 +75,8 @@ function renderReg(){
   if(!isMob){
     DAY_W=270;
   } else if(isPhone){
-    // スマホ：初期表示で2日分が見えるよう画面幅の半分を基準にし、拡大縮小(_calZoom)で調整可能
-    DAY_W=Math.round(Math.floor((_sw-C1-C2-16)/2)*_calZoom);
+    // スマホ：初期表示で1日分が見える幅を基準にし、拡大縮小(_calZoom)で調整可能
+    DAY_W=Math.round(250*_calZoom);
   } else {
     DAY_W=Math.round(Math.max(210, Math.floor((_sw-C1-C2-28)/2))*_calZoom);
   }
