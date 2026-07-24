@@ -1004,14 +1004,17 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .cl-progress-sub b{color:#b45309;font-size:14px;}
 /* PC：清掃予定表のカードを横5列に固定表示 */
 @media(min-width:1200px){
-  #cleaning-cards{grid-template-columns:repeat(5,1fr)!important;}
+  #cleaning-cards{grid-template-columns:repeat(5,minmax(0,1fr))!important;}
 }
 /* スマホ：2カラムでコンパクトに表示（余白を確保して視認性を優先） */
 @media(max-width:640px){
-  #page-cleaning{padding:14px 14px 20px!important;}
+  #page-cleaning{padding:14px 14px 20px!important;box-sizing:border-box;}
   #cleaning-summary{margin-bottom:18px!important;}
-  #cleaning-cards{grid-template-columns:1fr 1fr!important;gap:16px!important;}
-  .cl-card{padding:14px 13px;}
+  /* minmax(0,1fr)でトラックの最小幅を0にし、カード内の長いテキストで右側がはみ出すのを防止 */
+  #cleaning-cards{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:16px!important;}
+  .cl-card{padding:14px 13px;min-width:0;}
+  .cl-next-alert{white-space:normal;}
+  .cl-assignee,.cl-memo-btn{white-space:normal;}
   .cl-room-code{font-size:24px;}
   .cl-card-head{gap:5px;margin-bottom:8px;}
   .cl-guest{font-size:11px;margin:0 0 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
