@@ -530,17 +530,18 @@ function renderPriorityCleaningPreview(){
     <button class="btn btn-xs" onclick="showP('cleaning-focus',document.getElementById('nitem-cleaning-focus'))" style="margin-left:auto;font-size:11px;">すべて見る →</button>
   </div>
   <div style="display:flex;flex-direction:column;gap:6px;">`;
+  const isAdmin=currentRole==='admin';
   items.forEach(it=>{
     const alert=isPriorityCleaningAlert(it);
     const days=getPriorityCleaningDaysSince(it);
     const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐',color:'#aaa'};
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border:1.5px solid ${alert?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${alert?'#e67e6a':cat.color};border-radius:8px;">
-      <div class="pc-check ${it.history&&it.history.includes(todayKey)?'done':''}" onclick="togglePriorityCleaningDone(${it.id})" style="flex-shrink:0;" title="今日実施したことを記録"></div>
+      ${isAdmin?`<div class="pc-check ${it.history&&it.history.includes(todayKey)?'done':''}" onclick="togglePriorityCleaningDone(${it.id})" style="flex-shrink:0;" title="今日実施したことを記録"></div>`:''}
       <span style="font-size:15px;flex-shrink:0;">${cat.icon}</span>
-      <span style="font-size:14px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.name)}</span>
-      ${it.place?`<span style="font-size:12px;color:var(--muted);flex-shrink:0;white-space:nowrap;">${esc(it.place)}</span>`:''}
-      <span style="font-size:11px;background:#eef5f4;color:#3b6c69;padding:2px 8px;border-radius:99px;font-weight:600;flex-shrink:0;white-space:nowrap;">${it.frequency}</span>
-      ${alert?`<span style="font-size:11px;background:#e67e6a;color:#fff;padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
+      <span style="font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.name)}</span>
+      ${isAdmin&&it.place?`<span style="font-size:12px;color:var(--muted);flex-shrink:0;white-space:nowrap;">${esc(it.place)}</span>`:''}
+      ${isAdmin?`<span style="font-size:11px;background:#eef5f4;color:#3b6c69;padding:2px 8px;border-radius:99px;font-weight:600;flex-shrink:0;white-space:nowrap;">${it.frequency}</span>`:''}
+      ${isAdmin&&alert?`<span style="font-size:11px;background:#e67e6a;color:#fff;padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
     </div>`;
   });
   html+=`</div>`;
