@@ -123,7 +123,7 @@ const PLAN_RULES=[
   {keyword:'和食',     icon:'🍙', noteTag:'和食',               checkboxId:'f-wshoku', autoAction:null, cellBorder:'#FF8F00', cellBg:'#FFF8E1'},
   {keyword:'洋食',     icon:'🍳', noteTag:'洋食',               checkboxId:'f-yshoku', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF'},
   {keyword:'レイトチェックアウト', icon:'🌙', noteTag:'レイトチェックアウト', checkboxId:'f-late',   autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6'},
-  {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#E65100', cellBg:'#FFF3E0'},
+  {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#E53935', cellBg:'#FFF5F5'},
 ];
 
 // 月別・合計宿泊者数（各月のXX日時点の累計宿泊者数）— 実データ投入
