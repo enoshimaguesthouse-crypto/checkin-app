@@ -468,6 +468,16 @@ input.needs-input::placeholder { color:#d08a3a; }
 /* 読取成功：枠と四隅を緑（Success）へ。中央に✓を表示 */
 /* パスポート用：横長の枠（顔写真ページに合わせる） */
 .pp-frame { width:min(86%, 380px); aspect-ratio:3/2; }
+/* ── 本人確認用：半透明の人型シルエット（顔・肩）ガイド ──
+   プレビュー上のオーバーレイのみ。Canvasには描画しないため撮影画像には写り込まない。 */
+.idv-silhouette {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  height:88%; width:auto; opacity:.42; pointer-events:none;
+  filter:drop-shadow(0 0 6px rgba(0,0,0,.55));
+}
+.idv-silhouette.hidden, .pp-frame.hidden { display:none; }
+/* タブレット（横向きなど低い画面高）ではシルエットを少し小さく */
+@media (max-height:620px){ .idv-silhouette{ height:80%; } }
 .qr-frame.success { border-color:#22c55e; box-shadow:0 0 0 9999px rgba(0,0,0,0.5), 0 0 0 3px #22c55e inset; }
 .qr-frame.success .qr-corner { border-color:#22c55e; }
 .qr-frame.success .qr-check { opacity:1; transform:translate(-50%,-50%) scale(1); }
@@ -726,11 +736,23 @@ input.needs-input::placeholder { color:#d08a3a; }
       <span class="qr-corner tl"></span><span class="qr-corner tr"></span>
       <span class="qr-corner bl"></span><span class="qr-corner br"></span>
     </div>
+    <!-- 本人確認用：半透明の人型シルエット（顔＋肩）。プレビュー表示のみ・撮影画像には含まれない -->
+    <svg class="idv-silhouette hidden" id="idv-silhouette" viewBox="0 0 200 240" fill="none" aria-hidden="true">
+      <ellipse cx="100" cy="78" rx="52" ry="62" stroke="#fff" stroke-width="3.5" stroke-dasharray="9 7"/>
+      <path d="M18 240c0-45 36-72 82-72s82 27 82 72" stroke="#fff" stroke-width="3.5" stroke-dasharray="9 7" stroke-linecap="round"/>
+    </svg>
+    <!-- 撮影直後の確認用プレビュー（撮影済み画像そのもの） -->
+    <img id="idv-preview" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
   </div>
   <div class="cam-error" id="cam-error"></div>
   <div class="cam-actions">
     <button type="button" class="cam-btn cam-cancel" id="cam-cancel-btn" onclick="closeCamera()">キャンセル</button>
     <button type="button" class="cam-btn cam-shutter" id="cam-shutter-btn" onclick="capturePassport()">● 撮影</button>
+  </div>
+  <!-- 本人確認：撮影後のプレビュー確認アクション（再撮影／使用する） -->
+  <div class="cam-actions" id="idv-confirm-actions" style="display:none;">
+    <button type="button" class="cam-btn cam-cancel" id="idv-retake-btn" onclick="idvRetake()">再撮影</button>
+    <button type="button" class="cam-btn cam-shutter" id="idv-use-btn" onclick="idvUsePhoto()">使用する</button>
   </div>
 </div>
 
@@ -1031,6 +1053,38 @@ input.needs-input::placeholder { color:#d08a3a; }
   </div>
 
   <!-- ════════════════════════════════
+       SCREEN 2.5: 本人確認（物件設定＝写真撮影 のときのみ表示）
+       代表者1名につき1枚。保存スキームはパスポート写真と同一。
+  ════════════════════════════════ -->
+  <div class="screen" id="screen-identity">
+    <div class="header" style="padding:24px 0 20px;">
+      <div class="header-ja" id="hdr-title-idv">本人確認</div>
+    </div>
+    <div class="progress-container">
+      <div class="progress-steps">
+        <div class="step"><div class="step-dot completed">1</div><div class="step-line completed"></div></div>
+        <div class="step"><div class="step-dot completed">2</div><div class="step-line"></div></div>
+        <div class="step"><div class="step-dot active">3</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="idv-title">本人確認</div>
+      <div class="card-title-en">Identity Verification</div>
+      <div class="divider"></div>
+      <div class="pp-hint" id="idv-desc" style="font-size:13px;margin-bottom:14px;">本人のお顔がはっきり見えるように撮影してください。</div>
+      <button type="button" class="camera-btn" id="idv-shoot-btn" style="width:100%;justify-content:center;" onclick="openIdentityCamera()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span id="idv-shoot-label">本人確認写真を撮影</span>
+      </button>
+      <div id="idv-status"></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn-back" onclick="showScreen('screen-form')" id="btn-back-form2">← 戻る</button>
+      <button class="btn-next" id="btn-idv-next" onclick="goToConfirmFromIdentity()">確認画面へ　→</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
        SCREEN 3: 確認
   ════════════════════════════════ -->
   <div class="screen" id="screen-confirm">
@@ -1051,7 +1105,7 @@ input.needs-input::placeholder { color:#d08a3a; }
       <table class="confirm-table" id="confirmTable"></table>
     </div>
     <div class="btn-group">
-      <button class="btn-back" onclick="showScreen('screen-form')" id="btn-back-form">← 戻る</button>
+      <button class="btn-back" onclick="backFromConfirm()" id="btn-back-form">← 戻る</button>
       <button class="btn-submit" id="btn-checkin" onclick="submitCheckin()">チェックイン登録</button>
     </div>
   </div>
@@ -1137,6 +1191,14 @@ const T = {
     camTitle:'パスポートまたは在留カードを枠内に合わせてください', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
     ppErrBlur:'ピントが合っていません。文字がはっきり読めるように、もう一度撮影してください。',
     ppErrDark:'画像が暗すぎます。明るい場所で、もう一度撮影してください。',
+    idvTitle:'本人確認', idvTitleEn:'Identity Verification',
+    idvDesc:'本人のお顔がはっきり見えるように撮影してください。',
+    idvShoot:'本人確認写真を撮影', idvRetake:'再撮影', idvUse:'使用する',
+    idvCamTitle:'お顔を枠内に合わせてください',
+    idvPending:'⚠ 本人確認写真を撮影してください。', idvDone:'✓ 撮影済み',
+    idvErrRequired:'本人確認写真を撮影してください。',
+    idvErrBlur:'ピントが合っていません。お顔がはっきり見えるように、もう一度撮影してください。',
+    idvErrDark:'画像が暗すぎます。明るい場所で、もう一度撮影してください。',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -1177,6 +1239,14 @@ const T = {
     camTitle:'Please align your Passport or Residence Card within the frame.', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
     ppErrBlur:'The photo is out of focus. Please retake it so the text is clearly readable.',
     ppErrDark:'The photo is too dark. Please retake it in a brighter place.',
+    idvTitle:'Identity Verification', idvTitleEn:'Identity Verification',
+    idvDesc:'Please take a clear photo of your face.',
+    idvShoot:'Take Identity Verification Photo', idvRetake:'Retake', idvUse:'Use this photo',
+    idvCamTitle:'Please align your face within the guide.',
+    idvPending:'⚠ Please take your identity verification photo.', idvDone:'✓ Photo captured',
+    idvErrRequired:'Please take your identity verification photo.',
+    idvErrBlur:'The photo is out of focus. Please retake it so your face is clearly visible.',
+    idvErrDark:'The photo is too dark. Please retake it in a brighter place.',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -1217,6 +1287,14 @@ const T = {
     camTitle:'请将护照或在留卡对准框内。', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
     ppErrBlur:'照片对焦不清晰。请重新拍摄，确保文字清晰可读。',
     ppErrDark:'照片太暗。请在光线充足的地方重新拍摄。',
+    idvTitle:'本人确认', idvTitleEn:'Identity Verification',
+    idvDesc:'请拍摄能够清楚看到本人面部的照片。',
+    idvShoot:'拍摄本人确认照片', idvRetake:'重新拍摄', idvUse:'使用此照片',
+    idvCamTitle:'请将面部对准框内。',
+    idvPending:'⚠ 请拍摄本人确认照片。', idvDone:'✓ 已拍摄',
+    idvErrRequired:'请拍摄本人确认照片。',
+    idvErrBlur:'照片对焦不清晰。请重新拍摄，确保面部清晰可见。',
+    idvErrDark:'照片太暗。请在光线充足的地方重新拍摄。',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -1257,6 +1335,14 @@ const T = {
     camTitle:'여권 또는 재류카드를 프레임 안에 맞춰주세요.', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
     ppErrBlur:'초점이 맞지 않습니다. 글자가 선명하게 보이도록 다시 촬영해 주세요.',
     ppErrDark:'사진이 너무 어둡습니다. 밝은 곳에서 다시 촬영해 주세요.',
+    idvTitle:'본인 확인', idvTitleEn:'Identity Verification',
+    idvDesc:'얼굴이 선명하게 보이도록 촬영해 주세요.',
+    idvShoot:'본인 확인 사진 촬영', idvRetake:'다시 촬영', idvUse:'이 사진 사용',
+    idvCamTitle:'얼굴을 가이드 안에 맞춰주세요.',
+    idvPending:'⚠ 본인 확인 사진을 촬영해 주세요.', idvDone:'✓ 촬영 완료',
+    idvErrRequired:'본인 확인 사진을 촬영해 주세요.',
+    idvErrBlur:'초점이 맞지 않습니다. 얼굴이 선명하게 보이도록 다시 촬영해 주세요.',
+    idvErrDark:'사진이 너무 어둡습니다. 밝은 곳에서 다시 촬영해 주세요.',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
@@ -1591,6 +1677,8 @@ function applyLang() {
   el('contactError').textContent = t.contactError;
   el('btn-back-search').textContent = t.backBtn;
   el('btn-to-confirm').textContent = t.nextBtn;
+  // 本人確認（物件設定＝写真撮影 のときのみ使用する画面。文言は常に同期しておく）
+  renderIdentityScreen();
   // 確認
   el('confirm-title').textContent = t.confirmTitle;
   el('btn-checkin').textContent = t.checkinBtn;
@@ -2133,6 +2221,7 @@ function onGuestInput(i){
 // ═══════════════════════════════════════
 function takePassportPhoto(i){
   _pendingPhotoIndex=i;
+  _camMode='passport';
   openCamera();
 }
 
@@ -2148,13 +2237,21 @@ function _applyPassportPhoto(idx, dataUrl){
 }
 
 // ── インカメラ（前面）でライブ撮影 ──────────────────────────
-let _camStream=null;
+// _camMode: 'passport'（パスポート/在留カード・宿泊者ごと）／'identity'（本人確認・代表者1枚）
+let _camStream=null, _camMode='passport';
 async function openCamera(){
   const t=T[lang];
-  el('cam-title').textContent=t.camTitle;
+  const isIdv=(_camMode==='identity');
+  el('cam-title').textContent=isIdv?t.idvCamTitle:t.camTitle;
   el('cam-cancel-btn').textContent=t.camCancel;
   el('cam-shutter-btn').textContent=t.camCapture;
+  el('idv-retake-btn').textContent=t.idvRetake;
+  el('idv-use-btn').textContent=t.idvUse;
   el('cam-error').textContent='';
+  // ガイド表示の出し分け：パスポート＝矩形枠／本人確認＝人型シルエット
+  el('pp-frame').classList.toggle('hidden', isIdv);
+  el('idv-silhouette').classList.toggle('hidden', !isIdv);
+  _idvExitPreview(); // 前回のプレビュー状態を解除
   el('camOverlay').classList.add('active');
 
   const video=el('cam-video');
@@ -2240,14 +2337,96 @@ function capturePassport(){
   canvas.getContext('2d').drawImage(video,0,0,w,h);
   // ピンぼけ・暗すぎの場合はカメラを開いたままエラーを表示し、撮り直しを促す
   const q=_assessPhotoQuality(canvas);
+  const t=T[lang];
   if(!q.ok){
-    const t=T[lang];
-    el('cam-error').textContent=(q.reason==='dark'?t.ppErrDark:t.ppErrBlur);
+    const isIdv=(_camMode==='identity');
+    el('cam-error').textContent=(q.reason==='dark'
+      ? (isIdv?t.idvErrDark:t.ppErrDark)
+      : (isIdv?t.idvErrBlur:t.ppErrBlur));
     return;
   }
   const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+  // 本人確認：いったんプレビューを表示し「使用する／再撮影」を選ばせる
+  if(_camMode==='identity'){ _idvEnterPreview(dataUrl); return; }
   closeCamera();
   _applyPassportPhoto(idx, dataUrl);
+}
+
+// ═══════════════════════════════════════
+//  本人確認写真（代表者1名につき1枚）
+//  カメラ起動・撮影・品質判定・保存はパスポート写真の実装をそのまま流用する
+// ═══════════════════════════════════════
+let identityPhoto='';       // 撮影確定済みの本人確認写真（dataURL）
+let _idvPendingPhoto='';    // プレビュー確認中の未確定写真
+
+// 物件設定が「写真撮影」のときのみ本人確認画面を表示する
+function isIdentityRequired(){
+  return !!(tabletSettings && tabletSettings.identityVerification==='photo');
+}
+function openIdentityCamera(){ _camMode='identity'; openCamera(); }
+// プレビュー（撮影直後の確認）表示／解除。ガイドは隠し、撮影画像をそのまま見せる。
+function _idvEnterPreview(dataUrl){
+  _idvPendingPhoto=dataUrl;
+  const img=el('idv-preview');
+  img.src=dataUrl; img.style.display='';
+  el('idv-silhouette').classList.add('hidden');
+  el('cam-shutter-btn').parentElement.style.display='none';
+  el('idv-confirm-actions').style.display='';
+  el('cam-error').textContent='';
+}
+function _idvExitPreview(){
+  _idvPendingPhoto='';
+  const img=el('idv-preview');
+  if(img){ img.style.display='none'; img.removeAttribute('src'); }
+  const acts=el('idv-confirm-actions'); if(acts)acts.style.display='none';
+  const sh=el('cam-shutter-btn'); if(sh&&sh.parentElement)sh.parentElement.style.display='';
+}
+function idvRetake(){
+  _idvExitPreview();
+  el('idv-silhouette').classList.toggle('hidden', _camMode!=='identity');
+}
+function idvUsePhoto(){
+  if(!_idvPendingPhoto)return;
+  identityPhoto=_idvPendingPhoto;
+  closeCamera();
+  _idvExitPreview();
+  renderIdentityStatus();
+}
+// 撮影状況の表示（未撮影＝エラー文言／撮影済み＝サムネイル）。パスポートのppStatusHtmlと同一方式。
+function renderIdentityStatus(){
+  const t=T[lang], box=el('idv-status'); if(!box)return;
+  const btn=el('idv-shoot-label'); if(btn)btn.textContent=identityPhoto?t.idvRetake:t.idvShoot;
+  box.innerHTML = identityPhoto
+    ? `<div class="gb-pp-status done">${t.idvDone}</div><img class="gb-pp-thumb" src="${identityPhoto}" alt="identity">`
+    : `<div class="gb-pp-status pending">${t.idvPending}</div>`;
+  const grp=box.closest('.card'); if(grp)grp.classList.toggle('has-error', !identityPhoto);
+}
+// 本人確認画面の文言を現在の言語で反映
+function renderIdentityScreen(){
+  const t=T[lang];
+  const set=(id,v)=>{const e=el(id); if(e)e.textContent=v;};
+  set('hdr-title-idv', t.idvTitle);
+  set('idv-title', t.idvTitle);
+  set('idv-desc', t.idvDesc);
+  set('btn-back-form2', T[lang].backBtn || '← 戻る');
+  set('btn-idv-next', T[lang].nextBtn || '確認画面へ　→');
+  renderIdentityStatus();
+}
+// 確認画面の「戻る」：本人確認を挟む物件では本人確認画面へ戻す
+function backFromConfirm(){
+  if(isIdentityRequired()){ renderIdentityScreen(); showScreen('screen-identity'); }
+  else showScreen('screen-form');
+}
+// 本人確認画面 →「確認画面へ」：未撮影ならブロックしてエラー表示
+function goToConfirmFromIdentity(){
+  if(!identityPhoto){
+    renderIdentityStatus();
+    const box=el('idv-status');
+    try{ box.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+    return;
+  }
+  buildConfirmTable();
+  showScreen('screen-confirm');
 }
 
 function closeCamera(){
@@ -2457,6 +2636,12 @@ function goToConfirm() {
   }
   collectGuests();
   collectUpdatedGuestData();
+  // 物件設定＝写真撮影 のときは「本人確認」画面を挟む。行わない場合は従来どおり確認画面へ直行。
+  if (isIdentityRequired()) {
+    renderIdentityScreen();
+    showScreen('screen-identity');
+    return;
+  }
   buildConfirmTable();
   showScreen('screen-confirm');
 }
@@ -2478,6 +2663,12 @@ function buildConfirmTable() {
   }
   if (v('phone')) html += row(t.cfPhone, v('phone'));
   if (v('email')) html += row(t.cfEmail, v('email'));
+  // 本人確認写真（代表者1枚）：物件設定が「写真撮影」のときのみ表示
+  if (isIdentityRequired()) {
+    html += identityPhoto
+      ? `<tr><th>${t.idvTitle}</th><td><img src="${identityPhoto}" class="passport-thumb"></td></tr>`
+      : row(t.idvTitle, t.idvPending);
+  }
   // 宿泊者ごと
   finalGuests.forEach((g,i)=>{
     const typeLabel = g.residentType==='jp' ? t.residentJp : t.residentForeign;
@@ -2526,6 +2717,8 @@ async function updateHotelRegistryStatus(reservationId, newStatus){
       phone: (updatedGuestData && updatedGuestData.reservationId===targetId) ? (updatedGuestData.phone||'') : '',
       email: (updatedGuestData && updatedGuestData.reservationId===targetId) ? (updatedGuestData.email||'') : ''
     },
+    // 本人確認写真（代表者1枚・予約に1対1）。パスポート同様GAS側でDriveへ保存されIDのみJSONに残る
+    identityPhoto: identityPhoto || '',
     updatedBy: 'checkin-app'
   };
   await fetch(_hkUrl(HOTEL_DATA_GAS_URL), { method: 'POST', body: JSON.stringify(payload) });
@@ -2982,6 +3175,12 @@ function restartApp() {
   finalGuests = [];
   _submissionReg = '';
   _pendingPhotoIndex = null;
+  // 本人確認写真は次のゲストへ絶対に持ち越さない（他人の写真が保存される事故を防止）
+  identityPhoto = '';
+  _idvPendingPhoto = '';
+  _camMode = 'passport';
+  if(typeof _idvExitPreview==='function')_idvExitPreview();
+  const idvBox = el('idv-status'); if(idvBox) idvBox.innerHTML = '';
   const gc = el('guests-container'); if(gc) gc.innerHTML = '';
   const toConfirm = el('btn-to-confirm'); if(toConfirm) toConfirm.disabled = false;
   // 契約確認の一時ステートと署名をリセット（設定 contractSettings はキャッシュ保持）
