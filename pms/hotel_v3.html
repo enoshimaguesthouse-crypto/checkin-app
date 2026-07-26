@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260723j">
+<link rel="stylesheet" href="hotel_v3.css?v=20260726a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -836,8 +836,8 @@
   <!-- 上部タブ（宿泊約款／施設案内）：自動メール配信設定の送信タイミングタブと同一UI(.ms-mtab) -->
   <div id="td-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid #185FA5;flex-shrink:0;"></div>
 
-  <!-- フィルター（タブ直下）：部屋タイプ／言語 -->
-  <div style="padding:14px 2px 0;flex-shrink:0;">
+  <!-- フィルター（タブ直下）：部屋タイプ／言語。物件単位の設定タブ（本人確認）では非表示 -->
+  <div id="td-filters" style="padding:14px 2px 0;flex-shrink:0;">
     <div style="margin-bottom:10px;">
       <label class="ms-field-label">部屋タイプ</label>
       <div id="td-rtabs" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
@@ -894,6 +894,26 @@
       <div class="td-card">
         <label class="ms-field-label">外部リンクURL</label>
         <input id="td-link" placeholder="https://..." style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;" oninput="tdOnInput()">
+      </div>
+    </div>
+
+    <!-- タブ③：本人確認（物件単位の設定。部屋タイプ・言語には依存しない） -->
+    <div id="td-panel-identity" style="display:none;">
+      <div class="td-card">
+        <label class="ms-field-label">本人確認方法</label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:9px;font-size:14px;cursor:pointer;">
+            <input type="radio" name="td-idv" value="none" id="td-idv-none" style="width:16px;height:16px;"> 行わない
+          </label>
+          <label style="display:flex;align-items:center;gap:9px;font-size:14px;cursor:pointer;">
+            <input type="radio" name="td-idv" value="photo" id="td-idv-photo" style="width:16px;height:16px;"> 写真撮影
+          </label>
+        </div>
+        <div style="margin-top:12px;padding:9px 11px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:#888;line-height:1.7;">
+          「写真撮影」にすると、チェックインアプリの<b>お客様情報</b>と<b>確認</b>の間に<b>本人確認</b>画面が表示されます。<br>
+          本人確認写真は<b>代表者1名につき1枚</b>のみ撮影します（パスポート写真は従来どおり全員分必要です）。<br>
+          この設定は物件単位です（部屋タイプ・言語による切り替えはありません）。
+        </div>
       </div>
     </div>
 
@@ -1454,8 +1474,17 @@
     <div class="fl"><label>メールアドレス</label><input id="f-email" type="email" placeholder="example@email.com" style="min-width:0;width:100%;"></div>
   </div>
   <div class="mr"><div class="fl"><label>住所</label><input id="f-address" placeholder="神奈川県鎌倉市○○1-2-3"></div></div>
-  <!-- チェックイン済みのパスポート写真（開いた時にtype=searchで遅延取得） -->
-  <div class="mr" id="f-passports-row" style="display:none;"><div class="fl" style="width:100%;"><label>パスポート写真（チェックイン済み）</label><div id="f-passports" style="display:flex;flex-wrap:wrap;gap:10px;"></div></div></div>
+  <!-- チェックイン済みのパスポート写真・本人確認写真（開いた時にtype=searchで遅延取得） -->
+  <div class="mr" id="f-passports-row" style="display:none;">
+    <div class="fl" style="width:100%;">
+      <label>パスポート写真（チェックイン済み）</label>
+      <div id="f-passports" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+    </div>
+    <div class="fl" style="width:100%;">
+      <label>本人確認写真（代表者のみ）</label>
+      <div id="f-identity" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+    </div>
+  </div>
   <!-- チェックイン用QRコード（予約IDから生成したURL。画像は外部APIで描画し保存はURLのみ） -->
   <div class="mr" id="f-qr-row" style="display:none;"><div class="fl" style="width:100%;"><label>チェックイン用QRコード</label>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -1748,11 +1777,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260723j"></script>
-<script src="hotel_v3.calendar.js?v=20260723j"></script>
-<script src="hotel_v3.sync.js?v=20260723j"></script>
-<script src="hotel_v3.pos.js?v=20260723j"></script>
-<script src="hotel_v3.js?v=20260723j"></script>
+<script src="hotel_v3.cleaning.js?v=20260726a"></script>
+<script src="hotel_v3.calendar.js?v=20260726a"></script>
+<script src="hotel_v3.sync.js?v=20260726a"></script>
+<script src="hotel_v3.pos.js?v=20260726a"></script>
+<script src="hotel_v3.js?v=20260726a"></script>
 <div id="notification-container"></div>
 </body>
 </html>

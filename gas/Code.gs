@@ -40,6 +40,19 @@ function _savePassportToDrive_(dataUrl, resId, idx) {
     return getPassportFolder().createFile(blob).getId();
   } catch(e) { return null; }
 }
+// 本人確認写真もパスポートと同一スキーム（同一フォルダ・同一保存/復元関数）で扱う。
+// 代表者1枚のみのため予約レコード(guestData[key])に1対1で紐づく。
+function _saveIdentityToDrive_(dataUrl, resId) {
+  try {
+    const m = String(dataUrl||'').match(/^data:([^;]+);base64,(.*)$/);
+    if (!m) return null;
+    const mime = m[1] || 'image/jpeg';
+    const ext = (mime.indexOf('png')>=0)?'png':(mime.indexOf('webp')>=0)?'webp':'jpg';
+    const name = 'identity_' + (resId||'x') + '_' + Date.now() + '.' + ext;
+    const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), mime, name);
+    return getPassportFolder().createFile(blob).getId();
+  } catch(e) { return null; }
+}
 // ファイルID → dataURL("data:mime;base64,...")。表示用に復元。失敗時は空文字。
 function _passportDataUrl_(fileId) {
   try {
@@ -195,13 +208,19 @@ function _hydratePassportImages_(guestData) {
   if (!guestData) return;
   Object.keys(guestData).forEach(function(k){
     var g = guestData[k];
-    if (g && Array.isArray(g.guests)) {
+    if (!g) return;
+    if (Array.isArray(g.guests)) {
       g.guests.forEach(function(x){
         if (x && !x.passportImage && x.passportImageId) {
           var url = _passportDataUrl_(x.passportImageId);
           if (url) x.passportImage = url;
         }
       });
+    }
+    // 本人確認写真（予約に1枚）も同様に復元
+    if (!g.identityPhoto && g.identityPhotoId) {
+      var iurl = _passportDataUrl_(g.identityPhotoId);
+      if (iurl) g.identityPhoto = iurl;
     }
   });
 }
@@ -238,9 +257,11 @@ function stripPassportImages(guestData) {
   if (!guestData) return;
   Object.keys(guestData).forEach(k => {
     const g = guestData[k];
-    if (g && Array.isArray(g.guests)) {
+    if (!g) return;
+    if (Array.isArray(g.guests)) {
       g.guests.forEach(x => { if (x && x.passportImage) delete x.passportImage; });
     }
+    if (g.identityPhoto) delete g.identityPhoto; // 本人確認写真も軽量化のため除去（IDは保持）
   });
 }
 
@@ -250,7 +271,8 @@ function mergePassportImages(incomingGuestData, existingGuestData) {
   Object.keys(incomingGuestData).forEach(k => {
     const ig = incomingGuestData[k];
     const eg = existingGuestData[k];
-    if (ig && Array.isArray(ig.guests) && eg && Array.isArray(eg.guests)) {
+    if (!ig || !eg) return;
+    if (Array.isArray(ig.guests) && Array.isArray(eg.guests)) {
       ig.guests.forEach((guest, i) => {
         if (!guest || !eg.guests[i]) return;
         // 旧base64・新ID どちらも、incomingに無ければ既存値を保全（画像消失防止）
@@ -258,6 +280,9 @@ function mergePassportImages(incomingGuestData, existingGuestData) {
         if (!guest.passportImageId && eg.guests[i].passportImageId) guest.passportImageId = eg.guests[i].passportImageId;
       });
     }
+    // 本人確認写真も同様に保全（PMSが画像なしで保存しても消えないように）
+    if (!ig.identityPhoto   && eg.identityPhoto)   ig.identityPhoto   = eg.identityPhoto;
+    if (!ig.identityPhotoId && eg.identityPhotoId) ig.identityPhotoId = eg.identityPhotoId;
   });
 }
 
@@ -376,6 +401,11 @@ function doPost(e) {
           delete g.passportImage; // base64はJSONに残さない
         }
       });
+      // 本人確認写真（代表者1枚・予約に1対1）もDriveへ保存しIDのみJSONに残す
+      var identityPhotoId = null;
+      if (typeof payload.identityPhoto === 'string' && payload.identityPhoto.indexOf('data:') === 0) {
+        identityPhotoId = _saveIdentityToDrive_(payload.identityPhoto, targetId);
+      }
       // IDは軽量なので全レコードに保持（表示側はどのレコードからでも参照可能）
       const finalGuestsLight = finalGuests;
       // 年付きキー(y:m:r:d)/2026形式(m:r:d)の両方で正しく日付順に並べる
@@ -401,6 +431,8 @@ function doPost(e) {
         if (finalGuests.length) {
           g.guests = (k === anchorKey) ? finalGuests : finalGuestsLight;
         }
+        // 本人確認写真は予約単位。IDは軽量なので連泊の全レコードに保持する
+        if (identityPhotoId) g.identityPhotoId = identityPhotoId;
         updated++;
       });
       data.updatedAt = new Date().toISOString();

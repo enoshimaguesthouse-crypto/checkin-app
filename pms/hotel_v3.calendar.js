@@ -1195,28 +1195,42 @@ function openDataUrl(dataUrl){
 async function loadPassportPhotos(resId){
   const row=document.getElementById('f-passports-row');
   const box=document.getElementById('f-passports');
+  const idvBox=document.getElementById('f-identity');
   if(!row||!box)return;
-  box.innerHTML=''; row.style.display='none';
+  box.innerHTML=''; if(idvBox)idvBox.innerHTML=''; row.style.display='none';
   if(!resId)return;
   try{
     const res=await fetch(_withKey(GAS_URL+'?type=search&id='+encodeURIComponent(String(resId).trim())+'&t='+Date.now()));
     const data=await res.json();
     const gd=data.guestData||{};
     // 画像付きの guests 配列を持つレコード（アンカー1件）を探す
-    let guestsArr=null;
+    let guestsArr=null, identityPhoto='';
     Object.values(gd).forEach(g=>{
       if(g&&Array.isArray(g.guests)&&g.guests.some(x=>x&&x.passportImage))guestsArr=g.guests;
+      // 本人確認写真は予約に1枚。連泊で複数レコードに複製されるため最初に見つかったものを採用
+      if(g&&g.identityPhoto&&!identityPhoto)identityPhoto=g.identityPhoto;
     });
     const imgs=guestsArr?guestsArr.filter(x=>x&&x.passportImage):[];
-    if(!imgs.length)return;
-    box.innerHTML=imgs.map((x,i)=>{
+    // どちらも無ければ行ごと非表示（従来の挙動を維持）
+    if(!imgs.length&&!identityPhoto)return;
+    box.innerHTML=imgs.length?imgs.map((x,i)=>{
       const nm=((x.familyName||'')+' '+(x.givenName||'')).trim()||('宿泊者'+(i+1));
       return `<div style="text-align:center;">
         <img src="${x.passportImage}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
         <div style="font-size:10px;color:#888;margin-top:2px;">${esc(nm)}</div>
         <a href="${x.passportImage}" download="passport_${String(resId)}_${i+1}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
       </div>`;
-    }).join('');
+    }).join(''):`<div style="font-size:11px;color:#999;">パスポート写真はありません</div>`;
+    // 本人確認写真：パスポートと同サイズ・同じ拡大表示（openDataUrl）
+    if(idvBox){
+      idvBox.innerHTML=identityPhoto
+        ? `<div style="text-align:center;">
+             <img src="${identityPhoto}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
+             <div style="font-size:10px;color:#888;margin-top:2px;">代表者</div>
+             <a href="${identityPhoto}" download="identity_${String(resId)}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
+           </div>`
+        : `<div style="font-size:11px;color:#999;">本人確認写真はありません</div>`;
+    }
     row.style.display='';
   }catch(e){ console.warn('パスポート写真の取得に失敗:',e); }
 }
