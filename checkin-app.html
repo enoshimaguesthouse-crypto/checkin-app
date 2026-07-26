@@ -211,6 +211,8 @@ input.needs-input::placeholder { color:#d08a3a; }
 .gb-pp-status.pending { color:var(--red); }
 .gb-pp-status.done    { color:var(--green); }
 .gb-pp-thumb { width:100%; max-height:170px; object-fit:cover; border-radius:8px; border:1px solid var(--border); margin-top:8px; }
+/* パスポート／在留カード撮影の案内文（撮影ボタンの上に表示） */
+.pp-hint { font-size:12px; color:var(--gray); line-height:1.6; margin:2px 0 8px; }
 
 /* ── RESERVATION RESULT ── */
 .res-found {
@@ -1130,8 +1132,11 @@ const T = {
     agreeTitle: '宿泊約款の確認', agreeCheckLabel: '宿泊約款に同意します', agreeScrollHint: '最後までスクロールすると同意できます', agreeSignHint: '下の枠内にご署名ください',
     guestsTitle:'宿泊者情報', guestLabel:'宿泊者', residentJp:'日本在住', residentForeign:'外国籍',
     familyNameLabel:'氏名（姓）', givenNameLabel:'氏名（名）', natLabel:'国籍',
-    ppPhotoLabel:'パスポート写真', ppPending:'⚠ パスポートを撮影してください', ppDone:'✓ パスポート取得済み', takePhoto:'パスポートを撮影', retakePhoto2:'撮り直す',
-    camTitle:'パスポートを枠内に合わせてください', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
+    ppPhotoLabel:'パスポート または 在留カード', ppPending:'⚠ パスポートか在留カードを撮影してください', ppDone:'✓ 撮影済み', takePhoto:'パスポート・在留カードを撮影', retakePhoto2:'撮り直す',
+    ppHint:'外国籍のお客様は、パスポートまたは在留カードを撮影してください。',
+    camTitle:'パスポートまたは在留カードを枠内に合わせてください', camCapture:'● 撮影', camCancel:'キャンセル', camError:'カメラを起動できませんでした。写真を選択してください。',
+    ppErrBlur:'ピントが合っていません。文字がはっきり読めるように、もう一度撮影してください。',
+    ppErrDark:'画像が暗すぎます。明るい場所で、もう一度撮影してください。',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　検索', searchLabel: '予約ID',
@@ -1147,7 +1152,7 @@ const T = {
     errPhone: '電話番号を正しく入力してください。', errEmail: 'メールアドレスを正しく入力してください。', errRequired: '入力してください', errSelect: '選択してください',
     qrScanLabel: 'QRコードをスキャン', qrOr: 'タップしてカメラを起動', qrTitle: 'QRコードを枠内に合わせてください', qrErrCamera: 'カメラを利用できません。予約IDを入力してください。', qrErrInvalid: '無効なQRコードです。予約IDを手動で入力してください。',
     syncing: '同期中…', synced: '同期完了', syncFail: '同期に失敗しました（自動再試行）',
-    cameraBtn: 'パスポートを撮影', cameraHint: 'カメラでパスポートの顔写真ページを撮影してください',
+    cameraBtn: 'パスポート・在留カードを撮影', cameraHint: '外国籍のお客様は、パスポートまたは在留カードを撮影してください。',
     retakeBtn: '撮り直す',
     confirmTitle: '入力内容の確認', checkinBtn: 'チェックイン登録',
     completeTitle: 'チェックイン完了',
@@ -1167,8 +1172,11 @@ const T = {
     agreeTitle: 'Accommodation Terms', agreeCheckLabel: 'I agree to the terms and conditions.', agreeScrollHint: 'Scroll to the bottom to agree.', agreeSignHint: 'Please sign in the box below',
     guestsTitle:'Guests', guestLabel:'Guest', residentJp:'Japan Resident', residentForeign:'Foreign National',
     familyNameLabel:'Family Name', givenNameLabel:'Given Name', natLabel:'Nationality',
-    ppPhotoLabel:'Passport Photo', ppPending:'⚠ Please take a passport photo', ppDone:'✓ Passport captured', takePhoto:'Take Passport Photo', retakePhoto2:'Retake',
-    camTitle:'Please align your passport within the frame.', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
+    ppPhotoLabel:'Passport or Residence Card', ppPending:'⚠ Please take a photo of your Passport or Residence Card.', ppDone:'✓ Photo captured', takePhoto:'Take a photo of your Passport or Residence Card', retakePhoto2:'Retake',
+    ppHint:'Foreign guests are required to take a photo of their Passport or Residence Card.',
+    camTitle:'Please align your Passport or Residence Card within the frame.', camCapture:'● Capture', camCancel:'Cancel', camError:'Could not start the camera. Please select a photo instead.',
+    ppErrBlur:'The photo is out of focus. Please retake it so the text is clearly readable.',
+    ppErrDark:'The photo is too dark. Please retake it in a brighter place.',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
@@ -1184,7 +1192,7 @@ const T = {
     errPhone: 'Please enter a valid phone number.', errEmail: 'Please enter a valid email address.', errRequired: 'Please enter', errSelect: 'Please select',
     qrScanLabel: 'Scan QR Code', qrOr: 'Tap to open camera', qrTitle: 'Please align the QR code within the frame.', qrErrCamera: 'Camera unavailable. Please enter your reservation ID.', qrErrInvalid: 'Invalid QR code. Please enter your reservation ID manually.',
     syncing: 'Syncing…', synced: 'Synced', syncFail: 'Sync failed (retrying)',
-    cameraBtn: 'Take Passport Photo', cameraHint: 'Please take a photo of your passport ID page.',
+    cameraBtn: 'Take a photo of your Passport or Residence Card', cameraHint: 'Foreign guests are required to take a photo of their Passport or Residence Card.',
     retakeBtn: 'Retake',
     confirmTitle: 'Confirmation', checkinBtn: 'Complete Check-in',
     completeTitle: 'Check-in Complete',
@@ -1204,8 +1212,11 @@ const T = {
     agreeTitle: '住宿条款确认', agreeCheckLabel: '我同意住宿条款。', agreeScrollHint: '滚动到底部以同意。', agreeSignHint: '请在下方框内签名',
     guestsTitle:'住宿人信息', guestLabel:'住宿人', residentJp:'日本居民', residentForeign:'外国人',
     familyNameLabel:'姓', givenNameLabel:'名', natLabel:'国籍',
-    ppPhotoLabel:'护照照片', ppPending:'⚠ 请拍摄护照', ppDone:'✓ 护照已采集', takePhoto:'拍摄护照', retakePhoto2:'重新拍摄',
-    camTitle:'请将护照对准框内。', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
+    ppPhotoLabel:'护照或在留卡', ppPending:'⚠ 请拍摄您的护照或在留卡。', ppDone:'✓ 已拍摄', takePhoto:'拍摄护照或在留卡', retakePhoto2:'重新拍摄',
+    ppHint:'外籍旅客请拍摄您的护照或在留卡。',
+    camTitle:'请将护照或在留卡对准框内。', camCapture:'● 拍摄', camCancel:'取消', camError:'无法启动相机，请改为选择照片。',
+    ppErrBlur:'照片对焦不清晰。请重新拍摄，确保文字清晰可读。',
+    ppErrDark:'照片太暗。请在光线充足的地方重新拍摄。',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '🔍　搜索', searchLabel: '预约ID',
@@ -1221,7 +1232,7 @@ const T = {
     errPhone: '请输入正确的电话号码。', errEmail: '请输入正确的电子邮箱地址。', errRequired: '请输入', errSelect: '请选择',
     qrScanLabel: '扫描二维码', qrOr: '点击启动相机', qrTitle: '请将二维码对准框内。', qrErrCamera: '无法使用相机。请输入预订ID。', qrErrInvalid: '无效的二维码。请手动输入预订ID。',
     syncing: '同步中…', synced: '同步完成', syncFail: '同步失败（重试中）',
-    cameraBtn: '拍摄护照', cameraHint: '请用相机拍摄护照照片页。',
+    cameraBtn: '拍摄护照或在留卡', cameraHint: '外籍旅客请拍摄您的护照或在留卡。',
     retakeBtn: '重新拍摄',
     confirmTitle: '确认信息', checkinBtn: '完成入住',
     completeTitle: '入住完成',
@@ -1241,8 +1252,11 @@ const T = {
     agreeTitle: '숙박약관 확인', agreeCheckLabel: '숙박 약관에 동의합니다.', agreeScrollHint: '끝까지 스크롤하면 동의할 수 있습니다.', agreeSignHint: '아래 칸에 서명해 주세요',
     guestsTitle:'투숙객 정보', guestLabel:'투숙객', residentJp:'일본 거주자', residentForeign:'외국인',
     familyNameLabel:'성(姓)', givenNameLabel:'이름(名)', natLabel:'국적',
-    ppPhotoLabel:'여권 사진', ppPending:'⚠ 여권을 촬영해 주세요', ppDone:'✓ 여권 촬영 완료', takePhoto:'여권 촬영', retakePhoto2:'다시 촬영',
-    camTitle:'여권을 프레임 안에 맞춰주세요.', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
+    ppPhotoLabel:'여권 또는 재류카드', ppPending:'⚠ 여권 또는 재류카드를 촬영해 주세요.', ppDone:'✓ 촬영 완료', takePhoto:'여권 또는 재류카드를 촬영해 주세요', retakePhoto2:'다시 촬영',
+    ppHint:'외국인 고객님은 여권 또는 재류카드를 촬영해 주십시오.',
+    camTitle:'여권 또는 재류카드를 프레임 안에 맞춰주세요.', camCapture:'● 촬영', camCancel:'취소', camError:'카메라를 시작할 수 없습니다. 사진을 선택해 주세요.',
+    ppErrBlur:'초점이 맞지 않습니다. 글자가 선명하게 보이도록 다시 촬영해 주세요.',
+    ppErrDark:'사진이 너무 어둡습니다. 밝은 곳에서 다시 촬영해 주세요.',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '🔍　검색', searchLabel: '예약 ID',
@@ -1258,7 +1272,7 @@ const T = {
     errPhone: '올바른 전화번호를 입력하세요.', errEmail: '올바른 이메일 주소를 입력하세요.', errRequired: '입력해 주세요', errSelect: '선택해 주세요',
     qrScanLabel: 'QR코드 스캔', qrOr: '탭하여 카메라 실행', qrTitle: 'QR 코드를 프레임 안에 맞춰주세요.', qrErrCamera: '카메라를 사용할 수 없습니다. 예약 ID를 입력해 주세요.', qrErrInvalid: '잘못된 QR코드입니다. 예약 ID를 직접 입력해 주세요.',
     syncing: '동기화 중…', synced: '동기화 완료', syncFail: '동기화 실패 (재시도 중)',
-    cameraBtn: '여권 촬영', cameraHint: '카메라로 여권 사진 페이지를 촬영해 주세요.',
+    cameraBtn: '여권 또는 재류카드를 촬영해 주세요', cameraHint: '외국인 고객님은 여권 또는 재류카드를 촬영해 주십시오.',
     retakeBtn: '다시 촬영',
     confirmTitle: '입력 내용 확인', checkinBtn: '체크인 등록',
     completeTitle: '체크인 완료',
@@ -2027,6 +2041,7 @@ function guestFieldsHtml(i){
       </div>
       <div class="field-group">
         <label>${t.ppPhotoLabel} <span class="required-mark">*</span></label>
+        <div class="pp-hint">${t.ppHint}</div>
         <button type="button" class="camera-btn" style="width:100%;justify-content:center;" onclick="takePassportPhoto(${i})">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>${g.passportImage?t.retakePhoto2:t.takePhoto}</span>
@@ -2168,6 +2183,49 @@ async function openCamera(){
   try{ await video.play(); }catch(e){}
 }
 
+// ── 撮影画像の品質チェック（ピンぼけ・暗すぎを検出）──────────────
+// Laplacian（2次微分）の分散でシャープさを評価。値が小さいほどボケている。
+// 端末ごとの解像度差を吸収するため、グレースケール化のうえ幅320pxへ正規化してから判定する。
+// 閾値は「明らかなボケ・暗さ」のみを弾く保守的な値（正常な撮影を誤って拒否しないことを優先）。
+const _PP_BLUR_THRESHOLD=22;
+const _PP_DARK_THRESHOLD=42;
+function _assessPhotoQuality(src){
+  try{
+    const sw=src.videoWidth||src.naturalWidth||src.width;
+    const sh=src.videoHeight||src.naturalHeight||src.height;
+    if(!sw||!sh)return {ok:true};
+    const W=320, H=Math.max(1,Math.round(sh*W/sw));
+    const c=document.createElement('canvas');
+    c.width=W; c.height=H;
+    const ctx=c.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(src,0,0,W,H);
+    const d=ctx.getImageData(0,0,W,H).data;
+    const gray=new Float32Array(W*H);
+    let sum=0;
+    for(let p=0,i=0;p<d.length;p+=4,i++){
+      const v=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2];
+      gray[i]=v; sum+=v;
+    }
+    if(sum/(W*H)<_PP_DARK_THRESHOLD)return {ok:false, reason:'dark'};
+    let lSum=0,lSq=0,n=0;
+    for(let y=1;y<H-1;y++){
+      for(let x=1;x<W-1;x++){
+        const i=y*W+x;
+        const lap=4*gray[i]-gray[i-1]-gray[i+1]-gray[i-W]-gray[i+W];
+        lSum+=lap; lSq+=lap*lap; n++;
+      }
+    }
+    if(!n)return {ok:true};
+    const variance=lSq/n-(lSum/n)*(lSum/n);
+    if(variance<_PP_BLUR_THRESHOLD)return {ok:false, reason:'blur'};
+    return {ok:true};
+  }catch(e){
+    // 判定不能時は撮影を妨げない（チェックイン継続を優先）
+    console.warn('画質判定に失敗:', e);
+    return {ok:true};
+  }
+}
+
 function capturePassport(){
   const idx=_pendingPhotoIndex;
   const video=el('cam-video');
@@ -2180,6 +2238,13 @@ function capturePassport(){
   canvas.width=w; canvas.height=h;
   // 重要：プレビューはCSSでミラー表示だが、Canvasへは反転せず描画＝保存画像は正位置（OCR可読）
   canvas.getContext('2d').drawImage(video,0,0,w,h);
+  // ピンぼけ・暗すぎの場合はカメラを開いたままエラーを表示し、撮り直しを促す
+  const q=_assessPhotoQuality(canvas);
+  if(!q.ok){
+    const t=T[lang];
+    el('cam-error').textContent=(q.reason==='dark'?t.ppErrDark:t.ppErrBlur);
+    return;
+  }
   const dataUrl=canvas.toDataURL('image/jpeg',0.7);
   closeCamera();
   _applyPassportPhoto(idx, dataUrl);
@@ -2197,7 +2262,16 @@ function onPassportPhotoSelected(input){
   if(!input.files||!input.files[0])return;
   const idx=_pendingPhotoIndex;
   if(idx===null||idx===undefined||!guestsList[idx])return;
-  _resizeImageToDataUrl(input.files[0], dataUrl=>_applyPassportPhoto(idx, dataUrl));
+  _resizeImageToDataUrl(input.files[0], (dataUrl,canvas)=>{
+    // ファイル選択経路でもピンぼけ・暗すぎを判定し、該当時は保存せずアラートで撮り直しを促す
+    const q=_assessPhotoQuality(canvas);
+    if(!q.ok){
+      const t=T[lang];
+      alert(q.reason==='dark'?t.ppErrDark:t.ppErrBlur);
+      return;
+    }
+    _applyPassportPhoto(idx, dataUrl);
+  });
 }
 
 // 画像を縮小してdataURL化（従来のhandlePassportPhotoと同一ロジック）
@@ -2212,7 +2286,7 @@ function _resizeImageToDataUrl(file, cb){
       const canvas=document.createElement('canvas');
       canvas.width=w; canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
-      cb(canvas.toDataURL('image/jpeg',0.7));
+      cb(canvas.toDataURL('image/jpeg',0.7), canvas);
     };
     img.src=e.target.result;
   };
