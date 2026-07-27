@@ -4,7 +4,7 @@
 let cleaningData={};      // {roomId: {status, assignedTo, memo, startAt, completedAt, priority}}
 // ── 重点清掃項目 ──────────────────────────────────────────
 let priorityCleaningItems=[];
-let priorityCleaningSettings={defaultAlertDays:30, viewMonth:null, showThisMonthOnly:false};
+let priorityCleaningSettings={defaultAlertDays:30, viewMonth:null, showThisMonthOnly:false, categoryOrder:null};
 let nextPriorityCleaningId=1;
 const PRIORITY_CLEAN_CATEGORIES=[
   {key:'ほこり',     icon:'🌫️', color:'#a89b8a'},
@@ -619,6 +619,50 @@ function initPriorityCleaningIfEmpty(){
   priorityCleaningItems=PRIORITY_CLEAN_DEFAULTS.map((d,i)=>({id:i+1,...d,alertDays:null,order:i,history:[]}));
   nextPriorityCleaningId=priorityCleaningItems.length+1;
 }
+// ── 重点清掃：カテゴリ（ほこり・湿気カビ…）の表示順 ──────────────────
+// priorityCleaningSettings.categoryOrder にキー配列で保持。並び替えは重点清掃項目画面の
+// カテゴリ見出しをドラッグして行う。ここで確定した並びで priorityCleaningItems 自体を
+// 並べ替える（.order を振り直す）ため、清掃予定表の「今月の重点清掃」プレビュー
+//（priorityCleaningItems を .order でソートして表示）にもそのまま反映される。
+function orderedPriorityCategories(){
+  const order=priorityCleaningSettings.categoryOrder;
+  if(!Array.isArray(order)||!order.length)return PRIORITY_CLEAN_CATEGORIES;
+  const map=new Map(PRIORITY_CLEAN_CATEGORIES.map(c=>[c.key,c]));
+  const ordered=order.map(k=>map.get(k)).filter(Boolean);
+  PRIORITY_CLEAN_CATEGORIES.forEach(c=>{ if(!order.includes(c.key))ordered.push(c); }); // 新規追加カテゴリは末尾に補完
+  return ordered;
+}
+function _reorderPriorityCategories(newOrderKeys){
+  priorityCleaningSettings.categoryOrder=newOrderKeys;
+  // カテゴリごとにグルーピングし、新しいカテゴリ順に並べ替え（カテゴリ内の相対順は維持）。
+  // これにより item.order が新しいカテゴリ順を反映し、清掃予定表側のソートにも連動する。
+  const byCat={};
+  priorityCleaningItems.forEach(it=>{ (byCat[it.category]=byCat[it.category]||[]).push(it); });
+  const newList=[];
+  newOrderKeys.forEach(k=>{ (byCat[k]||[]).forEach(it=>newList.push(it)); delete byCat[k]; });
+  Object.values(byCat).forEach(arr=>arr.forEach(it=>newList.push(it))); // 未指定カテゴリは末尾に保全
+  newList.forEach((it,i)=>it.order=i);
+  priorityCleaningItems=newList;
+}
+let _pcCatDragKey=null;
+function pcCatOnDragStart(ev,key){_pcCatDragKey=key;ev.dataTransfer.effectAllowed='move';ev.currentTarget.style.opacity='0.4';}
+function pcCatOnDragEnd(ev){ev.currentTarget.style.opacity='';_pcCatDragKey=null;document.querySelectorAll('.pc-cat-drop-over').forEach(el=>el.classList.remove('pc-cat-drop-over'));}
+function pcCatOnDragOver(ev,key){ev.preventDefault();ev.dataTransfer.dropEffect='move';if(_pcCatDragKey&&_pcCatDragKey!==key)ev.currentTarget.classList.add('pc-cat-drop-over');}
+function pcCatOnDragLeave(ev){ev.currentTarget.classList.remove('pc-cat-drop-over');}
+function pcCatOnDrop(ev,targetKey){
+  ev.preventDefault();ev.currentTarget.classList.remove('pc-cat-drop-over');
+  if(_pcCatDragKey==null||_pcCatDragKey===targetKey)return;
+  const current=orderedPriorityCategories().map(c=>c.key);
+  const from=current.indexOf(_pcCatDragKey), to=current.indexOf(targetKey);
+  if(from<0||to<0)return;
+  const [moved]=current.splice(from,1);
+  current.splice(to,0,moved);
+  _reorderPriorityCategories(current);
+  _pcCatDragKey=null;
+  renderPriorityCleaning();
+  if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
+  if(typeof cloudSave==='function')cloudSave();
+}
 function getPriorityCleaningLastDate(item){
   if(!item.history||!item.history.length)return null;
   return [...item.history].sort().reverse()[0];
@@ -892,11 +936,15 @@ function renderPriorityCleaning(){
     </div>
   </div>
   <div class="pc-grid">`;
-  PRIORITY_CLEAN_CATEGORIES.forEach(cat=>{
+  orderedPriorityCategories().forEach(cat=>{
     const list=byCat[cat.key]||[];if(list.length===0)return;
     const scheduledInCat=list.filter(it=>isScheduledThisMonth(it,viewM)).length;
     html+=`<div class="pc-cat-card">
-      <div class="pc-cat-head" style="border-left:3px solid ${cat.color};padding-left:10px;">
+      <div class="pc-cat-head" style="border-left:3px solid ${cat.color};padding-left:10px;cursor:grab;"
+        draggable="true" title="ドラッグしてカテゴリの表示順を変更"
+        ondragstart="pcCatOnDragStart(event,'${cat.key}')" ondragend="pcCatOnDragEnd(event)"
+        ondragover="pcCatOnDragOver(event,'${cat.key}')" ondragleave="pcCatOnDragLeave(event)" ondrop="pcCatOnDrop(event,'${cat.key}')">
+        <div class="pc-drag">⋮⋮</div>
         <div class="pc-cat-icon">${cat.icon}</div>
         <div class="pc-cat-name">${cat.key}</div>
         <div class="pc-cat-count">${list.length}項目</div>
