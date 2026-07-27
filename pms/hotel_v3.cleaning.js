@@ -482,10 +482,10 @@ function renderCleaning(){
     <div class="cl-progress-wrap">
       <div class="cl-progress-head">
         <span class="cl-progress-count">${done} <span class="cl-progress-slash">/</span> ${total} <span class="cl-progress-unit">部屋 完了</span></span>
+        <span class="cl-progress-sub">残り <b>${counts.waiting}</b> 部屋</span>
         <span class="cl-progress-pct${allDone?' done':''}">${allDone?'🎉 全部屋 完了！':pct+'%'}</span>
       </div>
       <div class="cl-progress-bar"><div class="cl-progress-fill" style="width:${pct}%;"></div></div>
-      <div class="cl-progress-sub">残り <b>${counts.waiting}</b> 部屋</div>
     </div>`;
 
   if(orderedEntries.length===0){
@@ -578,7 +578,7 @@ function renderCleaning(){
             <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
           </div>
           ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
-          ${cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 次予約準備完了':'👉 スワイプで次予約準備完了','prep')}
+          ${cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 準備完了':'準備待ち','prep')}
         </div>`;
         return;
       }
@@ -604,7 +604,7 @@ function renderCleaning(){
           <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
         </div>
         ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
-        ${isStayover?'':cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 清掃済':'👉 スワイプで清掃完了')}
+        ${isStayover?'':cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 清掃済':'清掃待ち')}
       </div>`;
     });
   });
