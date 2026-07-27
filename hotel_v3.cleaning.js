@@ -153,11 +153,16 @@ function generateCleaningList(){
     if(CLEANING_PREP_GROUPS.includes(room.group)
        && !newMap.has(room.id)            // 当日チェックアウトなし
        && !newMap.has(room.id+'_stay')){  // 連泊中でもない
-      // cont:false ＝ その日が滞在の初日（＝当日チェックイン）
-      if(todayG && !todayG.cont && todayG.status!=='cancelled'){
+      // 当日チェックイン＝「今日ゲストがいて、昨日は別人（またはゼロ）」。
+      // cont フラグはCSV取込などで初日にも立つことがあるため、連泊判定と同じ
+      // 「昨日と同一人物か」で判断する（cont に依存しない）。
+      // 連泊アンカーを解決した effectiveTodayG を使い、氏名で照合する。
+      const todayGuest=effectiveTodayG||todayG;
+      const isStayoverToday=!!(yestG&&todayGuest&&yestG.name===todayGuest.name);
+      if(todayGuest && !isStayoverToday && todayGuest.status!=='cancelled'){
         newMap.set(room.id+'_prep',{
           room,guest:null,nights:0,hasNextBooking:true,priority:'mid',
-          nextGuest:todayG,type:'nextReservationPreparation',roomId:room.id,
+          nextGuest:todayGuest,type:'nextReservationPreparation',roomId:room.id,
         });
       }
     }
