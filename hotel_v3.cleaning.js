@@ -342,8 +342,8 @@ function renderCleaning(){
             <span class="cl-room-code">${esc(roomLabel)}</span>
             <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🛏 次予約あり</span>
           </div>
-          <div class="cl-guest">🕒 ${esc(nextTime||'時刻未定')} Check-in</div>
-          <div class="cl-guest">👤 ${esc(ng.name||'—')}（${guestCountOf(ng)}名）</div>
+          <div class="cl-next-alert">⚠️ 次予約あり（${guestCountOf(ng)}名）${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>
+          <div class="cl-guest">👤 ${esc(ng.name||'—')}</div>
           <div class="cl-badges">
             <span class="cl-badge" style="background:#dcfce7;color:#15803d;">✅ 清掃不要</span>
             <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🧳 準備のみ</span>
