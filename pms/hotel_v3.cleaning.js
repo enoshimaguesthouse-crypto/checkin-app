@@ -216,20 +216,28 @@ function saveGarbageRules(){
 
 // 清掃予定表セル内に差し込む「⭐ ゴミ回収」ブロックのHTML（該当なしなら空文字）
 // 清掃予定表の1ブロックとして単独表示（各部屋セルには出さない。重点清掃とは独立）
+// デザインは「⭐ 今月の重点清掃」プレビューと統一（見出し行＋角丸カードのリスト）。
 function renderGarbagePreview(){
   const el=document.getElementById('garbage-preview'); if(!el)return;
   const now=new Date(); const jst=new Date(now.getTime()+9*60*60*1000);
   const today=new Date(jst.getUTCFullYear(),jst.getUTCMonth(),jst.getUTCDate());
   const list=getGarbageNoticesFor(today);
   if(!list.length){ el.innerHTML=''; return; }
-  el.innerHTML=`<div class="cl-garbage">
-    <div class="cl-garbage-head">⭐ ゴミ回収</div>
-    ${list.map(n=>`<div class="cl-garbage-item ${n.when}">
-      <span class="cl-garbage-icon">${esc(n.rule.icon||'🗑')}</span>
-      <span class="cl-garbage-when">${n.when==='today'?'本日':'明日'}</span>
-      <span class="cl-garbage-name">${esc(n.rule.name||'')}</span>
-    </div>`).join('')}
-  </div>`;
+  const todayCount=list.filter(n=>n.when==='today').length;
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+    <div style="font-size:14px;font-weight:700;color:#7a4f00;">⭐ ゴミ回収${todayCount?`（本日 ${todayCount}件）`:''}</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;">`;
+  list.forEach(n=>{
+    const isToday=n.when==='today';
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border:1.5px solid ${isToday?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${isToday?'#e67e6a':'#94a3b8'};border-radius:8px;">
+      <span style="font-size:15px;flex-shrink:0;">${esc(n.rule.icon||'🗑')}</span>
+      <span style="font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.rule.name||'')}</span>
+      <span style="font-size:11px;background:${isToday?'#e67e6a':'#eef5f4'};color:${isToday?'#fff':'#3b6c69'};padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">${isToday?'本日':'明日'}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  el.innerHTML=html;
 }
 
 // 清掃対象リスト生成（当日CO予定部屋）
