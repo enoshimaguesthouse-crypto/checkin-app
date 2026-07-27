@@ -616,14 +616,65 @@ function _isJapaneseName_(name){
   return false;
 }
 
+// ひらがな・カタカナは日本語にしか存在しないため、最も確実な「日本語」の指標。
+function _hasKana_(s){ return /[ぁ-ゖァ-ヺーｦ-ﾝ]/.test(String(s||'')); }
+
+// 中国・韓国に特有の一文字姓（漢字）。日本人にも多い姓（林・高・金・石・田・安・武・江・向 等）は
+// 誤判定を避けるため意図的に除外している。簡体字・繁体字の両方を登録。
+var CN_KR_SURNAMES_ = ('李,王,张,張,刘,劉,陈,陳,杨,楊,黄,黃,赵,趙,吴,吳,周,徐,孙,孫,马,馬,朱,胡,郭,何,'+
+'罗,羅,郑,鄭,梁,谢,謝,宋,唐,许,許,韩,韓,冯,馮,邓,鄧,曹,彭,曾,董,袁,潘,于,蒋,蔣,蔡,余,杜,'+
+'叶,葉,程,苏,蘇,魏,吕,呂,丁,任,沈,姚,卢,盧,姜,崔,钟,鍾,谭,譚,陆,陸,汪,范,廖,贾,賈,夏,'+
+'韦,韋,邹,鄒,孟,熊,秦,邱,尹,薛,段,雷,侯,龙,龍,史,陶,黎,贺,賀,顾,顧,郝,龚,龔,邵,万,萬,'+
+'钱,錢,严,嚴,覃,莫,孔,汤,湯,洪,傅,蒙,冉,樊,温,溫,詹,关,關,焦,俞,阎,閻,章,鲁,魯,葛,伍,'+
+'申,卓,单,單,包,计,計,强,強,祝,甄,曲,成,游,阳,陽,裴,席,卫,衛,查,鲍,鮑,霍,翁,隋,巫,童,'+
+'朴,毛,戴,方,白,閔,민').split(',');
+
+// 日本語では使われない簡体字（これを含めば中国語圏と断定できる）
+var CN_SIMPLIFIED_ = ('张,刘,陈,杨,赵,吴,孙,马,罗,郑,谢,许,韩,冯,邓,蒋,苏,吕,卢,钟,谭,陆,贾,韦,'+
+'邹,龙,贺,顾,龚,钱,严,汤,叶,义,华,丽,伟,军,静,敏,红,艳,燕,凤,凯,杰,涛,鹏,飞,宁,'+
+'国,东,书,乐,买,亚,产,众,优,传,伤,债,倾,储,兰,关,兴,农,冲,决,况,减,凑,击,击').split(',');
+
+var _CN_SUR_SET_=null,_CN_SIMP_SET_=null;
+function _cnSets_(){
+  if(!_CN_SUR_SET_){
+    _CN_SUR_SET_={};_CN_SIMP_SET_={};
+    CN_KR_SURNAMES_.forEach(function(c){ if(c)_CN_SUR_SET_[c]=true; });
+    CN_SIMPLIFIED_.forEach(function(c){ if(c)_CN_SIMP_SET_[c]=true; });
+  }
+  return {sur:_CN_SUR_SET_,simp:_CN_SIMP_SET_};
+}
+
+// 中国語圏・韓国語圏の氏名か。漢字は日本語と同じUnicode領域のため、
+// 「漢字を含む＝日本語」とすると中国人名まで日本語と誤判定されるのを防ぐ。
+function _isCjkNonJapaneseName_(name){
+  var s=String(name||'').replace(/[\s,]/g,'');
+  if(!s)return false;
+  if(_hasKana_(s))return false;                 // かなを含めば日本語
+  var sets=_cnSets_(),k;
+  for(k=0;k<s.length;k++){ if(sets.simp[s.charAt(k)])return true; }  // 簡体字を含む
+  // 姓は先頭または末尾に置かれる（「李 春明」「彩凛 李」の両順に対応）
+  if(sets.sur[s.charAt(0)])return true;
+  if(sets.sur[s.charAt(s.length-1)])return true;
+  return false;
+}
+
 function _mailLang_(g){
   if(!g)return 'en';
   // ① スタッフによる手動上書きが最優先（自動判定が誤っていた場合の救済）
   var manual=String(g.mailLang||'').trim();
   if(manual)return manual;
-  // ② 氏名（かな漢字 or ローマ字の日本人名）／③ 電話番号の国番号
-  if(_isJapaneseName_(g.name))return 'ja';
+  var name=String(g.name||'');
+  // ② かな（ひらがな・カタカナ）を含む＝日本語で確定
+  if(_hasKana_(name))return 'ja';
+  // ③ 中国・韓国に特有の姓／簡体字を含む＝日本語にしない
+  //    （氏名は本人の言語を示す最も強い手がかりのため、電話番号より優先する）
+  if(_isCjkNonJapaneseName_(name))return 'en';
+  // ④ 漢字を含む＝日本語
+  if(_hasJapaneseChars_(name))return 'ja';
+  // ⑤ 電話番号の国番号／国内局番
   if(_isJapanesePhone_(g.phone))return 'ja';
+  // ⑥ ローマ字の日本人姓名
+  if(_isJapaneseName_(name))return 'ja';
   return 'en';
 }
 function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
