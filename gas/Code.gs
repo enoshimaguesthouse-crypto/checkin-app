@@ -188,7 +188,10 @@ function doGet(e) {
       // パスポート画像は管理者キーのみ取得可（予約IDの総当たりによる画像流出を防止）
       if (auth !== 'admin') { stripPassportImages(matches); }
       else { _hydratePassportImages_(matches); } // passportImageId → base64 に復元（PMS表示用）
-      return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [] }));
+      // 送信言語の自動判定結果を同梱（PMS側でロジックを二重実装しないため。保存JSONには影響しない）
+      var langResolved = '';
+      Object.keys(matches).forEach(function(k){ if(!langResolved) langResolved = _mailLang_(matches[k]); });
+      return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [], mailLangResolved: langResolved }));
     }
 
     // デフォルト：宿泊データ全体はPMS（管理者キー）専用
@@ -526,10 +529,99 @@ function _mailLoad_(){ return JSON.parse(getHotelFile().getBlob().getDataAsStrin
 function _mailSave_(data){ getHotelFile().setContent(JSON.stringify(data)); }
 function _msCfg_(data){ return ((data.propertySettings||{}).mailSettings)||{}; }
 
-// 言語判定：宿泊者名が日本語（ひらがな/カタカナ/漢字）を含めば日本語、それ以外は英語
+function _hasJapaneseChars_(s){ return /[぀-ヿ㐀-䶿一-鿿豈-﫿]/.test(String(s||'')); }
+// ══════════════════════════════════════════════════════════
+//  送信言語の判定
+//  予約サイト由来の「国籍」「希望言語」は誤りが多いため判定には一切使わない。
+//  優先度：①手動上書き(mailLang) → ②かな漢字 → ③電話番号の国番号 → ④日本人名 → ⑤既定(en)
+// ══════════════════════════════════════════════════════════
+
+// 日本人の姓（ローマ字）。姓は名より判別力が高いため主判定に使う。
+// 表記ゆれ（SATO/SATOH/SATOU 等）は _normJpRomaji_ で吸収するため代表形のみ登録。
+var JP_SURNAMES_ = ('SATO,SUZUKI,TAKAHASHI,TANAKA,WATANABE,ITO,YAMAMOTO,NAKAMURA,KOBAYASHI,KATO,'+
+'YOSHIDA,YAMADA,SASAKI,YAMAGUCHI,MATSUMOTO,INOUE,KIMURA,SHIMIZU,ABE,IKEDA,'+
+'HASHIMOTO,YAMASHITA,ISHIKAWA,NAKAJIMA,MAEDA,FUJITA,OGAWA,GOTO,OKADA,HASEGAWA,'+
+'MURAKAMI,KONDO,ISHII,SAITO,SAKAMOTO,ENDO,AOKI,FUJII,NISHIMURA,FUKUDA,'+
+'OTA,MIURA,FUJIWARA,OKAMOTO,MATSUDA,NAKAGAWA,NAKANO,HARADA,ONO,TAMURA,'+
+'TAKEUCHI,KANEKO,WADA,NAKAYAMA,ISHIDA,UEDA,MORITA,HARA,SHIBATA,SAKAI,'+
+'KUDO,YOKOYAMA,MIYAZAKI,MIYAMOTO,UCHIDA,TAKAGI,ANDO,TANIGUCHI,MARUYAMA,IMAI,'+
+'TAKADA,FUJIMOTO,TAKENAKA,MURAYAMA,MASUDA,KOJIMA,IWASAKI,KUBO,MATSUI,CHIBA,'+
+'IWATA,SUGIYAMA,OTSUKA,HIRANO,KOIKE,HIRAI,NOGUCHI,MATSUO,KIKUCHI,YASUDA,'+
+'SUGAWARA,HIRATA,OZAWA,NOMURA,KAWAKAMI,KAWAGUCHI,YOSHIKAWA,MORI,ARAI,HONDA,'+
+'KAWASAKI,SHIMADA,YAMAZAKI,YOSHIMURA,NISHIDA,KATAYAMA,MIZUNO,HOSHINO,ICHIKAWA,ARAKI,'+
+'KAWAMURA,NAKATA,MATSUOKA,OGURA,HATTORI,HIGUCHI,YOSHINO,KURODA,SAKURAI,NARITA,'+
+'MIYATA,IIDA,TSUCHIYA,KAWANO,TERADA,NAKASHIMA,OSHIMA,UENO,SUGIMOTO,KUROKI,'+
+'YAMANAKA,FURUKAWA,OIKAWA,TAKEDA,NAGAI,HAYASHI,KANDA,KITAMURA,YAMAUCHI,ASANO,'+
+'MOCHIZUKI,NISHIYAMA,SHIRAISHI,OKUDA,TSUKAMOTO,HIROSE,KAWABATA,SAKUMA,TOMITA,ODA,'+
+'HIRAYAMA,FUKUSHIMA,NAKAO,YOKOTA,KAWASHIMA,MATSUNAGA,SHINODA,TAKAYAMA,UMEDA,KANAZAWA').split(',');
+
+// 日本人の名（ローマ字）。KEN/ANNA/ERIKA/JOE/MARIA など海外でも一般的な綴りは
+// 誤判定を防ぐため意図的に除外している（姓のマッチングを優先する方針）。
+var JP_GIVEN_NAMES_ = ('TAITO,KENJI,YUKA,MIZUKI,HARUKA,AYAKA,TAKUMI,KAZUYA,SHOTA,YUKI,'+
+'HIROSHI,TAKESHI,SATOSHI,TSUYOSHI,KAZUKI,DAIKI,SHOHEI,YUTA,KOSUKE,RYOTA,'+
+'SHINJI,TETSUYA,NAOKI,TOMOYA,YUSUKE,KEISUKE,TAKAHIRO,MASASHI,HIDEKI,KATSUYA,'+
+'NOBUYUKI,TOSHIYUKI,YOSHIHIRO,MASAYUKI,TAKAYUKI,KAZUHIRO,MITSURU,SUSUMU,MAKOTO,OSAMU,'+
+'MINORU,ISAMU,MASARU,NOBORU,YUJI,KOJI,SHOJI,SACHIKO,YOSHIKO,KEIKO,'+
+'MICHIKO,NORIKO,HIROKO,KUMIKO,TOMOKO,YUKIKO,NAOKO,MAYUMI,AYUMI,MEGUMI,'+
+'HITOMI,SAORI,MISAKI,CHIHARU,CHIAKI,MADOKA,KAORI,YUKARI,AKANE,ASUKA,'+
+'NATSUKI,TSUBASA,KAEDE,HINATA,SOTA,HARUTO,YAMATO,KENTA,RYUSEI,TATSUYA,'+
+'MASAHIRO,KIYOSHI,TADASHI,YASUO,NOBUO,TERUO,KATSUMI,FUMIKO,ETSUKO,JUNKO').split(',');
+
+// ローマ字の表記ゆれを吸収（長音: SATOH/SATOU→SATO, OHNO/OONO→ONO）
+function _normJpRomaji_(s){
+  var t=String(s||'').toUpperCase().replace(/[^A-Z]/g,'');
+  t=t.replace(/OU/g,'O').replace(/OH/g,'O').replace(/UU/g,'U');
+  t=t.replace(/([AEIOU])\1+/g,'$1');
+  return t;
+}
+var _JP_SUR_SET_=null, _JP_GIV_SET_=null;
+function _jpNameSets_(){
+  if(!_JP_SUR_SET_){
+    _JP_SUR_SET_={}; _JP_GIV_SET_={};
+    JP_SURNAMES_.forEach(function(n){ var k=_normJpRomaji_(n); if(k)_JP_SUR_SET_[k]=true; });
+    JP_GIVEN_NAMES_.forEach(function(n){ var k=_normJpRomaji_(n); if(k)_JP_GIV_SET_[k]=true; });
+  }
+  return {sur:_JP_SUR_SET_, giv:_JP_GIV_SET_};
+}
+
+// 【判定1】電話番号の国番号／国内局番形式が日本かどうか。
+// 国番号なしの他国番号を誤検出しないよう、+81 は明示指定時のみ採用する。
+function _isJapanesePhone_(phone){
+  var s=String(phone||'').replace(/[\s().-]/g,'');
+  if(!s)return false;
+  if(/^(\+81|0081)/.test(s))return true;        // 国番号つき（+81…）
+  var d=s.replace(/\D/g,'');
+  if(/^0[789]0\d{8}$/.test(d))return true;      // 携帯 090/080/070（11桁）
+  if(/^050\d{8}$/.test(d))return true;          // IP電話 050（11桁）
+  if(/^0\d{9}$/.test(d))return true;            // 固定 03/06/045/0466 等（10桁）
+  return false;
+}
+
+// 【判定2】氏名（ローマ字）が日本人名か。姓のマッチングを重視する。
+function _isJapaneseName_(name){
+  var raw=String(name||'').trim();
+  if(!raw)return false;
+  if(_hasJapaneseChars_(raw))return true;   // かな・漢字を含む＝日本語表記
+  var sets=_jpNameSets_();
+  var parts=raw.split(/[\s,]+/).filter(function(p){return p;});
+  if(!parts.length)return false;
+  var i;
+  // ① 姓辞書と一致する語があれば日本人（姓は判別力が高い）
+  for(i=0;i<parts.length;i++){ if(sets.sur[_normJpRomaji_(parts[i])])return true; }
+  // ② 姓が一致しない場合のみ、日本特有の名を確認（辞書は保守的に限定）
+  for(i=0;i<parts.length;i++){ if(sets.giv[_normJpRomaji_(parts[i])])return true; }
+  return false;
+}
+
 function _mailLang_(g){
-  var name=String((g&&g.name)||'');
-  return /[぀-ヿ㐀-䶿一-鿿豈-﫿]/.test(name) ? 'ja' : 'en';
+  if(!g)return 'en';
+  // ① スタッフによる手動上書きが最優先（自動判定が誤っていた場合の救済）
+  var manual=String(g.mailLang||'').trim();
+  if(manual)return manual;
+  // ② 氏名（かな漢字 or ローマ字の日本人名）／③ 電話番号の国番号
+  if(_isJapaneseName_(g.name))return 'ja';
+  if(_isJapanesePhone_(g.phone))return 'ja';
+  return 'en';
 }
 function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
 function _roomNo_(data,roomId){ var r=(data.rooms||[]).filter(function(x){return String(x.id)===String(roomId);})[0]; return r?(r.no||String(roomId)):String(roomId); }

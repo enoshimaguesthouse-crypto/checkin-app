@@ -1078,10 +1078,42 @@ function _fmtMailDt(iso){
   }catch(e){return iso;}
 }
 
+// 送信言語の手動上書き。'' なら自動判定（氏名・電話番号）に戻す。
+// 判定ロジック本体はGAS側（_mailLang_）にあり、ここでは上書き値の保存のみ行う。
+function setMailLangOverride(v){
+  const g=guestData[editKey];
+  if(!g)return;
+  if(v)g.mailLang=v; else delete g.mailLang;
+  const hint=document.getElementById('f-mail-lang-auto');
+  if(hint)hint.textContent=v?'（手動指定）':'（判定中…）';
+  if(!v&&g.reservationId)loadMailLangHint(g.reservationId);
+  logAudit('設定変更','送信言語',`${g.reservationId||''} → ${v||'自動判定'}`);
+  cloudSave();
+}
+// 自動判定の結果をGASから取得して表示（PMS側にロジックを二重実装しない）
+async function loadMailLangHint(resId){
+  const hint=document.getElementById('f-mail-lang-auto');
+  if(!hint||!resId)return;
+  try{
+    const res=await fetch(_withKey(GAS_URL+'?type=search&id='+encodeURIComponent(String(resId).trim())+'&t='+Date.now()));
+    const data=await res.json();
+    const L={ja:'🇯🇵 日本語',en:'🌐 English',zh:'🇨🇳 中文',ko:'🇰🇷 한국어'};
+    const g=guestData[editKey];
+    if(g&&g.mailLang){hint.textContent='（手動指定）';return;}
+    hint.textContent=data.mailLangResolved?`→ 自動判定：${L[data.mailLangResolved]||data.mailLangResolved}`:'';
+  }catch(e){ hint.textContent=''; }
+}
+
 function renderMailPanel(g){
   const panel=document.getElementById('f-mail-panel');
   if(!panel)return;
   if(!g||!g.reservationId){panel.style.display='none';return;}
+  // 送信言語セレクタ：保存済みの手動上書きを反映し、未指定なら自動判定結果を表示
+  const langSel=document.getElementById('f-mail-lang');
+  if(langSel)langSel.value=g.mailLang||'';
+  const langHint=document.getElementById('f-mail-lang-auto');
+  if(langHint)langHint.textContent=g.mailLang?'（手動指定）':'（判定中…）';
+  if(!g.mailLang)loadMailLangHint(g.reservationId);
   const email=(g.email||'').trim();
   const history=g.mailHistory||{};
   const ms=(propertySettings&&propertySettings.mailSettings)||{};
@@ -1284,7 +1316,8 @@ function saveGuest(){
   // フォームに無いため、編集保存で消えないよう既存レコードから引き継ぐ。
   const _preserve={};
   if(editKey&&guestData[editKey]){
-    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport'].forEach(f=>{
+    // mailLang（送信言語の手動上書き）・mailHistory・identityPhotoId もフォームに無いため引き継ぐ
+    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport','mailLang','mailHistory','identityPhotoId'].forEach(f=>{
       if(guestData[editKey][f]!==undefined)_preserve[f]=guestData[editKey][f];
     });
   }
