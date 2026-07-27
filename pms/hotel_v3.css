@@ -942,6 +942,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 .pc-task.scheduled{background:#fffbf0;}
 .pc-task.scheduled.alert{background:#fff0eb;}
 .pc-task.pc-drop-over{background:#e8f4f3;box-shadow:inset 0 0 0 2px #5fa8a2;}
+/* カテゴリ見出しのドラッグ並び替え（ほこり/湿気・カビ/臭気/サビ/補充 等） */
+.pc-cat-head.pc-cat-drop-over{background:#e8f4f3;box-shadow:inset 0 0 0 2px #5fa8a2;border-radius:6px;}
 .pc-drag{color:#bbb;font-size:13px;line-height:1.4;cursor:grab;user-select:none;flex-shrink:0;margin-top:1px;}
 .pc-check{width:18px;height:18px;border:2px solid #5fa8a2;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;background:#fff;transition:.15s;}
 .pc-check.done{background:#5fa8a2;}
