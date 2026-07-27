@@ -355,8 +355,63 @@ function generateCleaningList(){
   showToast(`🧹 CO:${coCount}部屋　連泊:${stayCount}部屋${prepCount?`　準備:${prepCount}部屋`:''} を生成しました`);
 }
 
+// スワイプ確認式トグルのHTML生成。単純タップでは切り替わらず、つまみを端までドラッグした時のみ
+// setCleaningStatus が呼ばれる（スクロール中の誤タップ防止。詳細は _bindCleaningSwipe を参照）。
+function cleaningSwipeHtml(rid,normStatus,isCompleted,label,extraCls){
+  extraCls=extraCls||'';
+  return `<div class="cl-swipe ${normStatus} ${extraCls}" data-rid="${esc(String(rid))}" data-next="${isCompleted?'waiting':'completed'}">
+    <div class="cl-swipe-fill"></div>
+    <div class="cl-swipe-label">${label}</div>
+    <div class="cl-swipe-thumb">${isCompleted?'↩':'➡'}</div>
+  </div>`;
+}
+// つまみのドラッグ処理（イベント委譲：#cleaning-cards は再描画で中身が入れ替わるが、
+// 委譲元の要素自体は不変なので一度だけbindすればよい）。Pointer Eventsでマウス/タッチを統一。
+let _cleaningSwipeBound=false;
+function _bindCleaningSwipe(){
+  if(_cleaningSwipeBound)return; _cleaningSwipeBound=true;
+  const root=document.getElementById('cleaning-cards');
+  if(!root)return;
+  let drag=null;
+  root.addEventListener('pointerdown',e=>{
+    const thumb=e.target.closest('.cl-swipe-thumb'); if(!thumb)return;
+    const track=thumb.closest('.cl-swipe'); if(!track)return;
+    const fill=track.querySelector('.cl-swipe-fill');
+    const maxX=track.clientWidth-thumb.offsetWidth-8;
+    const startLeft=track.classList.contains('completed')?maxX:0;
+    drag={track,thumb,fill,maxX,startX:e.clientX,startLeft};
+    track.classList.add('dragging');
+    thumb.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  root.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    const dx=e.clientX-drag.startX;
+    const left=Math.max(0,Math.min(drag.maxX,drag.startLeft+dx));
+    drag.thumb.style.left=left+'px';
+    drag.fill.style.width=(left+drag.thumb.offsetWidth)+'px';
+  });
+  const finish=e=>{
+    if(!drag)return;
+    const {track,thumb,fill,maxX}=drag;
+    const left=parseFloat(thumb.style.left)||0;
+    const progress=maxX>0?left/maxX:0;
+    track.classList.remove('dragging');
+    thumb.style.left=''; fill.style.width='';
+    const wasCompleted=track.classList.contains('completed');
+    const shouldComplete=wasCompleted?progress>0.35:progress>0.65; // 完了取消の方は少し戻せば済むよう緩めに
+    if(shouldComplete!==wasCompleted){
+      setCleaningStatus(track.dataset.rid, shouldComplete?'completed':'waiting');
+    }
+    drag=null;
+  };
+  root.addEventListener('pointerup',finish);
+  root.addEventListener('pointercancel',finish);
+}
+
 // 清掃リスト描画
 function renderCleaning(){
+  _bindCleaningSwipe();
   const now=new Date();
   const jst=new Date(now.getTime()+9*60*60*1000);
   const h=jst.getUTCHours();
@@ -523,9 +578,7 @@ function renderCleaning(){
             <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
           </div>
           ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
-          <button class="cl-toggle-btn ${normStatus} prep" onclick="setCleaningStatus('${rid}','${nextStatus}')">
-            ${isCompleted?'✅ 次予約準備完了':'□ 次予約準備完了'}
-          </button>
+          ${cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 次予約準備完了':'👉 スワイプで次予約準備完了','prep')}
         </div>`;
         return;
       }
@@ -551,9 +604,7 @@ function renderCleaning(){
           <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
         </div>
         ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
-        ${isStayover?'':`<button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
-          ${isCompleted?'✅ 清掃済':'🟦 清掃待ち'}
-        </button>`}
+        ${isStayover?'':cleaningSwipeHtml(rid,normStatus,isCompleted,isCompleted?'✅ 清掃済':'👉 スワイプで清掃完了')}
       </div>`;
     });
   });
