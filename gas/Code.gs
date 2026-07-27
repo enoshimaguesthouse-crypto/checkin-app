@@ -658,23 +658,63 @@ function _isCjkNonJapaneseName_(name){
   return false;
 }
 
+// 【判定2】住所による判定 ─────────────────────────────────
+// 都道府県名（漢字・ローマ字）／郵便番号／市区町村+番地 のいずれかがあれば日本国内住所とみなす。
+// 予約サイトが国名を住所へ連結するケース（例:「日本bangkok30 08 Prudential Tower…」）が
+// あるため、「日本」「Japan」という語だけでは日本国内と判定しない。
+var JP_PREFS_KANJI_ = ('北海道,青森県,岩手県,宮城県,秋田県,山形県,福島県,茨城県,栃木県,群馬県,'+
+'埼玉県,千葉県,東京都,神奈川県,新潟県,富山県,石川県,福井県,山梨県,長野県,'+
+'岐阜県,静岡県,愛知県,三重県,滋賀県,京都府,大阪府,兵庫県,奈良県,和歌山県,'+
+'鳥取県,島根県,岡山県,広島県,山口県,徳島県,香川県,愛媛県,高知県,福岡県,'+
+'佐賀県,長崎県,熊本県,大分県,宮崎県,鹿児島県,沖縄県').split(',');
+var JP_PREFS_ROMAJI_ = ('HOKKAIDO,AOMORI,IWATE,MIYAGI,AKITA,YAMAGATA,FUKUSHIMA,IBARAKI,TOCHIGI,GUNMA,'+
+'SAITAMA,CHIBA,TOKYO,KANAGAWA,NIIGATA,TOYAMA,ISHIKAWA,FUKUI,YAMANASHI,NAGANO,'+
+'GIFU,SHIZUOKA,AICHI,MIE,SHIGA,KYOTO,OSAKA,HYOGO,NARA,WAKAYAMA,'+
+'TOTTORI,SHIMANE,OKAYAMA,HIROSHIMA,YAMAGUCHI,TOKUSHIMA,KAGAWA,EHIME,KOCHI,FUKUOKA,'+
+'SAGA,NAGASAKI,KUMAMOTO,OITA,MIYAZAKI,KAGOSHIMA,OKINAWA').split(',');
+
+function _isJapaneseAddress_(addr){
+  var s=String(addr||'').trim();
+  if(!s)return false;
+  var i;
+  for(i=0;i<JP_PREFS_KANJI_.length;i++){ if(s.indexOf(JP_PREFS_KANJI_[i])>=0)return true; }
+  if(/〒\s*\d{3}[-ー－]?\d{4}/.test(s))return true;           // 郵便番号（〒付き）
+  // 漢字・かな表記の住所：市区町村＋数字、または丁目/番地/字
+  if(_hasKana_(s)||_hasJapaneseChars_(s)){
+    if(/[市区町村郡]/.test(s)&&/[0-9０-９一二三四五六七八九十]/.test(s))return true;
+    if(/丁目|番地|大字|字/.test(s))return true;
+  }
+  // ローマ字住所：都道府県名を語として含む（KYOTO-SHI 等の連結も許容）
+  var u=s.toUpperCase();
+  for(i=0;i<JP_PREFS_ROMAJI_.length;i++){
+    var pref=JP_PREFS_ROMAJI_[i];
+    if(new RegExp('(^|[^A-Z])'+pref+'([^A-Z]|$)').test(u))return true;
+  }
+  if(/\b(SHI|KU|CHO|MACHI|GUN)\b/.test(u)&&/\d/.test(u))return true; // …-shi / …-ku 等
+  return false;
+}
+
 function _mailLang_(g){
   if(!g)return 'en';
-  // ① スタッフによる手動上書きが最優先（自動判定が誤っていた場合の救済）
+  // 手動上書きが最優先（自動判定が誤っていた場合の救済）
   var manual=String(g.mailLang||'').trim();
   if(manual)return manual;
+
+  // 【判定1】宿泊者名・予約者名による「日本人名」判定
+  //  中国・韓国に特有の姓／簡体字を含む場合は、住所が日本国内でも英語で確定させる。
+  //  （日本在住で日本語を読める方は予約詳細の「送信言語」で個別に上書きする）
   var name=String(g.name||'');
-  // ② かな（ひらがな・カタカナ）を含む＝日本語で確定
-  if(_hasKana_(name))return 'ja';
-  // ③ 中国・韓国に特有の姓／簡体字を含む＝日本語にしない
-  //    （氏名は本人の言語を示す最も強い手がかりのため、電話番号より優先する）
   if(_isCjkNonJapaneseName_(name))return 'en';
-  // ④ 漢字を含む＝日本語
-  if(_hasJapaneseChars_(name))return 'ja';
-  // ⑤ 電話番号の国番号／国内局番
+  if(_hasKana_(name))return 'ja';            // かな＝日本語で確定
+  if(_hasJapaneseChars_(name))return 'ja';   // 漢字（中韓の姓は上で除外済み）
+  if(_isJapaneseName_(name))return 'ja';     // ローマ字の日本人姓名（辞書照合）
+
+  // 【判定2】住所による判定
+  if(_isJapaneseAddress_(g.address))return 'ja';
+
+  // 【判定3】電話番号の国番号による判定
   if(_isJapanesePhone_(g.phone))return 'ja';
-  // ⑥ ローマ字の日本人姓名
-  if(_isJapaneseName_(name))return 'ja';
+
   return 'en';
 }
 function _roomLangKey_(lang){ return lang==='zh'?'zh-CN':lang; }
