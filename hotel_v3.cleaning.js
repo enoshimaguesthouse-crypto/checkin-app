@@ -215,10 +215,14 @@ function saveGarbageRules(){
 }
 
 // 清掃予定表セル内に差し込む「⭐ ゴミ回収」ブロックのHTML（該当なしなら空文字）
-function garbageNoticeHtml(date){
-  const list=getGarbageNoticesFor(date);
-  if(!list.length)return '';
-  return `<div class="cl-garbage">
+// 清掃予定表の1ブロックとして単独表示（各部屋セルには出さない。重点清掃とは独立）
+function renderGarbagePreview(){
+  const el=document.getElementById('garbage-preview'); if(!el)return;
+  const now=new Date(); const jst=new Date(now.getTime()+9*60*60*1000);
+  const today=new Date(jst.getUTCFullYear(),jst.getUTCMonth(),jst.getUTCDate());
+  const list=getGarbageNoticesFor(today);
+  if(!list.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="cl-garbage">
     <div class="cl-garbage-head">⭐ ゴミ回収</div>
     ${list.map(n=>`<div class="cl-garbage-item ${n.when}">
       <span class="cl-garbage-icon">${esc(n.rule.icon||'🗑')}</span>
@@ -350,8 +354,6 @@ function renderCleaning(){
   const h=jst.getUTCHours();
   const dateStr=`${jst.getUTCFullYear()}年${jst.getUTCMonth()+1}月${jst.getUTCDate()}日`;
   document.getElementById('cleaning-date-label').textContent=`${dateStr} の清掃リスト`;
-  // ゴミ回収（本日/明日）のブロック。JST基準の「今日」で判定し全セル共通で差し込む
-  const _garbageHtml=garbageNoticeHtml(new Date(jst.getUTCFullYear(),jst.getUTCMonth(),jst.getUTCDate()));
 
   const filterStaff=document.getElementById('cleaning-filter-staff').value;
   const filterStatus=document.getElementById('cleaning-filter-status').value;
@@ -427,7 +429,7 @@ function renderCleaning(){
     document.getElementById('cleaning-cards').innerHTML=
       '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;">表示する部屋がありません。「🔄 リスト生成」を押してください。</div>';
     // 清掃リストが0件でも、当月の重点清掃項目プレビューは表示する（早期returnで隠れないように）
-    if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
+    renderGarbagePreview(); if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
     return;
   }
 
@@ -516,7 +518,6 @@ function renderCleaning(){
           <button class="cl-toggle-btn ${normStatus} prep" onclick="setCleaningStatus('${rid}','${nextStatus}')">
             ${isCompleted?'✅ 次予約準備完了':'□ 次予約準備完了'}
           </button>
-          ${_garbageHtml}
         </div>`;
         return;
       }
@@ -545,13 +546,12 @@ function renderCleaning(){
         ${isStayover?'':`<button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
           ${isCompleted?'✅ 清掃済':'🟦 清掃待ち'}
         </button>`}
-        ${_garbageHtml}
       </div>`;
     });
   });
 
   document.getElementById('cleaning-cards').innerHTML=html;
-  if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
+  renderGarbagePreview(); if(typeof renderPriorityCleaningPreview==='function')renderPriorityCleaningPreview();
 }
 
 // ── 重点清掃項目：ヘルパー関数群 ─────────────────────────
