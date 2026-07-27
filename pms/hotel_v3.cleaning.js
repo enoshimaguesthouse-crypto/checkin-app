@@ -64,6 +64,10 @@ const CLEANING_STATUS={
   waiting: {label:'清掃待ち', cls:'waiting'},
   completed:{label:'清掃済',  cls:'completed'},
 };
+// ── 表示タイプ 'nextReservationPreparation'（次予約準備セル）の対象部屋グループ ──
+// 当日チェックアウトが無くても当日チェックインがあれば「準備のみ」のセルを出す部屋。
+// 他の部屋へ広げる場合はこの配列に rooms[].group の値を追加するだけでよい。
+const CLEANING_PREP_GROUPS=['ANNEX−個室','アパートメント−Southern Court'];
 let editingCleaningRoomId=null;
 
 // 清掃対象リスト生成（当日CO予定部屋）
@@ -142,6 +146,21 @@ function generateCleaningList(){
         });
       }
     }
+
+    // ── 次予約準備（対象部屋グループのみの例外処理）─────────────────
+    // 当日チェックアウトなし ＆ 当日チェックインあり → 清掃は不要だが入室準備が必要。
+    // 上のチェックアウト判定・連泊判定には一切手を入れず、両方に該当しない場合のみ追加する。
+    if(CLEANING_PREP_GROUPS.includes(room.group)
+       && !newMap.has(room.id)            // 当日チェックアウトなし
+       && !newMap.has(room.id+'_stay')){  // 連泊中でもない
+      // cont:false ＝ その日が滞在の初日（＝当日チェックイン）
+      if(todayG && !todayG.cont && todayG.status!=='cancelled'){
+        newMap.set(room.id+'_prep',{
+          room,guest:null,nights:0,hasNextBooking:true,priority:'mid',
+          nextGuest:todayG,type:'nextReservationPreparation',roomId:room.id,
+        });
+      }
+    }
   });
 
   // cleaningDataを更新（既存ステータスを保持）
@@ -157,7 +176,8 @@ function generateCleaningList(){
   autoSave();
   const coCount=[...newMap.values()].filter(i=>i.type==='checkout').length;
   const stayCount=[...newMap.values()].filter(i=>i.type==='stayover').length;
-  showToast(`🧹 CO:${coCount}部屋　連泊:${stayCount}部屋 を生成しました`);
+  const prepCount=[...newMap.values()].filter(i=>i.type==='nextReservationPreparation').length;
+  showToast(`🧹 CO:${coCount}部屋　連泊:${stayCount}部屋${prepCount?`　準備:${prepCount}部屋`:''} を生成しました`);
 }
 
 // 清掃リスト描画
@@ -195,6 +215,15 @@ function renderCleaning(){
         if(filterStaff&&d.assignedTo!==filterStaff)return;
         if(filterStatus&&_normalizeCleaningStatus(d.status)!==filterStatus)return;
         orderedEntries.push({rid:coKey,d,room});
+      }
+    }
+    // 次予約準備（対象部屋のみ生成される。清掃セルとは別タイプ）
+    const prepKey=String(room.id)+'_prep';
+    if(cleaningData[prepKey]){
+      const d=cleaningData[prepKey];
+      if(!(filterStaff&&d.assignedTo!==filterStaff)
+         &&!(filterStatus&&_normalizeCleaningStatus(d.status)!==filterStatus)){
+        orderedEntries.push({rid:prepKey,d,room});
       }
     }
     // 連泊
@@ -279,21 +308,52 @@ function renderCleaning(){
       const info=d._info||{};
       const guest=info.guest||{};
       const isStayover=info.type==='stayover';
+      const isPrep=info.type==='nextReservationPreparation';
       const prio=isStayover?'stayover':(info.priority||'low');
-      const isAlert=h>=14&&d.status!=='completed'&&!isStayover;
+      const isAlert=h>=14&&d.status!=='completed'&&!isStayover&&!isPrep;
       const isCompleted=d.status==='completed';
 
       const normStatus=_normalizeCleaningStatus(d.status);
       const elapsed=d.startAt&&d.completedAt
         ?`（${Math.round((new Date('2000/01/01 '+d.completedAt)-new Date('2000/01/01 '+d.startAt))/60000)}分）`:'';
 
-      // カードのボーダー色
-      const borderColor=isStayover?'#22c55e':isCompleted?'#3d9441':'#ef4444';
-      const cardBg=isStayover?'#f0fdf4':isCompleted?'#f9f9f9':'#fff';
+      // カードのボーダー色（次予約準備は清掃セルと一目で区別できる水色系）
+      const borderColor=isPrep?'#0284c7':isStayover?'#22c55e':isCompleted?'#3d9441':'#ef4444';
+      const cardBg=isPrep?(isCompleted?'#f4f8fa':'#f0f9ff'):isStayover?'#f0fdf4':isCompleted?'#f9f9f9':'#fff';
       // 部屋の識別記号（セクション見出しと重複するグループ名を除いた残り。例:「H」「A」「103」）
       const roomLabel=_clRoomLabel(room);
-      // ワンタップで清掃待ち⇄清掃済を切り替える
+      // ワンタップで清掃待ち⇄清掃済（次予約準備セルは 未完了⇄次予約準備完了）を切り替える
       const nextStatus=isCompleted?'waiting':'completed';
+      // 次予約の到着時刻（あれば併記）
+      const nextTime=info.nextGuest&&info.nextGuest.arrivalTime?String(info.nextGuest.arrivalTime):'';
+
+      if(isPrep){
+        // ── 次予約準備セル（type='nextReservationPreparation'）──
+        // 清掃は不要。入室準備のみのため、チェックは「次予約準備完了」とする。
+        const ng=info.nextGuest||{};
+        html+=`<div class="cl-card ${normStatus} prep" id="cl-card-${rid}"
+          style="border-left-color:${borderColor};background:${cardBg};">
+          <div class="cl-card-head">
+            <span class="cl-room-code">${esc(roomLabel)}</span>
+            <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🛏 次予約あり</span>
+          </div>
+          <div class="cl-guest">🕒 ${esc(nextTime||'時刻未定')} Check-in</div>
+          <div class="cl-guest">👤 ${esc(ng.name||'—')}（${guestCountOf(ng)}名）</div>
+          <div class="cl-badges">
+            <span class="cl-badge" style="background:#dcfce7;color:#15803d;">✅ 清掃不要</span>
+            <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🧳 準備のみ</span>
+          </div>
+          <div class="cl-meta-row">
+            <span class="cl-assignee">📝 担当：${esc(d.assignedTo||'未割当')}${d.completedAt?` ／ 完了 ${esc(d.completedAt)}${elapsed}`:''}</span>
+            <button class="cl-memo-btn" onclick="openCleaningMemo('${rid}')">メモ編集 ✎</button>
+          </div>
+          ${d.memo?`<div class="cl-memo-text">${esc(d.memo)}</div>`:''}
+          <button class="cl-toggle-btn ${normStatus} prep" onclick="setCleaningStatus('${rid}','${nextStatus}')">
+            ${isCompleted?'✅ 次予約準備完了':'□ 次予約準備完了'}
+          </button>
+        </div>`;
+        return;
+      }
 
       html+=`<div class="cl-card ${normStatus}" id="cl-card-${rid}"
         style="border-left-color:${borderColor};background:${cardBg};" >
@@ -304,7 +364,7 @@ function renderCleaning(){
             :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
         ${info.hasNextBooking
-          ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名）':''}</div>`
+          ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名）':''}${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>`
           : ''}
         <div class="cl-guest">👤 ${esc(guest.name||'—')}（${guestCountOf(guest)}名 / ${info.nights||1}泊）</div>
         ${(guest.charter||info.nights>=3)?`<div class="cl-badges">
