@@ -70,6 +70,164 @@ const CLEANING_STATUS={
 const CLEANING_PREP_GROUPS=['ANNEX−個室','アパートメント−Southern Court'];
 let editingCleaningRoomId=null;
 
+// ══════════════════════════════════════════════════════════
+//  ゴミ回収（マスターデータ方式）
+//  重点清掃とは完全に独立。自治体・物件ごとに設定を差し替えられるよう
+//  曜日・頻度・表示タイミングをすべてデータで持つ（ハードコードしない）。
+// ══════════════════════════════════════════════════════════
+let garbageRules=[];      // マスターデータ（propertySettings経由でクラウド保存）
+let nextGarbageRuleId=1;
+const GARBAGE_DOW_LABELS=['日','月','火','水','木','金','土'];
+const GARBAGE_FREQ_LABELS={weekly:'毎週', oddWeek:'奇数週（隔週A）', evenWeek:'偶数週（隔週B）'};
+// 藤沢市ごみ収集カレンダー（6ブロック）を初期値として登録
+const GARBAGE_DEFAULTS=[
+  {name:'燃えるゴミ',   icon:'🔥', dow:2, showToday:false, showPrevDay:true,  frequency:'weekly',   order:1},
+  {name:'ビン',         icon:'🍾', dow:2, showToday:false, showPrevDay:true,  frequency:'weekly',   order:2},
+  {name:'プラスチック', icon:'♻',  dow:3, showToday:false, showPrevDay:true,  frequency:'weekly',   order:3},
+  {name:'ペットボトル', icon:'🧴', dow:4, showToday:true,  showPrevDay:false, frequency:'evenWeek', order:4},
+  {name:'カン',         icon:'🥫', dow:4, showToday:true,  showPrevDay:false, frequency:'oddWeek',  order:5},
+  {name:'燃えるゴミ',   icon:'🔥', dow:5, showToday:false, showPrevDay:true,  frequency:'weekly',   order:6},
+  {name:'ビン',         icon:'🍾', dow:5, showToday:false, showPrevDay:true,  frequency:'weekly',   order:7},
+];
+function initGarbageRulesIfEmpty(){
+  if(garbageRules&&garbageRules.length>0)return;
+  garbageRules=GARBAGE_DEFAULTS.map((r,i)=>Object.assign({id:i+1},r));
+  nextGarbageRuleId=garbageRules.length+1;
+}
+// ISO 8601 週番号。月をまたいでも隔週サイクルが崩れないよう年間通し番号で判定する。
+// （第1・第3木曜のような月内判定は月替わりでサイクルが崩れるため使わない）
+function _isoWeekNumber(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const dayNum=d.getUTCDay()||7;            // 月=1 … 日=7
+  d.setUTCDate(d.getUTCDate()+4-dayNum);    // その週の木曜日へ寄せる
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil(((d-yearStart)/86400000+1)/7);
+}
+// 隔週判定の基準日：2026-06-29(月)＝ISO第27週(奇数週)の月曜。この週を「奇数週」とする。
+// ISO週番号そのものを使うと、53週ある年（2026年など）の年末年始で奇数→奇数が連続し
+// 隔週サイクルが崩れる（例: 2026-12-31 と 2027-01-07 が両方カンになる）。
+// そのため基準日からの通し週数で判定し、年をまたいでも必ず交互になるようにする。
+const GARBAGE_WEEK_EPOCH=Date.UTC(2026,5,29); // 2026-06-29 (Monday)
+function _garbageWeekIsOdd(date){
+  // その日が属する週の月曜日（ISOと同じく月曜始まり）を求める
+  const d=Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
+  const dow=(new Date(d)).getUTCDay()||7;                 // 月=1 … 日=7
+  const monday=d-(dow-1)*86400000;
+  const weeks=Math.round((monday-GARBAGE_WEEK_EPOCH)/604800000);
+  return (((weeks%2)+2)%2)===0;                            // 基準週=奇数週
+}
+// 回収日(target)がそのルールの頻度条件を満たすか。判定は必ず「回収日」基準で行う
+// （前日表示のとき表示日と回収日で週をまたぐ場合があるため）。
+function _garbageFreqMatch(rule,target){
+  if(rule.frequency==='weekly')return true;
+  const odd=_garbageWeekIsOdd(target);
+  if(rule.frequency==='oddWeek') return odd;
+  if(rule.frequency==='evenWeek')return !odd;
+  return true;
+}
+// 指定日の清掃予定表セルに出すゴミ回収の通知一覧を返す。
+// when:'today'=本日回収 / 'tomorrow'=前日表示（明日回収）
+function getGarbageNoticesFor(date){
+  initGarbageRulesIfEmpty();
+  const out=[];
+  const tmr=new Date(date.getFullYear(),date.getMonth(),date.getDate()+1);
+  garbageRules.forEach(r=>{
+    if(r.showToday && date.getDay()===Number(r.dow) && _garbageFreqMatch(r,date))
+      out.push({rule:r,when:'today'});
+    if(r.showPrevDay && tmr.getDay()===Number(r.dow) && _garbageFreqMatch(r,tmr))
+      out.push({rule:r,when:'tomorrow'});
+  });
+  // 本日ぶんを先に、その中は表示順（order）で
+  out.sort((a,b)=>(a.when===b.when)
+    ?((a.rule.order||0)-(b.rule.order||0))
+    :(a.when==='today'?-1:1));
+  return out;
+}
+// ── ゴミ回収設定パネル（名称/アイコン/曜日/当日・前日/頻度/表示順をすべて編集可能）──
+let _gbDraft=null;
+function openGarbageSettings(){
+  initGarbageRulesIfEmpty();
+  _gbDraft=JSON.parse(JSON.stringify(garbageRules));
+  renderGarbageSettings();
+  document.getElementById('garbage-settings-modal').classList.add('open');
+}
+function renderGarbageSettings(){
+  const box=document.getElementById('gb-list'); if(!box)return;
+  if(!_gbDraft.length){
+    box.innerHTML='<div style="color:var(--muted);font-size:13px;padding:14px 2px;">回収設定がありません。「＋ 回収を追加」で登録してください。</div>';
+    return;
+  }
+  _gbDraft.sort((a,b)=>(a.order||0)-(b.order||0));
+  box.innerHTML=_gbDraft.map((r,i)=>`
+    <div class="gb-row">
+      <div class="gb-grid">
+        <div><label>アイコン</label><input value="${esc(r.icon||'')}" maxlength="4" style="text-align:center;font-size:17px;" oninput="gbEdit(${i},'icon',this.value)"></div>
+        <div><label>ゴミ名称</label><input value="${esc(r.name||'')}" placeholder="燃えるゴミ" oninput="gbEdit(${i},'name',this.value)"></div>
+        <div><label>回収曜日</label><select onchange="gbEdit(${i},'dow',this.value)">
+          ${GARBAGE_DOW_LABELS.map((l,dw)=>`<option value="${dw}"${Number(r.dow)===dw?' selected':''}>${l}曜日</option>`).join('')}
+        </select></div>
+        <div><label>回収頻度</label><select onchange="gbEdit(${i},'frequency',this.value)">
+          ${Object.entries(GARBAGE_FREQ_LABELS).map(([k,l])=>`<option value="${k}"${(r.frequency||'weekly')===k?' selected':''}>${l}</option>`).join('')}
+        </select></div>
+        <div><label>表示順</label><input type="number" value="${Number(r.order)||0}" oninput="gbEdit(${i},'order',this.value)"></div>
+      </div>
+      <div class="gb-opts">
+        <span style="font-size:10.5px;font-weight:700;color:var(--muted);">表示タイミング</span>
+        <label><input type="checkbox" ${r.showToday?'checked':''} onchange="gbEdit(${i},'showToday',this.checked)"> 当日表示</label>
+        <label><input type="checkbox" ${r.showPrevDay?'checked':''} onchange="gbEdit(${i},'showPrevDay',this.checked)"> 前日表示（明日 〇〇）</label>
+        <button class="btn btn-xs" style="margin-left:auto;color:var(--coral);font-size:11px;" onclick="removeGarbageRule(${i})">🗑 削除</button>
+      </div>
+    </div>`).join('');
+}
+function gbEdit(i,field,val){
+  if(!_gbDraft[i])return;
+  if(field==='dow'||field==='order')val=Number(val)||0;
+  _gbDraft[i][field]=val;
+}
+function addGarbageRule(){
+  const maxOrder=_gbDraft.reduce((m,r)=>Math.max(m,Number(r.order)||0),0);
+  _gbDraft.push({id:nextGarbageRuleId++,name:'',icon:'🗑',dow:1,showToday:false,showPrevDay:true,frequency:'weekly',order:maxOrder+1});
+  renderGarbageSettings();
+}
+function removeGarbageRule(i){
+  if(!_gbDraft[i])return;
+  if(!confirm(`「${_gbDraft[i].name||'（名称未設定）'}」を削除しますか？`))return;
+  _gbDraft.splice(i,1);
+  renderGarbageSettings();
+}
+function resetGarbageRules(){
+  if(!confirm('藤沢市ごみ収集カレンダー（6ブロック）の初期設定に戻します。よろしいですか？'))return;
+  _gbDraft=GARBAGE_DEFAULTS.map((r,i)=>Object.assign({id:i+1},r));
+  nextGarbageRuleId=_gbDraft.length+1;
+  renderGarbageSettings();
+}
+function saveGarbageRules(){
+  // 名称が空の行は保存しない（誤登録防止）
+  garbageRules=_gbDraft.filter(r=>String(r.name||'').trim())
+    .map(r=>({...r,dow:Number(r.dow)||0,order:Number(r.order)||0}))
+    .sort((a,b)=>a.order-b.order);
+  propertySettings.garbageRules=garbageRules;
+  logAudit('設定変更','ゴミ回収設定',`${garbageRules.length}件を保存`);
+  closeM('garbage-settings-modal');
+  cloudSave();
+  if(document.getElementById('page-cleaning')?.classList.contains('active'))renderCleaning(); // 即時反映
+  showToast('🗑 ゴミ回収設定を保存しました');
+}
+
+// 清掃予定表セル内に差し込む「⭐ ゴミ回収」ブロックのHTML（該当なしなら空文字）
+function garbageNoticeHtml(date){
+  const list=getGarbageNoticesFor(date);
+  if(!list.length)return '';
+  return `<div class="cl-garbage">
+    <div class="cl-garbage-head">⭐ ゴミ回収</div>
+    ${list.map(n=>`<div class="cl-garbage-item ${n.when}">
+      <span class="cl-garbage-icon">${esc(n.rule.icon||'🗑')}</span>
+      <span class="cl-garbage-when">${n.when==='today'?'本日':'明日'}</span>
+      <span class="cl-garbage-name">${esc(n.rule.name||'')}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
 // 清掃対象リスト生成（当日CO予定部屋）
 function generateCleaningList(){
   const now=new Date();
@@ -192,6 +350,8 @@ function renderCleaning(){
   const h=jst.getUTCHours();
   const dateStr=`${jst.getUTCFullYear()}年${jst.getUTCMonth()+1}月${jst.getUTCDate()}日`;
   document.getElementById('cleaning-date-label').textContent=`${dateStr} の清掃リスト`;
+  // ゴミ回収（本日/明日）のブロック。JST基準の「今日」で判定し全セル共通で差し込む
+  const _garbageHtml=garbageNoticeHtml(new Date(jst.getUTCFullYear(),jst.getUTCMonth(),jst.getUTCDate()));
 
   const filterStaff=document.getElementById('cleaning-filter-staff').value;
   const filterStatus=document.getElementById('cleaning-filter-status').value;
@@ -356,6 +516,7 @@ function renderCleaning(){
           <button class="cl-toggle-btn ${normStatus} prep" onclick="setCleaningStatus('${rid}','${nextStatus}')">
             ${isCompleted?'✅ 次予約準備完了':'□ 次予約準備完了'}
           </button>
+          ${_garbageHtml}
         </div>`;
         return;
       }
@@ -384,6 +545,7 @@ function renderCleaning(){
         ${isStayover?'':`<button class="cl-toggle-btn ${normStatus}" onclick="setCleaningStatus('${rid}','${nextStatus}')">
           ${isCompleted?'✅ 清掃済':'🟦 清掃待ち'}
         </button>`}
+        ${_garbageHtml}
       </div>`;
     });
   });
@@ -1634,6 +1796,7 @@ const _PANEL_OPENERS={
   tablet:     'openContractSettings', // タブレット表示設定
   email:      'openMailSettings',     // 自動メール配信設定
   autoassign: 'openAutoAssignModal',  // 自動部屋割り設定
+  garbage:    'openGarbageSettings',  // ゴミ回収設定
   audit:      'openAuditLog'          // 監査ログ
 };
 function closeAllPanels(){

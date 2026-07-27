@@ -986,6 +986,18 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 /* 次予約準備セル（type=nextReservationPreparation）：通常の清掃セルと明確に区別する水色系 */
 .cl-toggle-btn.prep.waiting{background:#0284c7;color:#fff;box-shadow:inset 0 0 0 2px #0369a1;}
 .cl-card.prep{box-shadow:0 2px 10px rgba(2,132,199,.16);}
+/* ── ゴミ回収（重点清掃とは独立したブロック）── */
+.cl-garbage{margin-top:10px;padding:9px 11px;background:#fbfaf6;border:1px solid var(--sand-border);border-radius:9px;}
+.cl-garbage-head{font-size:11px;font-weight:800;color:#6b7280;letter-spacing:.03em;margin-bottom:6px;}
+.cl-garbage-item{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:13px;font-weight:700;line-height:1.35;}
+.cl-garbage-icon{font-size:15px;flex-shrink:0;}
+/* 本日回収＝赤系で強調／明日回収＝控えめなグレー */
+.cl-garbage-when{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:99px;flex-shrink:0;white-space:nowrap;}
+.cl-garbage-item.today  .cl-garbage-when{background:#fee2e2;color:#991b1b;}
+.cl-garbage-item.today  .cl-garbage-name{color:#991b1b;}
+.cl-garbage-item.tomorrow .cl-garbage-when{background:#e8eef5;color:#475569;}
+.cl-garbage-item.tomorrow .cl-garbage-name{color:#475569;}
+.cl-garbage-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cl-alert{background:#fee2e2;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#991b1b;position:absolute;top:10px;right:10px;}
 /* セクション見出し：エリア名を大きく＋残室数 */
 .cl-area-head{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;

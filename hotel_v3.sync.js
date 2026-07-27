@@ -373,6 +373,16 @@ function applyServerData(data) {
     if (data.propertySettings.tabletDisplaySettings && typeof data.propertySettings.tabletDisplaySettings==='object') {
       propertySettings.tabletDisplaySettings = data.propertySettings.tabletDisplaySettings;
     }
+    // ゴミ回収設定（マスターデータ）：サーバ値をそのまま採用。未設定なら初期値を投入。
+    if (Array.isArray(data.propertySettings.garbageRules)) {
+      propertySettings.garbageRules = data.propertySettings.garbageRules;
+      garbageRules = data.propertySettings.garbageRules;
+      nextGarbageRuleId = garbageRules.reduce((m,r)=>Math.max(m,Number(r.id)||0),0)+1;
+    }
+    if (typeof initGarbageRulesIfEmpty==='function') {
+      initGarbageRulesIfEmpty();
+      propertySettings.garbageRules = garbageRules;
+    }
     // 自動メール配信設定：欠けているメール種別/言語をデフォルトで補完しつつサーバ値を採用
     const dms = data.propertySettings.mailSettings;
     if (dms && typeof dms==='object') {
