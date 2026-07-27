@@ -848,6 +848,8 @@ td.charter-col{background:rgba(16,185,129,.08)!important;}
 body.role-cleaning #sb{display:none!important;}
 /* 左サイドバー(ログアウト含む)が非表示のため、清掃予定表画面のログアウトボタンを表示 */
 body.role-cleaning #cleaning-logout-btn{display:inline-block!important;}
+/* 清掃スタッフ：清掃予定表の絞り込み・担当者追加・LINE用コピーは不要（🔄リスト生成のみ残す） */
+body.role-cleaning .cleaning-staff-only{display:none!important;}
 /* 接客スタッフ：宿泊名簿・駐車場・レンタル・サーフィン・清掃予定表 */
 body.role-reception .nitem[onclick*="showP('import'"],
 body.role-reception .nitem[onclick*="showP('occupancy'"],
