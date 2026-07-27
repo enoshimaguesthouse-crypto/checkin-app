@@ -2117,19 +2117,10 @@ function renderRental(){
     html+=`<div class="park-date">${d}</div>`;
     if(hol)html+=`<div class="park-hol">${HOLIDAY_NAMES[dk]||'祝'}</div>`;
     dayRes.forEach(r=>{
-      const t1=(r.start||'').slice(11,16),t2=(r.end||'').slice(11,16);
-      html+=`<div class="rs-cell-entry ${RENTAL_SITE_CLASS[r.site]||''}" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${esc(r.name)} / ${esc(r.facility)} / ${esc(r.purpose)}">`
-        +`<div style="display:flex;justify-content:space-between;align-items:center;gap:2px;">`
-        +`<span style="font-weight:700;font-size:12px;">${t1}〜${t2}</span>`
-        +`<span style="font-size:11px;background:rgba(0,0,0,.1);border-radius:3px;padding:0 3px;">${esc(r.facility)}</span>`
-        +`</div>`
-        +`<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.name||'')}（${r.guests||1}名）</div>`
-        +`<div style="display:flex;justify-content:space-between;align-items:center;gap:2px;">`
-        +`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.purpose||'')}</span>`
-        +`<span style="font-weight:700;white-space:nowrap;">¥${(r.price||0).toLocaleString()}</span>`
-        +`</div>`
-        +`<div style="font-size:11px;opacity:.7;text-align:right;">${r.site||''}</div>`
-        +`</div>`;
+      const t1=(r.start||'').slice(11,16);
+      // 駐車場カレンダーと同じ1行コンパクト表示に統一（セル高さを揃えるため）。
+      // 詳細（施設・目的・サイト）はtitleツールチップとタップ後の編集画面で確認する。
+      html+=`<div class="rs-cell-entry ${RENTAL_SITE_CLASS[r.site]||''}" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${esc(r.name)} / ${esc(r.facility)} / ${esc(r.purpose)} / ${t1} / ¥${(r.price||0).toLocaleString()}">${t1?t1+' ':''}${esc((r.name||'').split(/\s/)[0])} ¥${(r.price||0).toLocaleString()}</div>`;
     });
     html+=`</div>`;
   }
