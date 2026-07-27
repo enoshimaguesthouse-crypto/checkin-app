@@ -1093,7 +1093,8 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 }
 
 /* ── レンタルスペース ── */
-.rs-cell-entry{font-size:12px;border-radius:4px;padding:3px 6px;margin-top:2px;cursor:pointer;border-left:3px solid #ccc;line-height:1.4;overflow:hidden;}
+/* 駐車場カレンダーの.park-entryと同じ1行コンパクト表示（セル高さを揃えるため複数行にしない） */
+.rs-cell-entry{font-size:12px;font-weight:600;border-radius:4px;padding:3px 6px;margin-top:2px;cursor:pointer;border-left:3px solid #ccc;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .rs-site-直接{background:#d1fae5;border-left-color:#10b981;color:#065f46;}
 .rs-site-スペースマーケット{background:#dbeafe;border-left-color:#3b82f6;color:#1e40af;}
 .rs-site-インスタベース{background:#ffedd5;border-left-color:#f97316;color:#9a3412;}
