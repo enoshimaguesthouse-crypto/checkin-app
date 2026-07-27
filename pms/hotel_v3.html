@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260726d">
+<link rel="stylesheet" href="hotel_v3.css?v=20260727c">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -75,6 +75,7 @@
     <div id="cleaning-submenu" style="display:none;">
       <button class="nitem" id="nitem-cleaning" onclick="showP('cleaning',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">📋</span><span class="nlbl">清掃予定表</span></button>
       <button class="nitem" id="nitem-cleaning-focus" onclick="showP('cleaning-focus',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">⭐</span><span class="nlbl">重点清掃項目</span></button>
+      <button class="nitem" id="nitem-garbage" onclick="togglePanel('garbage')" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🗑</span><span class="nlbl">ゴミ回収設定</span></button>
     </div>
   </div>
   <div class="sb-div"></div>
@@ -627,6 +628,13 @@
           <div class="pi-desc">未割当予約の自動アサイン</div>
         </span>
       </button>
+      <button class="pi-actioncard" onclick="togglePanel('garbage')">
+        <span class="pi-icon" style="background:#f5f7ee;">🧹</span>
+        <span>
+          <div class="pi-label" style="color:#5b7a2e;">清掃設定（ゴミ回収）</div>
+          <div class="pi-desc">回収曜日・アイコン・隔週設定</div>
+        </span>
+      </button>
       <button class="pi-actioncard" onclick="togglePanel('audit')">
         <span class="pi-icon" style="background:#fdf6ec;">📜</span>
         <span>
@@ -922,6 +930,35 @@
   <div style="display:flex;gap:10px;margin-top:16px;flex-shrink:0;">
     <button class="btn" onclick="closeM('contract-settings-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
     <button class="btn btn-blue" onclick="saveTabletSettings()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+  </div>
+</div>
+</div>
+
+<!-- ゴミ回収設定（マスターデータ。自治体・物件ごとに差し替え可能） -->
+<style>
+/* 基本CSSの .modal{width:400px!important} を上書き（他パネルと同じ手法） */
+#garbage-settings-modal .modal{width:820px!important;max-width:96vw!important;}
+.gb-row{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.gb-grid{display:grid;grid-template-columns:64px 1fr 92px 1fr 78px;gap:10px;align-items:end;}
+.gb-grid label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.02em;}
+.gb-grid input,.gb-grid select{width:100%;border:1.5px solid var(--sand-border);border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.gb-opts{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--sand-border);}
+.gb-opts label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text);}
+@media(max-width:700px){ .gb-grid{grid-template-columns:56px 1fr;} }
+</style>
+<div class="mbg" id="garbage-settings-modal" onclick="if(event.target===this)closeM('garbage-settings-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:6px;flex-shrink:0;">🗑 ゴミ回収設定</div>
+  <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px;flex-shrink:0;">
+    清掃予定表の各セルに「⭐ ゴミ回収」として表示されます。<b>前日表示</b>をONにすると回収日の前日に「明日 〇〇」と表示します。<br>
+    隔週は月ではなく<b>年間通しのISO週番号</b>で判定するため、月をまたいでも交互サイクルが崩れません。
+  </div>
+  <div style="flex:1;min-height:0;overflow-y:auto;padding-right:2px;" id="gb-list"></div>
+  <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center;">
+    <button class="btn" onclick="addGarbageRule()" style="padding:9px 16px;font-size:13px;">＋ 回収を追加</button>
+    <button class="btn" onclick="resetGarbageRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 藤沢市の初期設定に戻す</button>
+    <button class="btn" onclick="closeM('garbage-settings-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
+    <button class="btn btn-blue" onclick="saveGarbageRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
 </div>
 </div>
@@ -1777,11 +1814,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260726d"></script>
-<script src="hotel_v3.calendar.js?v=20260726d"></script>
-<script src="hotel_v3.sync.js?v=20260726d"></script>
-<script src="hotel_v3.pos.js?v=20260726d"></script>
-<script src="hotel_v3.js?v=20260726d"></script>
+<script src="hotel_v3.cleaning.js?v=20260727c"></script>
+<script src="hotel_v3.calendar.js?v=20260727c"></script>
+<script src="hotel_v3.sync.js?v=20260727c"></script>
+<script src="hotel_v3.pos.js?v=20260727c"></script>
+<script src="hotel_v3.js?v=20260727c"></script>
 <div id="notification-container"></div>
 </body>
 </html>

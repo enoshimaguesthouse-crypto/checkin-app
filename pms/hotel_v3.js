@@ -380,6 +380,7 @@ function _defaultMailCfg(extra){
 }
 let propertySettings={
   contractAgreement:{enabled:false,consentType:'checkbox',texts:{ja:'',en:'',zh:'',ko:''}},
+  garbageRules:[],  // ゴミ回収マスター（空なら初期値=藤沢市6ブロックを自動投入）
   mailSettings:{
     reservationCreated:_defaultMailCfg(),
     checkinCode:_defaultMailCfg({qr:false, sendDaysBefore:3, sendTime:'09:00', resend:false}),
