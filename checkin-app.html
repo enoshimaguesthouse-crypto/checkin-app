@@ -2992,8 +2992,27 @@ function replayGuideVoice(){
 // ══════════════════════════════════════════════
 let _mediaList=[], _mediaIdx=0, _mediaSlideTimer=null, _mediaMode='none';
 
+let _ytLoopHandler=null;
 function _clearMediaTimers(){
   if(_mediaSlideTimer){ clearInterval(_mediaSlideTimer); _mediaSlideTimer=null; }
+  if(_ytLoopHandler){ window.removeEventListener('message',_ytLoopHandler); _ytLoopHandler=null; }
+}
+// YouTubeのループ再生。loop=1&playlist=ID は一部の動画で再生拒否されるため使わず、
+// IFrame API(postMessage)で「再生終了(info:0)」を受け取って再生し直す方式にする。
+// 失敗しても動画は通常どおり1回再生されるだけなので、再生自体は妨げない。
+function _ytSetupLoop(){
+  const ifr=el('media-youtube'); if(!ifr)return;
+  const post=(msg)=>{ try{ ifr.contentWindow.postMessage(JSON.stringify(msg),'*'); }catch(e){} };
+  _ytLoopHandler=(e)=>{
+    if(!/^https?:\/\/(www\.)?youtube(-nocookie)?\.com$/.test(e.origin))return;
+    let d; try{ d=(typeof e.data==='string')?JSON.parse(e.data):e.data; }catch(_){ return; }
+    if(d && d.event==='onStateChange' && d.info===0) post({event:'command',func:'playVideo',args:[]});
+  };
+  window.addEventListener('message',_ytLoopHandler);
+  // iframe読込後にイベント購読を開始（handshake）
+  const listen=()=>post({event:'listening',id:1,channel:'widget'});
+  ifr.addEventListener('load',listen);
+  setTimeout(listen,1200); // 既に読込済みの場合の保険
 }
 
 // URL → 埋め込みHTML生成
@@ -3001,11 +3020,15 @@ function _mediaEmbedHtml(m){
   const url=m.url||'';
   switch(m.type){
     case 'youtube': {
-      // 動画IDを抽出
+      // 動画IDを抽出（youtu.be / watch?v= / embed/ / shorts/ に対応）
       let id='';
-      const m1=url.match(/[?&]v=([^&]+)/); const m2=url.match(/youtu\.be\/([^?&]+)/); const m3=url.match(/embed\/([^?&]+)/);
-      id=(m1&&m1[1])||(m2&&m2[1])||(m3&&m3[1])||'';
-      return `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1&rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
+      const m1=url.match(/[?&]v=([^&]+)/); const m2=url.match(/youtu\.be\/([^?&/]+)/);
+      const m3=url.match(/embed\/([^?&/]+)/); const m4=url.match(/shorts\/([^?&/]+)/);
+      id=(m1&&m1[1])||(m2&&m2[1])||(m3&&m3[1])||(m4&&m4[1])||'';
+      // 重要：loop=1&playlist=ID は付けない。
+      // このパラメータを付けるとYouTube側が再生を拒否し「この動画は再生できません」に
+      // なる動画があるため（検証で再現）。ループは下の _ytSetupLoop が終了時に再生し直す。
+      return `<iframe id="media-youtube" src="https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
     }
     case 'vimeo': {
       const vm=url.match(/vimeo\.com\/(\d+)/);
@@ -3121,6 +3144,8 @@ function _showMedia(i){
       document.addEventListener('click',onGesture,{once:true});
     }
   }
+  // YouTubeはループ再生をIFrame API経由で行う（loop=1&playlist=IDは再生拒否の原因になるため）
+  if(m.type==='youtube') _ytSetupLoop();
   if(dots){ dots.querySelectorAll('.m-dot').forEach((d,di)=>{ d.style.background=di===i?'#fff':'rgba(255,255,255,.45)'; }); }
 }
 
