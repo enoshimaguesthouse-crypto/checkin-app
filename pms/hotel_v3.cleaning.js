@@ -1150,7 +1150,41 @@ function copyLineMessage(){
     }
   });
 
-  msg+='\n【ゴミ回収】なし';
+  // 【ゴミ回収】：清掃予定表の⭐ゴミ回収プレビューと同じデータ（本日/明日の回収）を反映
+  const now_=new Date();
+  const jst_=new Date(now_.getTime()+9*60*60*1000);
+  const today_=new Date(jst_.getUTCFullYear(),jst_.getUTCMonth(),jst_.getUTCDate());
+  const garbageList=getGarbageNoticesFor(today_);
+  msg+='\n【ゴミ回収】';
+  if(garbageList.length===0){
+    msg+='なし';
+  } else {
+    msg+='\n';
+    garbageList.forEach(n=>{
+      msg+=`・${n.rule.icon||'🗑'}${n.when==='today'?'本日':'明日'} ${n.rule.name}\n`;
+    });
+    msg=msg.replace(/\n$/,'');
+  }
+
+  // 【今月の重点清掃】：⭐今月の重点清掃プレビューと同じ「今月予定かつ未実施」の項目を反映
+  initPriorityCleaningIfEmpty();
+  const todayKey_=`${jst_.getUTCFullYear()}-${String(jst_.getUTCMonth()+1).padStart(2,'0')}-${String(jst_.getUTCDate()).padStart(2,'0')}`;
+  const priorityList=[...priorityCleaningItems]
+    .sort((a,b)=>(a.order||0)-(b.order||0))
+    .filter(it=>shouldDisplayTask(it,now_));
+  msg+='\n【今月の重点清掃】';
+  if(priorityList.length===0){
+    msg+='今月分はすべて実施済みです';
+  } else {
+    msg+='\n';
+    priorityList.forEach(it=>{
+      const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐'};
+      const alert=isPriorityCleaningAlert(it);
+      msg+=`・${cat.icon}${it.name}${it.place?`（${it.place}）`:''}${alert?' ⚠未実施':''}\n`;
+    });
+    msg=msg.replace(/\n$/,'');
+  }
+
   msg+='\n【その他】';
   msg+='\n☔湿気の出る季節のなってまいりましたので、例年通りカビ対策のため清掃時に下記対応の程お願いします。';
   msg+='\n・本館地下 エアコンの除湿設定 60';
