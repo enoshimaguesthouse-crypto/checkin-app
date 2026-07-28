@@ -1074,10 +1074,6 @@ function copyLineMessage(){
       label:'SB三浦',
       groups:['Sea Breeze 三浦'],
     },
-    {
-      label:'腰越',
-      groups:[],  // 現在未使用
-    },
   ];
 
   let msg='おはようございます。\n本日の清掃業務です。\n';
@@ -1180,15 +1176,12 @@ function copyLineMessage(){
     priorityList.forEach(it=>{
       const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐'};
       const alert=isPriorityCleaningAlert(it);
-      msg+=`・${cat.icon}${it.name}${it.place?`（${it.place}）`:''}${alert?' ⚠未実施':''}\n`;
+      msg+=`・${cat.icon}${it.name}${it.place?`（${it.place}）`:''}\n`;
     });
     msg=msg.replace(/\n$/,'');
   }
 
   msg+='\n【その他】';
-  msg+='\n☔湿気の出る季節のなってまいりましたので、例年通りカビ対策のため清掃時に下記対応の程お願いします。';
-  msg+='\n・本館地下 エアコンの除湿設定 60';
-  msg+='\n・本館地下ラウンジの倉庫の扉開放及びソファーマットの立ち上げ。';
   msg+='\n清掃完了後にご一報よろしくお願い致します😊';
   msg+='\n今日もよろしくお願い致します🙇';
 
