@@ -987,10 +987,43 @@ function findExistingReservationInfo(resId){
   if(!anchorKey)return null;
   const _pk=parseKey(anchorKey);
   const month=_pk.m,roomId=_pk.r,day=_pk.d;
-  const nights=Object.keys(guestData).filter(k=>{
-    const g=guestData[k];return g&&String(g.reservationId)===String(resId);
-  }).length;
+  // 泊数＝「日付のユニーク数」。セル数で数えると、貸切（部屋数×泊数）や
+  // ドミトリーの人数分展開（ベッド数×泊数）で泊数が水増しされ、毎回「泊数変更」と
+  // 誤検知してしまうため。
+  const _days=new Set();
+  Object.keys(guestData).forEach(k=>{
+    const g=guestData[k];
+    if(!g||String(g.reservationId)!==String(resId))return;
+    const pk=parseKey(k);
+    _days.add((pk.y||DISP_YEAR)+'-'+pk.m+'-'+pk.d);
+  });
+  const nights=_days.size;
   return {key:anchorKey,data:anchorG,month,roomId,day,nights};
+}
+// 予約IDを持たない既存の貸切を「貸切グループ＋チェックイン日」で探す。
+// （貸切モーダルで保存された貸切は予約IDが失われている場合があるため、CSV取込の救済に使う）
+function findExistingCharterByDate(charterGroup,month,day,year){
+  let anchorKey=null,anchorG=null;
+  for(const k of Object.keys(guestData)){
+    const g=guestData[k];
+    if(!g||!g.charter||g.charterGroup!==charterGroup)continue;
+    const pk=parseKey(k);
+    if(pk.m!==month||pk.d!==day)continue;
+    if(year!=null&&pk.y!=null&&pk.y!==year)continue;
+    anchorKey=k;anchorG=g;
+    if(g.charterAnchor)break; // アンカー（料金を持つセル）を優先
+  }
+  if(!anchorKey)return null;
+  // 泊数＝この貸切が占有する日付のユニーク数
+  const _d=new Set();
+  Object.keys(guestData).forEach(k=>{
+    const g=guestData[k];
+    if(!g||!g.charter||g.charterGroup!==charterGroup)return;
+    const pk=parseKey(k);
+    if(pk.d>=day&&pk.m===month)_d.add(pk.m+'-'+pk.d);
+  });
+  const pk0=parseKey(anchorKey);
+  return {key:anchorKey,data:anchorG,month:pk0.m,roomId:pk0.r,day:pk0.d,nights:_d.size};
 }
 function detectReservationChanges(ex,incoming){
   const changes=[];
@@ -1194,19 +1227,33 @@ function importCSVText(text){
     if(isCharter&&yoyakuNo)processedCharter.add(yoyakuNo);
 
     // ─── 貸切変更検知（人数・金額・泊数の変更を反映）──────────────
-    if(isCharter&&reservationId){
-      const exCharter=findExistingReservationInfo(reservationId);
+    if(isCharter){
+      const charterGroupName=isAnnexCharter?'ANNEX':'本館';
+      // ①予約IDで照合。②見つからない場合は「貸切グループ＋チェックイン日」で照合する。
+      //   （貸切モーダルで保存された既存データは予約IDを持たないことがあるため。
+      //     この救済が無いと同一予約を新規扱いし、既存セル保護により何も反映されない）
+      let exCharter=reservationId?findExistingReservationInfo(reservationId):null;
+      let matchedByDate=false;
+      if(!exCharter){
+        exCharter=findExistingCharterByDate(charterGroupName,cm,cd,cy);
+        matchedByDate=!!exCharter;
+      }
       if(exCharter){
         const changes=detectReservationChanges(exCharter,{
           checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
           price,note:'',phone:'',email:'',address:''
         });
-        if(changes.length===0){
+        if(changes.length===0&&!matchedByDate){
           dupSkipList.push({name:guestName,reservationId});
           skipped++;continue;
         }
+        if(changes.length===0&&matchedByDate){
+          // 内容は同じだが予約IDが欠落している → IDを補完するため書き直す
+          changes.push('予約ID補完');
+        }
         // 変更あり → 既存貸切セルを全削除して再書き込みへ
-        clearReservationCells(reservationId);
+        if(matchedByDate)_deleteCharterData(charterGroupName,exCharter.day,exCharter.month);
+        else clearReservationCells(reservationId);
         updatedCount++;
         updatedList.push({name:guestName,reservationId,changes,status:'反映'});
       }
@@ -3230,6 +3277,22 @@ function saveCharter(){
   const newCheckedInAt=newStatus==='checked_in'
     ?`${_nowD.getFullYear()}-${_p(_nowD.getMonth()+1)}-${_p(_nowD.getDate())}T${_p(_nowD.getHours())}:${_p(_nowD.getMinutes())}:${_p(_nowD.getSeconds())}`:'';
 
+  // 編集時：CSV取込由来の項目（予約ID・連絡先など）は貸切モーダルに入力欄が無いため、
+  // 旧データから退避して引き継ぐ。これが無いと保存のたびに予約IDが消え、
+  // 次回のCSV取込で「同じ予約」と認識できず変更が反映されなくなる。
+  const _carryOver={};
+  if(editCharterStartDay!==null){
+    const _CARRY_FIELDS=['reservationId','checkinUrl','email','phone','address',
+                         'mailLang','mailHistory','identityPhotoId','guests_list'];
+    for(const k of Object.keys(guestData)){
+      const og=guestData[k];
+      if(!og||!og.charter)continue;
+      if(og.charterGroup!==editCharterGroup||Number(og.day)!==Number(editCharterStartDay))continue;
+      _CARRY_FIELDS.forEach(f=>{ if(og[f]!==undefined&&_carryOver[f]===undefined)_carryOver[f]=og[f]; });
+      if(_carryOver.reservationId!==undefined)break;
+    }
+  }
+
   // 編集時のみ旧データを削除（新規作成時はスキップ）
   if(editCharterStartDay!==null){
     _deleteCharterData(editCharterGroup, editCharterStartDay, m);
@@ -3258,6 +3321,7 @@ function saveCharter(){
     note:newNote, status:newStatus, checkedInAt:newCheckedInAt, guests:newGuests,
     arrivalTime:newArrival, parking:useParking,
     charter:true, charterGroup:newGroup,
+    ..._carryOver, // 予約ID・連絡先などモーダルに無い項目を引き継ぐ
   };
   newGroupRooms.forEach((room,ri)=>{
     for(let n=0;n<newNights;n++){
