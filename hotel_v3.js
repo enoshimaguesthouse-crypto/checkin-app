@@ -1025,15 +1025,25 @@ function findExistingCharterByDate(charterGroup,month,day,year){
   const pk0=parseKey(anchorKey);
   return {key:anchorKey,data:anchorG,month:pk0.m,roomId:pk0.r,day:pk0.d,nights:_d.size};
 }
+// \u96fb\u8a71\u756a\u53f7\u306e\u8868\u8a18\u3086\u308c\uff08+81/81/0 \u306e\u56fd\u756a\u53f7\u9055\u3044\u30fb\u30b9\u30da\u30fc\u30b9\u3084\u30cf\u30a4\u30d5\u30f3\u306e\u6709\u7121\uff09\u3092\u5438\u53ce\u3057\u3066
+// \u540c\u4e00\u756a\u53f7\u304b\u3069\u3046\u304b\u3092\u6bd4\u8f03\u3059\u308b\u3002\u53d6\u8fbc\u5143CSV\u306e\u30d5\u30a9\u30fc\u30de\u30c3\u30c8\u304c\u5b9f\u884c\u306e\u305f\u3073\u306b\u5fae\u5999\u306b\u9055\u3063\u3066\u3082
+// \u300c\u5909\u66f4\u300d\u3068\u8aa4\u691c\u77e5\u3057\u3066\u6bce\u56de\u53cd\u6620\u6271\u3044\u306b\u306a\u308b\u306e\u3092\u9632\u3050\uff08\u4fdd\u5b58\u3055\u308c\u308b\u5024\u306f\u5e38\u306bCSV\u306e\u751f\u5024\u306e\u307e\u307e\uff09\u3002
+function _normPhoneForCompare(p){
+  let d=String(p||'').replace(/\D/g,'');
+  if(!d)return '';
+  if(d.startsWith('81'))d='0'+d.slice(2);      // 81(90...) \u2192 0(90...)
+  else if(d.startsWith('0081'))d='0'+d.slice(4);
+  return d;
+}
 function detectReservationChanges(ex,incoming){
   const changes=[];
   if(ex.month!==incoming.checkinMonth || ex.day!==incoming.checkinDay) changes.push('\u65e5\u7a0b\u5909\u66f4');
   else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights) changes.push('\u6cca\u6570\u5909\u66f4');
   if(ex.data.guests!=null && incoming.guests!=null && Number(ex.data.guests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
   if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) changes.push('\u6599\u91d1\u5909\u66f4');
-  if((ex.data.phone||'')!==(incoming.phone||'')) changes.push('\u96fb\u8a71\u5909\u66f4');
-  if((ex.data.email||'')!==(incoming.email||'')) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
-  if((ex.data.address||'')!==(incoming.address||'')) changes.push('\u4f4f\u6240\u5909\u66f4');
+  if(_normPhoneForCompare(ex.data.phone)!==_normPhoneForCompare(incoming.phone)) changes.push('\u96fb\u8a71\u5909\u66f4');
+  if(String(ex.data.email||'').trim().toLowerCase()!==String(incoming.email||'').trim().toLowerCase()) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
+  if(String(ex.data.address||'').replace(/\s+/g,'')!==String(incoming.address||'').replace(/\s+/g,'')) changes.push('\u4f4f\u6240\u5909\u66f4');
   return changes;
 }
 function clearReservationCells(resId){
@@ -1239,9 +1249,11 @@ function importCSVText(text){
         matchedByDate=!!exCharter;
       }
       if(exCharter){
+        // 重要：phone/email/addressは実際のCSV値を渡す（空文字固定にすると、
+        // 既存側に値がある限り毎回「電話変更」等が誤検知され続ける）
         const changes=detectReservationChanges(exCharter,{
           checkinMonth:cm,checkinDay:cd,nights,guests:guestCount,
-          price,note:'',phone:'',email:'',address:''
+          price,note:'',phone,email,address
         });
         if(changes.length===0&&!matchedByDate){
           dupSkipList.push({name:guestName,reservationId});
