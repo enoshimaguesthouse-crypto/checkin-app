@@ -1141,7 +1141,8 @@ input.needs-input::placeholder { color:#d08a3a; }
     <div class="card" id="guide-card" style="display:none;">
       <!-- 部屋案内メディア（動画優先 / 画像スライドショー） -->
       <div id="media-container" style="display:none;position:relative;margin-bottom:14px;border-radius:12px;overflow:hidden;background:#000;">
-        <div id="media-stage" style="position:relative;width:100%;"></div>
+        <!-- 縦向き動画でも中央に収まるようflexで中央寄せ（再生ボタンの位置ずれ防止） -->
+        <div id="media-stage" style="position:relative;width:100%;display:flex;align-items:center;justify-content:center;"></div>
         <button id="media-prev" onclick="mediaCarousel(-1)" style="display:none;position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;">◀</button>
         <button id="media-next" onclick="mediaCarousel(1)" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;">▶</button>
         <div id="media-dots" style="position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:2;"></div>
@@ -3029,7 +3030,11 @@ function _mediaEmbedHtml(m){
       return `<iframe src="${src}" frameborder="0" allow="autoplay" allowfullscreen style="width:100%;aspect-ratio:16/9;display:block;border-radius:12px;"></iframe>`;
     }
     case 'video':
-      return `<video id="media-video" src="${url}" muted playsinline loop controls style="width:100%;display:block;border-radius:12px;"></video>`;
+      // autoplay/muted/playsinline は3点セット（muted が無いと端末の自動再生ブロックに掛かる）。
+      // 縦向き動画（例:1080x1920）でも画面を占有しないよう最大高さを制限し、
+      // object-fit:contain＋中央寄せで再生ボタンが常に画面中央に来るようにする。
+      return `<video id="media-video" src="${url}" autoplay muted playsinline loop controls preload="auto"
+        style="width:100%;max-height:62vh;display:block;margin:0 auto;border-radius:12px;background:#000;object-fit:contain;"></video>`;
     case 'image':
       return `<img src="${url}" style="width:100%;display:block;border-radius:12px;object-fit:cover;max-height:280px;">`;
     default:
@@ -3099,13 +3104,21 @@ function _showMedia(i){
   const m=_mediaList[i];
   stage.innerHTML=_mediaEmbedHtml(m);
 
-  // ローカル動画は完了イベント内で確実に再生
+  // ローカル動画は確実に自動再生する。
+  // moovアトムが末尾にある動画（スマホ撮影の未最適化mp4）は読み込みに時間が掛かり
+  // 初回のplay()が失敗することがあるため、再生可能になった時点で再試行する。
   if(m.type==='video'){
     const v=el('media-video');
     if(v){
       v.muted=true; v.setAttribute('playsinline','');
-      const p=v.play();
-      if(p&&p.catch) p.catch(()=>{});
+      const tryPlay=()=>{ const p=v.play(); if(p&&p.catch)p.catch(()=>{}); };
+      tryPlay();
+      v.addEventListener('loadeddata',tryPlay,{once:true});
+      v.addEventListener('canplay',tryPlay,{once:true});
+      // 端末の自動再生ブロックに掛かった場合は、画面のどこかを触れた時点で再生開始
+      const onGesture=()=>{ tryPlay(); document.removeEventListener('touchstart',onGesture); document.removeEventListener('click',onGesture); };
+      document.addEventListener('touchstart',onGesture,{once:true,passive:true});
+      document.addEventListener('click',onGesture,{once:true});
     }
   }
   if(dots){ dots.querySelectorAll('.m-dot').forEach((d,di)=>{ d.style.background=di===i?'#fff':'rgba(255,255,255,.45)'; }); }
