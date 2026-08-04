@@ -470,7 +470,16 @@ function getCellIcons(g){
 let selectedKeys=new Set();
 
 function cellClick(e,k){
-  if(currentRole==='watanabe')return;
+  if(currentRole==='watanabe'){
+    // 渡辺千尋：Sea Breeze 鎌倉・三浦のセルのみ、予約詳細を開いて削除できる
+    // （他の項目は編集不可・閲覧専用。それ以外の部屋はこれまで通りクリック無効）
+    const g=guestData[k];
+    if(!g||!_isSBRoom(g.roomId))return;
+    const modalOpen=document.getElementById('modal').classList.contains('open');
+    if(modalOpen && _openPanelType==='reservation' && editKey===k){ closeAllPanels(); return; }
+    openEdit(k);
+    return;
+  }
   if(currentRole==='reception'){
     // 接客スタッフ：複数選択・一括削除は使わせず、予約詳細を閲覧専用で開くだけに限定
     const modalOpen=document.getElementById('modal').classList.contains('open');
