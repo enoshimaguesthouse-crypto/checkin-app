@@ -400,11 +400,16 @@ function renderReg(){
             else{planBorder='#FF8F00';planBg='#FFF8E1';}
           }
           const _pb=planBorder.includes(',')?planBorder.split(',')[0].trim():planBorder;
-          const planStyle=planBorder
-            ? (cin
-                ? `box-shadow:inset 7px 0 0 0 ${_pb};`
-                : `box-shadow:inset 7px 0 0 0 ${_pb};background:${planBg};`)
-            : '';
+          // 部屋移動：オペレーション上の重要フラグのため、他タグ・チェックイン済みかどうかに関わらず
+          // 常にセル全体を赤背景で強調する（他タグは背景を薄く見せるだけだが、これは最優先で目立たせる）
+          const isRoomMove=!!(g.note&&g.note.includes('部屋移動'));
+          const planStyle=isRoomMove
+            ? `box-shadow:inset 7px 0 0 0 #C62828;background:#FFCDD2;`
+            : planBorder
+              ? (cin
+                  ? `box-shadow:inset 7px 0 0 0 ${_pb};`
+                  : `box-shadow:inset 7px 0 0 0 ${_pb};background:${planBg};`)
+              : '';
 
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
           const todayColBorder=isTodayCol?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';

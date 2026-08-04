@@ -124,6 +124,8 @@ const PLAN_RULES=[
   {keyword:'洋食',     icon:'🍳', noteTag:'洋食',               checkboxId:'f-yshoku', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF'},
   {keyword:'レイトチェックアウト', icon:'🌙', noteTag:'レイトチェックアウト', checkboxId:'f-late',   autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6'},
   {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#E53935', cellBg:'#FFF5F5'},
+  // 部屋移動：他タグと違い、チェック済みでもセル全体を赤背景で強調表示する（renderReg内で個別処理）
+  {keyword:'部屋移動', icon:'🔄',  noteTag:'部屋移動',           checkboxId:'f-roommove', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2'},
 ];
 
 // 月別・合計宿泊者数（各月のXX日時点の累計宿泊者数）— 実データ投入
