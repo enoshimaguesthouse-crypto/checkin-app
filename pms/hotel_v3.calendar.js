@@ -1030,12 +1030,15 @@ function openEdit(k){
 }
 // 接客スタッフ（reception）は予約詳細を閲覧専用で開く：全項目は表示するが編集不可にし、
 // 保存・削除・メール送信は隠して「閉じる」のみ残す（管理者ロールはフル操作のまま）。
+// 渡辺千尋（watanabe）はSea Breeze鎌倉・三浦に限りセルを開けるが、こちらも編集・保存・メールは
+// 不可の閲覧専用。ただし「削除」のみ許可する（cellClickでSB以外は開けない制御と対）。
 function _applyReservationViewMode(){
   const modal=document.getElementById('modal');
-  const readOnly=currentRole==='reception';
+  const isWatanabe=currentRole==='watanabe';
+  const readOnly=currentRole==='reception'||isWatanabe;
   modal.querySelectorAll('input,select,textarea').forEach(el=>{ el.disabled=readOnly; });
   if(readOnly){
-    document.getElementById('del-btn').style.display='none';
+    document.getElementById('del-btn').style.display=isWatanabe?'block':'none';
     document.getElementById('save-btn').style.display='none';
     const mailPanel=document.getElementById('f-mail-panel');
     if(mailPanel)mailPanel.style.display='none'; // 送信操作は管理操作のため非表示
@@ -1441,6 +1444,8 @@ function deleteGuest(){
   if(!editKey)return;
   const g=guestData[editKey];
   if(!g)return;
+  // 渡辺千尋：Sea Breeze 鎌倉・三浦のセルのみ削除可（多重防御。cellClickでも同条件を課している）
+  if(currentRole==='watanabe'&&!_isSBRoom(g.roomId))return;
   saveHistory();
   const month=parseInt(document.getElementById('sel-month').value);
   logAudit('予約削除', _auditGuestLabel(g), `予約ID:${g.reservationId||g.id||'-'} 料金:${g.price||0}`);
