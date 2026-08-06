@@ -586,79 +586,140 @@ input.needs-input::placeholder { color:#d08a3a; }
 #screen-lang .lang-sub { font-size:clamp(13px, 2.2vh, 18px); }
 
 /* ════════════════════════════════════════════════════════════════
-   言語選択画面：ダークネイビー×銅色テーマ
-   body.lang-theme が付いている間だけ適用（showScreenで付け外し）。
-   入力フォーム画面は視認性を優先して従来の明るいUIのままにする。
+   ダークネイビー×銅色テーマ（全画面共通）
+   既存CSSはほぼ全てCSS変数で色を組み立てているため、変数を暗色系に
+   再定義することで全画面をまとめてダーク化する。個別の上書きは
+   「白系がハードコードされている箇所」だけに絞る。
    ════════════════════════════════════════════════════════════════ */
-body.lang-theme{
+:root{
+  --ocean-deep:  #eaf4f8;   /* 見出し等の主要文字：明るく */
+  --ocean-mid:   #7fc4dd;
+  --ocean-light: #4f8ea8;
+  --ocean-pale:  #1d4257;   /* 淡い面 → 濃紺の面へ */
+  --foam:        #16344608;
+  --sand:        #1b3f52;
+  --ink:         #eaf2f6;   /* 本文 */
+  --gray:        #a9c0cc;   /* 補助文字 */
+  --border:      #2f5f76;
+  --red:         #ff8a7a;
+  --green:       #5fd6a0;
+  --shadow:      rgba(0,0,0,0.45);
+  --copper:      #d5a877;
+  --copper-lt:   #f7e4cb;
+  --copper-dk:   #8a5c3a;
+  --panel:       rgba(22,52,70,0.72);   /* カード等の面 */
+  --panel-solid: #16354a;
+}
+body{
   background:#0e2233;
   background-image:
     radial-gradient(ellipse 85% 55% at 50% 6%, rgba(112,170,196,.50) 0%, rgba(40,90,116,.22) 45%, transparent 74%),
     radial-gradient(ellipse 130% 95% at 50% 48%, #23505f 0%, #17384c 55%, #0d2031 100%);
   background-attachment:fixed;
+  color:var(--ink);
 }
-body.lang-theme::before{ /* 上端のライン：海色→銅色へ */
-  background:linear-gradient(90deg,#7d5433,#d5a877,#f7e4cb,#d5a877,#7d5433);
-}
-body.lang-theme .wave-bg{ display:none; }
-body.lang-theme #screen-lang.active{ position:relative; }
-body.lang-theme #screen-lang .header::after{ display:none; } /* 区切り線は使わない */
+body::before{ background:linear-gradient(90deg,#7d5433,#d5a877,#f7e4cb,#d5a877,#7d5433); }
+.wave-bg{ display:none; }
 
-/* エンブレム */
-body.lang-theme .brand-mark{
-  width:clamp(150px, 26vh, 250px); height:auto; display:block;
+/* 面（カード・ブロック）：白ハードコード箇所を暗色へ */
+.card,
+.guest-block,
+.res-found,
+.room-display,
+.pin-box,
+.camera-area,
+.sign-pad-box,
+.confirm-table{
+  background:var(--panel)!important;
+  border-color:var(--border)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.entry-card,
+.entry-card-qr,
+.step-dot{
+  background:var(--panel)!important;
+  border-color:var(--border)!important;
+}
+.step-dot{ color:var(--gray); }
+.sign-pad{ background:#f6fafc; }        /* 署名は白地のままでないと書きにくい */
+.sign-clear-btn{ background:rgba(10,28,40,.5); color:var(--gray); border-color:var(--border); }
+.agreement-text{ background:rgba(10,28,40,.55); border-color:var(--border); }
+.res-error{ background:rgba(120,40,40,.35); border-color:#7d4040; color:#ffc9c0; }
+input.needs-input{ background:rgba(90,60,20,.45)!important; border-color:#a5814a!important; }
+
+/* 入力欄 */
+input,select,textarea{
+  background:rgba(10,28,40,.55)!important;
+  color:var(--ink)!important;
+  border-color:var(--border)!important;
+}
+input::placeholder,textarea::placeholder{ color:#7f98a6; }
+select option{ background:#16354a; color:#eaf2f6; }
+input:focus,select:focus,textarea:focus{
+  border-color:var(--copper)!important;
+  box-shadow:0 0 0 3px rgba(213,168,119,.22)!important;
+}
+.confirm-table th{ background:rgba(10,28,40,.5); color:var(--gray); }
+.confirm-table td{ color:var(--ink); }
+
+/* タブ・ボタン類 */
+.nat-tab{ background:rgba(10,28,40,.45); color:var(--gray); border-color:var(--border); }
+.nat-tab.active{ background:var(--copper); color:#16303f; border-color:var(--copper); }
+.btn-back{ background:rgba(10,28,40,.5); color:var(--ink); border-color:var(--border); }
+.btn-back:hover{ background:rgba(10,28,40,.75); }
+.btn-next,.btn-submit{
+  background:linear-gradient(160deg,#e9c79f 0%,#bb8760 45%,#8a5c3a 100%);
+  color:#16303f; border:none; font-weight:700;
+}
+.btn-next:hover,.btn-submit:hover{ background:linear-gradient(160deg,#f6dcba 0%,#cb9a6d 45%,#9c6b45 100%); }
+.btn-next:disabled{ background:#2c4c5f; color:#7f98a6; }
+.camera-btn{ background:linear-gradient(160deg,#e9c79f,#bb8760); color:#16303f; border:none; }
+
+/* ── 言語選択画面（トップ） ── */
+#screen-lang.active{ position:relative; }
+#screen-lang .header::after{ display:none; }   /* 区切り線は使わない */
+.brand-mark{
+  width:clamp(160px, 27vh, 260px); height:auto; display:block;
   filter:drop-shadow(0 3px 10px rgba(0,0,0,.45));
 }
-body.lang-theme #screen-lang .shell-icon{ margin-bottom:clamp(2px,1vh,10px); }
-
-/* 見出し */
-body.lang-theme #screen-lang .header-en{
-  color:#d5a877; letter-spacing:.4em; font-size:clamp(10px,1.5vh,13px); margin-bottom:8px;
+#screen-lang .shell-icon{ margin-bottom:clamp(2px,1vh,10px); }
+#screen-lang .header-en{
+  color:var(--copper); letter-spacing:.4em; font-size:clamp(10px,1.5vh,13px); margin-bottom:8px;
 }
-body.lang-theme #screen-lang .header-ja{
+#screen-lang .header-ja{
   color:#f4ece2; letter-spacing:.16em;
   text-shadow:0 1px 0 rgba(255,255,255,.30), 0 2px 2px rgba(0,0,0,.40), 0 8px 22px rgba(0,0,0,.45);
 }
-body.lang-theme #screen-lang .self-checkin{
+#screen-lang .self-checkin{
   font-family:'Shippori Mincho',serif; color:#c9a17a;
   font-size:clamp(11px,1.7vh,15px); letter-spacing:.3em; margin-top:6px;
 }
-
 /* 言語ボタン：角を落とした（面取り）銅フレーム＋白い面 */
-body.lang-theme #screen-lang .lang-btn{
+#screen-lang .lang-btn{
   position:relative; border:none; border-radius:0; padding:10px 18px;
   background:linear-gradient(160deg,#e9c79f 0%,#bb8760 42%,#8a5c3a 100%);
   clip-path:polygon(17px 0,calc(100% - 17px) 0,100% 17px,100% calc(100% - 17px),calc(100% - 17px) 100%,17px 100%,0 calc(100% - 17px),0 17px);
   box-shadow:0 10px 26px rgba(0,0,0,.45);
   transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
 }
-body.lang-theme #screen-lang .lang-btn::before{
+#screen-lang .lang-btn::before{
   content:''; position:absolute; inset:3px; z-index:0;
   background:linear-gradient(165deg,#ffffff 0%,#f8f3ec 55%,#eae1d5 100%);
   clip-path:polygon(15px 0,calc(100% - 15px) 0,100% 15px,100% calc(100% - 15px),calc(100% - 15px) 100%,15px 100%,0 calc(100% - 15px),0 15px);
 }
-body.lang-theme #screen-lang .lang-btn > *{ position:relative; z-index:1; }
-body.lang-theme #screen-lang .lang-name{ color:#16303f; font-weight:700; }
-body.lang-theme #screen-lang .lang-sub { color:#6c8090; }
-body.lang-theme #screen-lang .lang-btn:hover,
-body.lang-theme #screen-lang .lang-btn:active{
+#screen-lang .lang-btn > *{ position:relative; z-index:1; }
+#screen-lang .lang-name{ color:#16303f; font-weight:700; }
+#screen-lang .lang-sub { color:#6c8090; }
+#screen-lang .lang-btn:hover,
+#screen-lang .lang-btn:active{
   background:linear-gradient(160deg,#f6dcba 0%,#cb9a6d 42%,#9c6b45 100%);
   transform:translateY(-2px);
   box-shadow:0 15px 34px rgba(0,0,0,.55);
 }
-
-/* 下部の案内文＋装飾 */
-body.lang-theme #screen-lang .lang-hint{
-  color:#a9bcc7; font-size:clamp(11px,1.7vh,15px); line-height:1.7;
+#screen-lang .lang-hint{
+  color:#a9bcc7; font-size:clamp(11px,1.7vh,15px); line-height:1.9;
   text-align:center; margin-top:clamp(8px,2vh,22px); padding:0 12px;
 }
-body.lang-theme #screen-lang .lang-sparkle{
-  position:absolute; right:clamp(10px,4vw,54px); bottom:clamp(30px,7vh,74px);
-  color:#cfe0e8; font-size:clamp(16px,2.6vh,26px); opacity:.75; pointer-events:none;
-}
-/* ダークテーマ以外（=念のため）では装飾を出さない */
-body:not(.lang-theme) .lang-hint,
-body:not(.lang-theme) .lang-sparkle{ display:none; }
 
 /* ════════════════════════════════════════════════════════════════
    タブレット専用最適化（10インチ想定・Kioskモード）
@@ -695,7 +756,7 @@ body:not(.lang-theme) .lang-sparkle{ display:none; }
     position:sticky; bottom:0; z-index:20;
     margin-top:auto; flex-shrink:0;
     gap:14px; padding:12px 0 14px;
-    background:linear-gradient(180deg, rgba(238,246,249,0) 0%, #eef6f9 22%);
+    background:linear-gradient(180deg, rgba(13,32,49,0) 0%, #0d2031 26%);
   }
 
   /* ③ 主要ボタン：高さ60px以上・22〜24px／⑥ 多言語で崩れない */
@@ -787,8 +848,7 @@ body:not(.lang-theme) .lang-sparkle{ display:none; }
 <!-- QRコード読み取り用の軽量ライブラリ（カメラスキャン用） -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
-<!-- lang-theme：言語選択画面のみダークネイビー＋銅色のテーマを適用（他画面は従来の明るいUIのまま） -->
-<body class="lang-theme">
+<body>
 
 <svg class="wave-bg" viewBox="0 0 1440 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M0,80 C240,140 480,20 720,80 C960,140 1200,20 1440,80 L1440,160 L0,160 Z" fill="#1a7a9a"/>
@@ -858,27 +918,8 @@ body:not(.lang-theme) .lang-sparkle{ display:none; }
   <div class="screen active" id="screen-lang">
     <div class="header">
       <div class="shell-icon">
-        <!-- 銅色の波＋134 エンブレム -->
-        <svg class="brand-mark" viewBox="0 0 300 96" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="cuG" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stop-color="#f7e4cb"/>
-              <stop offset="38%"  stop-color="#d5a877"/>
-              <stop offset="72%"  stop-color="#aa774b"/>
-              <stop offset="100%" stop-color="#7d5433"/>
-            </linearGradient>
-          </defs>
-          <g stroke="url(#cuG)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M86 26C74 12 50 10 36 22 20 36 24 62 44 70c22 9 44-6 48-28" stroke-width="3.4"/>
-            <path d="M74 34c-9-8-23-7-30 3-6 9-2 22 9 25 12 4 23-5 23-17" stroke-width="2.6"/>
-            <path d="M62 42c-5-3-11 0-12 6-1 5 3 9 8 8" stroke-width="2"/>
-            <path d="M96 20c30-6 62-4 92 4" stroke-width="1.6" opacity=".85"/>
-            <path d="M52 78c40 12 92 12 140-2" stroke-width="2.2"/>
-            <path d="M196 74c14-3 26-7 36-13" stroke-width="1.6" opacity=".8"/>
-          </g>
-          <text x="106" y="62" font-family="Georgia,'Times New Roman',serif" font-size="46" font-weight="700" fill="url(#cuG)" letter-spacing="2">134</text>
-          <circle cx="236" cy="60" r="3.2" fill="url(#cuG)"/>
-        </svg>
+        <!-- 施設エンブレム（波＋134）。背景を透過させたPNGをリポジトリ内に配置 -->
+        <img class="brand-mark" src="emblem.png" alt="Enoshima Guesthouse 134">
       </div>
       <div class="header-en">Enoshima Guesthouse 134</div>
       <div class="header-ja">江ノ島ゲストハウス134</div>
@@ -902,8 +943,7 @@ body:not(.lang-theme) .lang-sparkle{ display:none; }
         <div class="lang-sub">Korean</div>
       </button>
     </div>
-    <div class="lang-hint">スムーズなチェックインのために言語を選択してください / Please select your language for a smooth check-in</div>
-    <span class="lang-sparkle" aria-hidden="true">✦</span>
+    <div class="lang-hint">スムーズなチェックインのために言語を選択してください<br>Please select your language for a smooth check-in</div>
   </div>
 
   <!-- ════════════════════════════════
@@ -1242,8 +1282,8 @@ body:not(.lang-theme) .lang-sparkle{ display:none; }
       </div>
       <div id="guide-roomname" style="font-size:15px;font-weight:600;color:#1a5a6e;margin-bottom:10px;"></div>
       <div id="guide-text" style="font-size:13px;line-height:1.9;color:#444;white-space:pre-wrap;"></div>
-      <a id="guide-link" href="#" target="_blank" rel="noopener" style="display:none;margin-top:12px;padding:11px 14px;background:#eef6f9;border:1.5px solid #b7dde8;border-radius:10px;font-size:13px;font-weight:600;color:#1a7a9a;text-decoration:none;text-align:center;">🔗 <span id="guide-link-label">詳しい案内はこちら</span></a>
-      <div id="wifi-box" style="display:none;margin-top:14px;padding:12px 14px;background:#eef6f9;border-radius:10px;">
+      <a id="guide-link" href="#" target="_blank" rel="noopener" style="display:none;margin-top:12px;padding:11px 14px;background:rgba(10,28,40,.55);border:1.5px solid #2f5f76;border-radius:10px;font-size:13px;font-weight:600;color:#1a7a9a;text-decoration:none;text-align:center;">🔗 <span id="guide-link-label">詳しい案内はこちら</span></a>
+      <div id="wifi-box" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(10,28,40,.55);border-radius:10px;">
         <div style="font-size:12px;font-weight:700;color:#1a7a9a;margin-bottom:6px;">📶 Wi-Fi</div>
         <div style="font-size:13px;color:#333;line-height:1.8;">
           <div id="wifi-ssid-row" style="display:none;">SSID：<span id="wifi-ssid" style="font-weight:600;"></span></div>
@@ -1794,8 +1834,6 @@ function el(id) { return document.getElementById(id); }
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  // 言語選択画面のみダークテーマ（入力フォーム画面は視認性重視で従来の明るいUIを維持）
-  document.body.classList.toggle('lang-theme', id === 'screen-lang');
   window.scrollTo({top:0, behavior:'smooth'});
   // 予約検索画面に到達したらURLパラメータの自動検索を試行（初回のみ）
   if (id === 'screen-search') setTimeout(_maybeAutoSearchFromUrl, 0);
@@ -2768,7 +2806,7 @@ function buildConfirmTable() {
   // 宿泊者ごと
   finalGuests.forEach((g,i)=>{
     const typeLabel = g.residentType==='jp' ? t.residentJp : t.residentForeign;
-    html += `<tr><th colspan="2" style="background:var(--foam);color:var(--ocean-deep);">${t.guestLabel} ${i+1}（${typeLabel}）</th></tr>`;
+    html += `<tr><th colspan="2" style="background:rgba(10,28,40,.5);color:var(--ocean-deep);">${t.guestLabel} ${i+1}（${typeLabel}）</th></tr>`;
     html += row(t.cfName, (g.familyName + ' ' + g.givenName).trim());
     html += row(t.cfNat, g.residentType==='jp' ? '日本 / Japan' : g.nationality);
     if(g.residentType==='foreign'){
