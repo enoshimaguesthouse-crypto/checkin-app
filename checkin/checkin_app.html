@@ -2988,18 +2988,20 @@ async function _fetchRoomSettings(){
         localStorage.setItem('hotel_roomSettings', JSON.stringify(_stripSecrets(data.roomSettings)));
         if(data.rooms) localStorage.setItem('hotel_rooms', JSON.stringify(data.rooms));
       }catch(e){}
-      return { roomSettings: data.roomSettings, rooms: data.rooms || [] };
+      return { roomSettings: data.roomSettings, rooms: data.rooms || [], fromCache:false };
     }
   }catch(e){ console.warn('GAS取得失敗、localStorageから読込:', e); }
   // 2) localStorage フォールバック
+  //    注意：キャッシュは _stripSecrets 済みで暗証番号を含まない。
+  //    fromCache:true を返し、呼び出し側で「暗証番号が取れない状態」を判別できるようにする。
   try{
     const s = localStorage.getItem('hotel_roomSettings');
     const r = localStorage.getItem('hotel_rooms');
     const rs = s ? JSON.parse(s) : {};
     const rm = r ? JSON.parse(r) : [];
-    return { roomSettings: rs, rooms: rm };
+    return { roomSettings: rs, rooms: rm, fromCache:true };
   }catch(e){}
-  return { roomSettings: {}, rooms: [] };
+  return { roomSettings: {}, rooms: [], fromCache:true };
 }
 
 // roomId（数値/文字列）から roomSettings のエントリを取得
@@ -3022,10 +3024,21 @@ function _resolveRoomSetting(roomSettings, roomId){
 
 async function applyRoomGuide(roomId){
   try{
-    const { roomSettings: allSettings, rooms: gasRooms } = await _fetchRoomSettings();
-    const allRooms = gasRooms.length ? gasRooms : DEFAULT_ROOMS;
+    let { roomSettings: allSettings, rooms: gasRooms, fromCache } = await _fetchRoomSettings();
+    let settings = _resolveRoomSetting(allSettings, roomId);
 
-    const settings = _resolveRoomSetting(allSettings, roomId);
+    // キャッシュ由来のデータは暗証番号が除去されているため、そのままだと「—」表示になり
+    // ゲストが入室できなくなる。通信が一時的に失敗した場合に備えて一度だけ再取得する。
+    if(fromCache && (!settings || (!settings.roomCode && !settings.keycode))){
+      await new Promise(r=>setTimeout(r,1200));
+      const retry = await _fetchRoomSettings();
+      if(!retry.fromCache){
+        allSettings = retry.roomSettings;
+        gasRooms    = retry.rooms;
+        settings    = _resolveRoomSetting(allSettings, roomId);
+      }
+    }
+    const allRooms = gasRooms.length ? gasRooms : DEFAULT_ROOMS;
 
     // 表示用の部屋番号（no）を rooms 配列から解決
     const matchedRoom = allRooms.find(r =>
