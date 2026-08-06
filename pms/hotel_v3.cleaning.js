@@ -288,14 +288,19 @@ function generateCleaningList(){
     }
 
     // ── 連泊判定：今日も宿泊中（cont:trueも含む） ──
-    // todayGがcont:trueの場合はアンカーを遡って取得
+    // todayGがcont:trueの場合はアンカーを遡って取得。
+    // 重要：氏名が一致する記録のみをチェーンとして辿ること（yestAnchor解決と同じ方式）。
+    // 貸切は同じ日の複数部屋に書き込む際、アンカー部屋(ri=0)以外は初日でもcont:trueになる。
+    // 氏名チェックなしで「cont:trueなら前日を無条件に採用」してしまうと、貸切の入居日に
+    // 前日まで別の宿泊者がいた部屋で、その別人の記録を誤ってアンカーとして採用してしまい、
+    // 本来チェックアウトのはずの部屋が「連泊中」として二重表示される不具合が発生する。
     let effectiveTodayG=todayG;
     if(todayG&&todayG.cont){
-      // アンカー（cont:false）を過去方向に探す
+      // アンカー（cont:false）を過去方向に探す（氏名が一致する間のみ遡る）
       for(let i=1;i<=31;i++){
         const pk=keyBefore(i);
         const pg=guestData[pk];
-        if(!pg)break;
+        if(!pg||pg.name!==todayG.name)break;
         if(!pg.cont){effectiveTodayG=pg;break;}
       }
     }
