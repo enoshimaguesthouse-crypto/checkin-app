@@ -251,6 +251,18 @@ function generateCleaningList(){
   // rooms配列順（宿泊名簿と同一）でスキャン
   rooms.forEach(room=>{
     const keyBefore=(n)=>{const{y,m:pm,d:pd}=addDays(m,d,-n);return gk(pm,room.id,pd,y);};
+    // 次予約（本日IN）の泊数：本日から同一人物が連続する日数を数える
+    const nextNightsOf=(startG)=>{
+      if(!startG)return 1;
+      let n=1;
+      for(let i=1;i<=31;i++){
+        const{y:ny,m:nm,d:nd}=addDays(m,d,i);
+        const gg=guestData[gk(nm,room.id,nd,ny)];
+        if(gg&&gg.name===startG.name)n++;
+        else break;
+      }
+      return n;
+    };
     const todayKey=gk(m,room.id,d);
     const yestKey=keyBefore(1);
     const todayG=guestData[todayKey];
@@ -283,7 +295,7 @@ function generateCleaningList(){
 
       newMap.set(room.id,{
         room,guest:yestAnchor,nights,hasNextBooking,priority,
-        nextGuest:todayG||null,type:'checkout',
+        nextGuest:todayG||null,nextNights:todayG?nextNightsOf(todayG):0,type:'checkout',
       });
     }
 
@@ -337,7 +349,7 @@ function generateCleaningList(){
       if(todayGuest && !isStayoverToday && todayGuest.status!=='cancelled'){
         newMap.set(room.id+'_prep',{
           room,guest:null,nights:0,hasNextBooking:true,priority:'mid',
-          nextGuest:todayGuest,type:'nextReservationPreparation',roomId:room.id,
+          nextGuest:todayGuest,nextNights:nextNightsOf(todayGuest),type:'nextReservationPreparation',roomId:room.id,
         });
       }
     }
@@ -572,7 +584,7 @@ function renderCleaning(){
             <span class="cl-room-code">${esc(roomLabel)}</span>
             <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🛏 次予約あり</span>
           </div>
-          <div class="cl-next-alert">⚠️ 次予約あり（${guestCountOf(ng)}名）${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>
+          <div class="cl-next-alert">⚠️ 次予約あり（${guestCountOf(ng)}名 / ${info.nextNights||1}泊）${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>
           <div class="cl-guest">👤 ${esc(ng.name||'—')}</div>
           <div class="cl-badges">
             <span class="cl-badge" style="background:#dcfce7;color:#15803d;">✅ 清掃不要</span>
@@ -597,7 +609,7 @@ function renderCleaning(){
             :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
         ${info.hasNextBooking
-          ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名）':''}${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>`
+          ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名 / '+(info.nextNights||1)+'泊）':''}${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>`
           : ''}
         <div class="cl-guest">👤 ${esc(guest.name||'—')}（${guestCountOf(guest)}名 / ${info.nights||1}泊）</div>
         ${(guest.charter||info.nights>=3)?`<div class="cl-badges">
