@@ -982,10 +982,11 @@ function importAirhostCSV(text){
   }
 
   const monthSummary=Object.entries(monthCounts).sort((a,b)=>a[0]-b[0]).map(([m,c])=>`${m}月:${c}件`).join('、');
-  const msg=`✅ Airhost: ${imported}件取込${monthSummary?`（${monthSummary}）`:''} / ${skipped}件重複スキップ${cancelled?` / キャンセル${cancelled}件除外`:''}`;
   const resultEl=document.getElementById('import-result');
-  if(resultEl)resultEl.innerHTML=`<div class="import-ok">${msg}</div>`;
-  showToast(msg);
+  if(resultEl)resultEl.innerHTML=`<div class="import-result">
+    ✓ 取込完了：<strong>${imported}件</strong>${monthSummary?`（${monthSummary}）`:''}${cancelled>0?`、<strong>${cancelled}件</strong>キャンセル除外`:''}
+    ${skipped>0?`<br>ℹ 重複スキップ：<strong>${skipped}件</strong>`:''}
+  </div>`;
   renderReg();autoSave();
 }
 // ── CSV取込：予約ID重複・変更検知ヘルパー ──────────────────
