@@ -259,17 +259,163 @@ function playCheckInSound(){
   }
 }
 
-function applyServerData(data) {
+// ══════════════════════════════════════════════════════════════
+// 擬似リアルタイム同期：3wayマージエンジン
+// ──────────────────────────────────────────────────────────────
+// 目的：他端末の追加・変更・削除を数秒で自端末へ反映しつつ、
+//       自端末の未保存編集を巻き戻さない。
+// 方式：最後にサーバーと一致していた状態を「基準(_syncBase)」として保持し、
+//       基準・ローカル・サーバーの3者を比較する。
+//         ・サーバーだけ変わったキー → サーバー値を採用（＋ハイライト）
+//         ・ローカルだけ変わったキー → ローカル値を維持（次回保存で送信）
+//         ・両方変わったキー         → ローカルを維持し「競合」として通知
+// ══════════════════════════════════════════════════════════════
+let _syncBase = null;              // 最後にサーバーと一致していたスナップショット
+let _flashKeys = [];               // 次回描画後に光らせる予約キー
+// guestData以外でローカル編集を保護するコレクション。
+// 各グローバルは let 宣言のため window[名前] では参照できない。明示的なアクセサで扱う。
+const MERGE_GUARDS = [
+  {n:'cancelList',              g:()=>cancelList,              s:v=>{cancelList=v;}},
+  {n:'staffNotes',              g:()=>staffNotes,              s:v=>{staffNotes=v;}},
+  {n:'parkData',                g:()=>parkData,                s:v=>{parkData=v;}},
+  {n:'rentalSpaceReservations', g:()=>rentalSpaceReservations, s:v=>{rentalSpaceReservations=v;}},
+  {n:'rooms',                   g:()=>rooms,                   s:v=>{rooms=v;}},
+  {n:'roomSettings',            g:()=>roomSettings,            s:v=>{roomSettings=v;}},
+  {n:'roomPriorityMaster',      g:()=>roomPriorityMaster,      s:v=>{roomPriorityMaster=v;}},
+  {n:'priorityCleaningItems',   g:()=>priorityCleaningItems,   s:v=>{priorityCleaningItems=v;}},
+  {n:'priorityCleaningSettings',g:()=>priorityCleaningSettings,s:v=>{priorityCleaningSettings=v;}},
+  {n:'cleaningStaffList',       g:()=>cleaningStaffList,       s:v=>{cleaningStaffList=v;}},
+  {n:'propertySettings',        g:()=>propertySettings,        s:v=>{propertySettings=v;}},
+  {n:'garbageRules',            g:()=>garbageRules,            s:v=>{garbageRules=v;}},
+  {n:'repeatReminders',         g:()=>repeatReminders,         s:v=>{repeatReminders=v;}},
+  {n:'staffNames',              g:()=>staffNames,              s:v=>{staffNames=v;}},
+  {n:'snTypes',                 g:()=>snTypes,                 s:v=>{snTypes=v;}},
+  {n:'budgets',                 g:()=>budgets,                 s:v=>{budgets=v;}}
+];
+const _J = v => { try{ return JSON.stringify(v ?? null); }catch(e){ return String(v); } };
+const _clone = v => { try{ return JSON.parse(JSON.stringify(v ?? null)); }catch(e){ return v; } };
+
+// サーバーと一致した時点の状態を基準として記録する
+// マージ時はサーバー側のguestDataを基準にする（マージ結果ではない）
+let _pendingBaseGuestData = null;
+function snapshotSyncBase(){
+  const snap = { guestData: _clone(_pendingBaseGuestData || guestData) };
+  _pendingBaseGuestData = null;
+  MERGE_GUARDS.forEach(a=>{ try{ snap[a.n] = _clone(a.g()); }catch(e){} });
+  _syncBase = snap;
+}
+
+// guestData の3wayマージ。戻り値の out を新しい guestData として採用する。
+function _mergeGuestData(serverGD){
+  const base = (_syncBase && _syncBase.guestData) || {};
+  const local = guestData || {};
+  const out = {}, changed = [], conflicts = [];
+  const keys = new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(serverGD)]);
+  keys.forEach(k=>{
+    const b=_J(base[k]), l=_J(local[k]), s=_J(serverGD[k]);
+    const locChanged = (l!==b), srvChanged = (s!==b);
+    if(!locChanged){
+      // 自分は触っていない → サーバーに従う（削除も反映される）
+      if(serverGD[k]!==undefined) out[k]=serverGD[k];
+      if(srvChanged) changed.push(k);
+      return;
+    }
+    // 自分が編集済み → ローカルを維持
+    if(local[k]!==undefined) out[k]=local[k];
+    if(srvChanged && l!==s) conflicts.push(k);   // 同じ内容になった場合は競合としない
+  });
+  return { out, changed, conflicts };
+}
+
+// isDirty時、ローカルで変更済みのコレクションを退避しておく
+function _beginMergeGuard(){
+  if(!isDirty || !_syncBase) return null;
+  const held = [];
+  MERGE_GUARDS.forEach(a=>{
+    try{ if(_J(a.g()) !== _J(_syncBase[a.n])) held.push({a, v:a.g()}); }catch(e){}
+  });
+  return held;
+}
+function _endMergeGuard(held){
+  if(!held || !held.length) return false;
+  held.forEach(h=>{ try{ h.a.s(h.v); }catch(e){} });
+  return true;
+}
+
+// 更新された予約セルを一瞬だけ光らせる（④ 再描画は最小限・スクロール位置は維持）
+function _flashUpdatedCells(){
+  if(!_flashKeys.length) return;
+  const keys = _flashKeys; _flashKeys = [];
+  requestAnimationFrame(()=>{
+    keys.forEach(k=>{
+      document.querySelectorAll(`.gc[data-k="${CSS.escape(k)}"]`).forEach(el=>{
+        el.classList.remove('sync-flash');
+        void el.offsetWidth;              // アニメーション再起動
+        el.classList.add('sync-flash');
+        setTimeout(()=>el.classList.remove('sync-flash'), 2200);
+      });
+    });
+  });
+}
+
+// 競合（同じ予約を同時編集）の通知。編集パネルが開いていれば該当欄を強調する。
+function _notifyConflicts(keys){
+  if(!keys.length) return;
+  showToast(`⚠ 他のスタッフが同じ予約を更新しました（${keys.length}件）。あなたの編集内容を優先しています。`, 6000);
+  if(typeof editKey!=='undefined' && editKey && keys.includes(editKey)){
+    const panel = document.getElementById('modal');
+    if(panel) panel.classList.add('sync-conflict');
+    setTimeout(()=>{ const p=document.getElementById('modal'); if(p)p.classList.remove('sync-conflict'); }, 8000);
+  }
+}
+
+// 描画中のスクロール位置を維持する（④ 画面のチラつき・スクロールリセット防止）
+function _withScrollPreserved(fn){
+  const sc = document.getElementById('reg-scroll');
+  const x = sc ? sc.scrollLeft : 0, y = sc ? sc.scrollTop : 0;
+  const py = window.scrollY;
+  fn();
+  const sc2 = document.getElementById('reg-scroll');
+  if(sc2){ sc2.scrollLeft = x; sc2.scrollTop = y; }
+  window.scrollTo(0, py);
+}
+
+function applyServerData(data){
+  const held = _beginMergeGuard();
+  _applyServerDataRaw(data);
+  // ローカル編集済みコレクションを書き戻し、必要なら再描画
+  if(_endMergeGuard(held)) _withScrollPreserved(()=>renderReg());
+  _flashUpdatedCells();
+}
+
+function _applyServerDataRaw(data) {
+
   if (data.guestData)  {
     // ── チェックイン完了の検知（予約済→チェックイン済への変化）──
     const prevGuestData = guestData || {};
-    guestData  = data.guestData;
-    // 既存データ互換：status/checkedInAt を補完・正規化
-    Object.values(guestData).forEach(g=>{
+    // 正規化はマージ前に行う（基準との比較を同じ形式で行うため）
+    const srvGD = data.guestData;
+    Object.values(srvGD).forEach(g=>{
       if(!g)return;
       g.status = normalizeStatus(g.status);
       if(g.checkedInAt===undefined||g.checkedInAt===null)g.checkedInAt='';
     });
+    if(isDirty && _syncBase){
+      // ② 未保存の編集がある間も取り込む。自分が触っていないセルだけ差し替える。
+      const m = _mergeGuestData(srvGD);
+      guestData  = m.out;
+      _pendingBaseGuestData = srvGD;   // 次回の基準はサーバー状態
+      _flashKeys = m.changed.slice(0, 200);   // ③ 更新ブロックを一瞬ハイライト
+      if(m.conflicts.length) setTimeout(()=>_notifyConflicts(m.conflicts), 0);
+    } else {
+      guestData = srvGD;
+      // 前回スナップショットとの差分を光らせる（通常時の他端末更新）
+      if(_syncBase && _syncBase.guestData){
+        const b=_syncBase.guestData, ch=[];
+        new Set([...Object.keys(b),...Object.keys(srvGD)]).forEach(k=>{ if(_J(b[k])!==_J(srvGD[k])) ch.push(k); });
+        _flashKeys = ch.slice(0, 200);
+      }
+    }
     // 新データで checked_in になったレコードを検知して通知
     try{ detectCheckInNotifications(prevGuestData, guestData); }catch(e){ console.warn('通知検知エラー:',e); }
   }
@@ -427,7 +573,8 @@ function applyServerData(data) {
     });
   }
   cloudUpdatedAt = data.updatedAt || null;
-  renderReg();
+  snapshotSyncBase();   // サーバーと一致した時点＝次回マージの基準
+  _withScrollPreserved(()=>renderReg());
   renderRankAPanel();
   if(document.getElementById('page-cancel')?.classList.contains('active')) renderCancel();
   if(document.getElementById('page-surf')?.classList.contains('active'))   renderSurf();
@@ -481,17 +628,25 @@ async function cloudSave() {
     });
     const json = await res.json();
     if (json.status === 'conflict') {
-      if (confirm('⚠ 他の端末が先に保存しています。\n最新データを読み込みますか？\n（現在の編集は破棄されます）')) {
-        applyServerData(json.serverData);
-        window._lastLoadedGuestCount = guestData ? Object.keys(guestData).length : 0; // 異常検知の基準を更新
-        showToast('🔄 最新データを読み込みました');
-      } else {
-        updateSyncStatus('warn', '未保存（競合）');
-        showToast('⚠ 競合中。保存されていません。');
+      // 競合してもユーザーに破棄を迫らない。
+      // サーバーの最新を3wayマージで取り込み（自分の編集は保持）、そのまま再保存する。
+      applyServerData(json.serverData);
+      window._lastLoadedGuestCount = guestData ? Object.keys(guestData).length : 0; // 異常検知の基準を更新
+      if (_conflictRetry < 3) {
+        _conflictRetry++;
+        updateSyncStatus('saving', '他端末の更新を統合中...');
+        isSyncing = false;
+        setTimeout(()=>cloudSave(), 400);
+        return;
       }
+      _conflictRetry = 0;
+      updateSyncStatus('warn', '未保存（競合が続いています）');
+      showToast('⚠ 同期が競合し続けています。しばらく待って再度お試しください。', 6000);
     } else if (json.status === 'ok') {
+      _conflictRetry = 0;
       cloudUpdatedAt = json.updatedAt;
       isDirty = false;              // 保存成功 → 未保存フラグ解除
+      snapshotSyncBase();           // 保存内容＝サーバーと一致 → 次回マージの基準を更新
       _saveRetryCount = 0;          // リトライ回数リセット
       updateSyncStatus('ok', '保存済み ' + fmtTime(json.updatedAt));
       showToast('☁ クラウドに保存しました');
@@ -518,6 +673,7 @@ async function cloudSave() {
   }
 }
 let _saveRetryCount = 0;
+let _conflictRetry  = 0;   // 競合→マージ→再保存の連鎖上限
 
 // ── クラウド読込 ──────────────────────────────────────────
 async function cloudLoad(silent=false) {
@@ -554,15 +710,38 @@ async function cloudLoad(silent=false) {
   }
 }
 
-// ── 30秒ポーリング ────────────────────────────────────────
+// ── 擬似リアルタイム同期：軽量ポーリング ──────────────────
+// ① 7秒ごとに「最終更新日時のみ」を返す超軽量API(type=meta)を叩き、
+//    自端末が保持する日時より新しい時だけフルデータを取得する。
+//    未保存の編集がある間もポーリングを止めない（applyServerDataが3wayマージするので
+//    自分の編集は巻き戻らない）。これにより保存時の競合ダイアログが発生しなくなる。
+const POLL_INTERVAL_MS = 7000;
+let _metaFailCount = 0;
+async function _pollTick(){
+  autoCalcTodayOcc();
+  if (!GAS_URL || isSyncing) return;      // 保存中はサーバーが書換中なので見送る
+  if (document.hidden) return;            // 非表示タブでは通信しない（GASクォータ節約）
+  try{
+    const res  = await fetch(_withKey(GAS_URL + '?type=meta&t=' + Date.now()));
+    const json = await res.json();
+    _metaFailCount = 0;
+    if (!json.updatedAt) return;
+    if (cloudUpdatedAt && json.updatedAt === cloudUpdatedAt) return;  // 変化なし＝ここで通信終了
+    await cloudLoad(true);                // ③ 変化があった時だけフル取得してマージ
+  }catch(e){
+    // metaが使えない場合（GAS未再デプロイ等）は従来どおりフル取得へフォールバック
+    if (++_metaFailCount >= 3 && !isDirty) { _metaFailCount = 0; cloudLoad(true); }
+  }
+}
 function startPolling() {
   if (pollingTimer) clearInterval(pollingTimer);
   if (!GAS_URL) return;
-  pollingTimer = setInterval(() => {
-    // 未保存の変更がある間はポーリング取込をスキップ（編集内容がサーバー値で巻き戻るのを防止）
-    if (isDirty || isSyncing) { autoCalcTodayOcc(); return; }
-    cloudLoad(true); autoCalcTodayOcc();
-  }, 30000);
+  pollingTimer = setInterval(_pollTick, POLL_INTERVAL_MS);
+  // タブへ復帰した瞬間にも確認（次のtickを待たずに他端末の変更を反映）
+  if(!startPolling._vis){
+    startPolling._vis = true;
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _pollTick(); });
+  }
 }
 // 未保存のまま離脱しようとしたら警告（保存完了前のタブ閉じ・リロードによる変更消失を防止）
 window.addEventListener('beforeunload', (e) => {
