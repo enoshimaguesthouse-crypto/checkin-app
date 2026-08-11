@@ -479,7 +479,7 @@ function renderReg(){
           const isTodayColE=(year===_ty&&month===_tm&&d===_td);
           const todayColBorderE=isTodayColE?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
 
-          row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${todayColBorderE}${isTodayColE&&!bg?'background:'+TODAY_COLOR_WASH+';':bg?'background:'+bg:''};max-height:62px;" `
+          row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${todayColBorderE}${bg?'background:'+bg+';':''};max-height:62px;" `
             +`ondragover="event.preventDefault();this.classList.add('dt')" `
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
@@ -494,7 +494,7 @@ function renderReg(){
         const _pbg=_dw===0||_hl?'rgba(255,240,240,.45)':_dw===6?'rgba(240,247,255,.45)':'';
         const _pToday=(year===_ty&&month===_tm&&d===_td);
         const _pTodayBorder=_pToday?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
-        row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${_pTodayBorder}${_pToday?'background:'+TODAY_COLOR_WASH+';':_pbg?'background:'+_pbg:''};max-height:62px;" `
+        row+=`<td style="padding:0;width:${DAY_W}px;min-width:${DAY_W}px;${_pTodayBorder}${_pbg?'background:'+_pbg+';':''};max-height:62px;" `
           +`ondragover="event.preventDefault();this.classList.add('dt')" `
           +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
           +`ondrop="onDrop(event,${room.id},${d})">`
