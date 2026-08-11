@@ -147,6 +147,12 @@ function disableApiKeys() {
 //  type=settings : 設定類のみ（巨大な guestData を含めない軽量レスポンス）
 //  type=search   : 予約ID一致レコードのみ（データ量に依存しない検索）
 //  それ以外      : 宿泊データ全体
+// 最終更新時刻をScriptPropertiesにも保持（type=metaの高速応答用）
+var UPDATED_AT_PROP_ = 'hotel_updatedAt';
+function _setUpdatedAtProp_(iso){
+  try { PropertiesService.getScriptProperties().setProperty(UPDATED_AT_PROP_, String(iso||'')); } catch(e) {}
+}
+
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
@@ -157,6 +163,22 @@ function doGet(e) {
     if (type === 'rental') {
       if (auth !== 'admin') return _unauthorized_();   // レンタルはPMS専用
       return jsonOut(getRentalFile().getBlob().getDataAsString());
+    }
+
+    // ── 超軽量：最終更新時刻のみ返す（リアルタイム同期のポーリング用）──
+    // Driveファイルを読まずScriptPropertiesから返すため高速・低クォータ。
+    // 数秒ごとに叩かれる前提なので、ここでファイル読込をしないことが重要。
+    if (type === 'meta') {
+      var ua = '';
+      try { ua = PropertiesService.getScriptProperties().getProperty(UPDATED_AT_PROP_) || ''; } catch(e) {}
+      if (!ua) {
+        // 初回のみファイルから復元してプロパティへ書き戻す（以降はファイルを読まない）
+        try {
+          ua = (JSON.parse(getHotelFile().getBlob().getDataAsString()).updatedAt) || '';
+          _setUpdatedAtProp_(ua);
+        } catch(e) {}
+      }
+      return jsonOut(JSON.stringify({ updatedAt: ua }));
     }
 
     // 軽量設定エンドポイント：宿泊者データが何件に増えてもサイズ一定（checkinキーでも可）
@@ -441,6 +463,7 @@ function doPost(e) {
       data.updatedAt = new Date().toISOString();
       data.updatedBy = payload.updatedBy || 'checkin-app';
       file.setContent(JSON.stringify(data));
+      _setUpdatedAtProp_(data.updatedAt);   // ポーリング(type=meta)へ即反映
       return jsonOut(JSON.stringify({ status:'ok', type:'checkinUpdate', updated: updated }));
       } finally { ciLock.releaseLock(); }
 
@@ -501,6 +524,7 @@ function doPost(e) {
   updatedBy:   payload.updatedBy   || '不明'
 };
       file.setContent(JSON.stringify(newData));
+      _setUpdatedAtProp_(newData.updatedAt);   // ポーリング(type=meta)へ即反映
       return ContentService
         .createTextOutput(JSON.stringify({ status:'ok', updatedAt:newData.updatedAt }))
         .setMimeType(ContentService.MimeType.JSON);
@@ -526,7 +550,7 @@ const MAIL_SEND_CAP = 40;
 
 function _mailOwner_(){ try { return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail(); } catch(e){ return Session.getEffectiveUser().getEmail(); } }
 function _mailLoad_(){ return JSON.parse(getHotelFile().getBlob().getDataAsString()); }
-function _mailSave_(data){ getHotelFile().setContent(JSON.stringify(data)); }
+function _mailSave_(data){ data.updatedAt=new Date().toISOString(); getHotelFile().setContent(JSON.stringify(data)); _setUpdatedAtProp_(data.updatedAt); }
 function _msCfg_(data){ return ((data.propertySettings||{}).mailSettings)||{}; }
 
 function _hasJapaneseChars_(s){ return /[぀-ヿ㐀-䶿一-鿿豈-﫿]/.test(String(s||'')); }

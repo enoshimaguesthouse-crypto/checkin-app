@@ -1173,3 +1173,17 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   .pos-tiles{grid-template-columns:repeat(4,1fr);gap:6px;}
   .pos-tile{font-size:12px;padding:4px;}
 }
+
+/* ── 擬似リアルタイム同期：他端末の更新を一瞬ハイライト ── */
+@keyframes syncFlash{
+  0%   { box-shadow:0 0 0 3px rgba(37,140,220,.85); background-color:rgba(37,140,220,.18); }
+  60%  { box-shadow:0 0 0 3px rgba(37,140,220,.45); background-color:rgba(37,140,220,.10); }
+  100% { box-shadow:0 0 0 0   rgba(37,140,220,0);   background-color:transparent; }
+}
+.gc.sync-flash{ animation:syncFlash 2.2s ease-out; position:relative; z-index:3; }
+/* 同じ予約を同時編集した場合の競合通知（編集パネルを強調） */
+@keyframes syncConflict{
+  0%,100%{ box-shadow:0 0 0 0 rgba(220,60,60,0); }
+  50%    { box-shadow:0 0 0 4px rgba(220,60,60,.55); }
+}
+.mbg.sync-conflict .mb{ animation:syncConflict 1.2s ease-in-out 3; }
