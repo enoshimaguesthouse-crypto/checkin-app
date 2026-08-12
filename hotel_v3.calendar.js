@@ -412,6 +412,8 @@ function renderReg(){
                   ? `box-shadow:inset 7px 0 0 0 ${_pb};`
                   : `box-shadow:inset 7px 0 0 0 ${_pb};background:${planBg};`)
               : '';
+          // 🔴 現金払い・到着時刻超過：連絡が必要な予約を赤枠で強調（既存の色分けは維持し枠線のみ追加）
+          const cashOverdue=isCashArrivalOverdue(g,year,month,d);
 
           const isTodayCol=(year===_ty&&month===_tm&&d===_td);
           const todayColBorder=isTodayCol?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
@@ -422,7 +424,7 @@ function renderReg(){
             +`ondragleave="this.classList.remove('dt');this.classList.remove('dt-swap')" `
             +`ondrop="onDrop(event,${room.id},${d})">`;
 
-          row+=`<div class="gc ${scls} ${span===1?'solo':'spst'}${isCharter?' charter':''}" `
+          row+=`<div class="gc ${scls} ${span===1?'solo':'spst'}${isCharter?' charter':''}${cashOverdue?' cash-overdue':''}" `
             +`draggable="true" data-k="${k}" `
             +`style="${planStyle}" `
             +`ondragstart="onDS(event,'${k}')" `
@@ -443,6 +445,7 @@ function renderReg(){
           const timeChip=g.arrivalTime?`<span class="c-time">${esc(g.arrivalTime)}</span>`:'';
           // 氏名・人数・支払・料金をすべて1行に
           row+=`<div class="c-namerow">`;
+          if(cashOverdue)row+=`<span class="c-cash-alert" title="現金払い・到着時刻を1時間以上超過／未チェックイン">🔴</span>`;
           if(isCharter)row+=`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`;
           if(allIcons)row+=planIconsHtml;
           row+=`<span class="${ncls} c-name">${esc(g.name)}</span>`;
@@ -725,6 +728,8 @@ function toggleCI(k){
   }
   showToast(newStatus==='checked_in'?`🩷 チェックイン済み`:'↩ 予約済みに戻しました');
   renderReg();autoSave();
+  // 🔴 現金払い警告：チェックイン完了と同時に対象から外す（次の1分を待たず即座に解除）
+  if(typeof checkCashArrivalOverdue==='function')checkCashArrivalOverdue();
 }
 
 // 貸切のチェックイン状態トグル（右クリック）。通常予約の toggleCI と同じ思想で、

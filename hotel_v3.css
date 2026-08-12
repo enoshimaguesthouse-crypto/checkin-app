@@ -209,6 +209,14 @@ select:focus,input:focus{
 .checkin-notif .cn-room{font-size:13px;color:#555;margin-bottom:6px;}
 .checkin-notif .cn-msg{font-size:12px;color:#777;}
 .checkin-notif .cn-time{font-size:11px;color:#b0b0b0;margin-top:8px;}
+/* 🔴 現金払い・到着時刻超過：セル側の視覚表示（既存の背景色・文字サイズは変えず枠線と小アイコンのみ） */
+.gc.cash-overdue{outline:2px solid #dc2626;outline-offset:-2px;border-radius:4px;}
+.c-cash-alert{font-size:9px;flex-shrink:0;line-height:1;animation:cashBlink 1.6s ease-in-out infinite;}
+@keyframes cashBlink{0%,100%{opacity:1;}50%{opacity:.35;}}
+/* 🔴 現金払い・到着時刻超過アラート：上記チェックイン通知のレイアウトを継承し、色のみ赤テーマに差し替え */
+.checkin-notif.cash-alert{border-left-color:#dc2626;background:#fff5f5;}
+.checkin-notif.cash-alert .cn-head{color:#c0392b;}
+.checkin-notif.cash-alert .cn-msg{color:#991b1b;line-height:1.7;}
 .rm-lang-tab{padding:5px 12px;font-size:12px;border-radius:16px;border:1.5px solid var(--sand-border);background:#fff;color:#888;cursor:pointer;transition:all .12s;}
 .rm-lang-tab.active{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:600;}
 

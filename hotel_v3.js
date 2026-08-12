@@ -426,6 +426,33 @@ function parseKey(k){
 }
 // ステータスENUM判定（旧'checkedin'と新'checked_in'の両対応）
 function isCheckedIn(status){return status==='checked_in'||status==='checkedin';}
+
+// ══════════════════════════════════════════════════════════════
+// 🔴 現金払い・到着時刻超過の判定
+// ──────────────────────────────────────────────────────────────
+// 以下の5条件をすべて満たす場合に true（＝スタッフの連絡・確認が必要）。
+//   ① チェックイン予定日が本日
+//   ② 支払方法が「現金」
+//   ③ 到着時刻が登録されている（未登録は判定対象外）
+//   ④ 現在時刻が「到着時刻＋1時間」を経過している
+//   ⑤ ステータスが「チェックイン済み」ではない
+// 新しいデータは一切持たせず、既存の pay / arrivalTime / status のみで判定する。
+// ══════════════════════════════════════════════════════════════
+const CASH_OVERDUE_GRACE_MIN=60; // 到着時刻からの猶予（分）
+function isCashArrivalOverdue(g,y,m,d,now){
+  if(!g||g.cont)return false;                 // 連泊の後続セルは対象外（初日＝チェックイン日のみ）
+  if(g.pay!=='現金')return false;             // ②
+  if(isCheckedIn(g.status))return false;      // ⑤ チェックイン完了で自動解除
+  if(g.status==='cancelled')return false;     // キャンセルは対象外
+  const tm=String(g.arrivalTime||'').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!tm)return false;                        // ③ 未登録・不正形式は対象外
+  now=now||new Date();
+  // ① チェックイン予定日が本日か
+  if(y!==now.getFullYear()||m!==now.getMonth()+1||d!==now.getDate())return false;
+  // ④ 「到着時刻＋1時間」を経過しているか（例：15:00 → 16:00 以降が対象）
+  const limitMin=Number(tm[1])*60+Number(tm[2])+CASH_OVERDUE_GRACE_MIN;
+  return (now.getHours()*60+now.getMinutes())>=limitMin;
+}
 // ステータス正規化（互換性補完：未設定はreserved）
 function normalizeStatus(status){
   if(status==='checkedin')return 'checked_in';
@@ -3593,6 +3620,8 @@ if(GAS_URL){
   startPolling(); rentalCloudLoad(true);
 }
 else { updateSyncStatus('warn','GAS URL未設定'); autoImportCancelIfNeeded(); generateDueReminders(); }
+// 🔴 現金払い・到着時刻超過の1分ごと自動判定（GAS未設定でもローカルデータで動作させる）
+startCashOverdueWatch();
 
 // reg-scroll の横スクロールをdebounceで保存
 (()=>{
