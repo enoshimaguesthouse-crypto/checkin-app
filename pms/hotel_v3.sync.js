@@ -233,6 +233,109 @@ function showCheckInNotification(info){
   playCheckInSound();
 }
 
+// ══════════════════════════════════════════════════════════════
+// 🔴 現金払い・到着時刻超過アラート
+// ──────────────────────────────────────────────────────────────
+// ポップアップは既存の「チェックイン完了」通知（showCheckInNotification）と
+// 同一の仕組みをそのまま流用する：同じ #notification-container に同じ .checkin-notif
+// カードを prepend し、表示位置・サイズ・角丸・枠線・z-index・開閉操作をすべて共通化。
+// 赤テーマの差分のみ .cash-alert 修飾クラスで与える（既存通知には一切影響しない）。
+// ══════════════════════════════════════════════════════════════
+const cashOverdueNotifiedIds = new Set(); // 同一予約で鳴らし続けないための記録
+let _cashOverdueSignature = '';           // 対象集合が変化した時だけ再描画するための署名
+
+function showCashOverdueNotification(info){
+  const container = document.getElementById('notification-container');
+  if(!container) return;
+
+  const room = rooms.find(r=>String(r.id)===String(info.roomId));
+  const roomName = room ? `${room.no}　${room.type}` : '';
+
+  const card = document.createElement('div');
+  card.className = 'checkin-notif cash-alert';   // ← 既存カードのCSSをそのまま継承
+  card.innerHTML = `
+    <button class="cn-close" title="閉じる">✕</button>
+    <div class="cn-head">🔴 連絡が必要です</div>
+    <div class="cn-name">${esc(info.name||'(no name)')} 様</div>
+    ${roomName?`<div class="cn-room">${esc(roomName)}</div>`:''}
+    <div class="cn-msg">【現金払い / 到着時刻超過】<br>
+      到着予定時刻：${esc(info.arrivalTime||'')}（1時間以上経過しています）<br>
+      お客様へ確認の連絡を行ってください。</div>
+  `;
+  card.querySelector('.cn-close').onclick = ()=>{ card.remove(); };
+  container.prepend(card);
+
+  playCashAlertSound();
+}
+
+// 現金アラート音（チェックイン音と同じWeb Audio方式・下降音で警告を区別）
+function playCashAlertSound(){
+  try{
+    _audioCtx = _audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    if(ctx.state==='suspended') ctx.resume();
+    const now = ctx.currentTime;
+    [ [880, 0], [660, 0.18] ].forEach(([freq, delay])=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now+delay);
+      gain.gain.linearRampToValueAtTime(0.22, now+delay+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now+delay+0.45);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now+delay);
+      osc.stop(now+delay+0.5);
+    });
+  }catch(e){
+    console.warn('警告音の再生に失敗:', e);
+  }
+}
+
+// 全予約を走査して超過対象を検出。1分ごとのタイマーから呼ばれる。
+// リロード不要で「到着時刻＋1時間」を跨いだ瞬間に警告対象となる。
+function checkCashArrivalOverdue(){
+  if(!guestData) return;
+  const now = new Date();
+  const overdue = [];
+  Object.entries(guestData).forEach(([k,g])=>{
+    if(!g||g.cont) return;
+    const p = parseKey(k);
+    if(!p) return;
+    if(!isCashArrivalOverdue(g,p.y,p.m,p.d,now)) return;
+    overdue.push({
+      id: String(g.reservationId||g.id||k),
+      name: g.name, roomId: g.roomId, arrivalTime: g.arrivalTime
+    });
+  });
+
+  // チェックイン完了などで対象外になった予約は記録から外す（再度該当すれば再通知される）
+  const liveIds = new Set(overdue.map(o=>o.id));
+  [...cashOverdueNotifiedIds].forEach(id=>{ if(!liveIds.has(id)) cashOverdueNotifiedIds.delete(id); });
+
+  // 新規に超過した予約だけポップアップ
+  overdue.forEach(o=>{
+    if(cashOverdueNotifiedIds.has(o.id)) return;
+    cashOverdueNotifiedIds.add(o.id);
+    showCashOverdueNotification(o);
+  });
+
+  // 対象集合が変わった時だけ再描画（毎分の無駄な再描画とスクロール乱れを防ぐ）
+  const sig = overdue.map(o=>o.id).sort().join(',');
+  if(sig !== _cashOverdueSignature){
+    _cashOverdueSignature = sig;
+    if(typeof renderReg==='function') _withScrollPreserved(()=>renderReg());
+  }
+}
+
+// 1分ごとの自動判定を開始
+let _cashOverdueTimer = null;
+function startCashOverdueWatch(){
+  if(_cashOverdueTimer) clearInterval(_cashOverdueTimer);
+  checkCashArrivalOverdue();
+  _cashOverdueTimer = setInterval(checkCashArrivalOverdue, 60000);
+}
+
 // Web Audio API で通知音（チャリーン♪）を生成
 let _audioCtx = null;
 function playCheckInSound(){
@@ -386,6 +489,11 @@ function applyServerData(data){
   // ローカル編集済みコレクションを書き戻し、必要なら再描画
   if(_endMergeGuard(held)) _withScrollPreserved(()=>renderReg());
   _flashUpdatedCells();
+  // 🔴 現金払い・到着時刻超過：データ到着直後にも判定する。
+  // BOOT時点では guestData が未読込のため、これが無いと初回ポップアップが最大1分遅れる。
+  if(typeof checkCashArrivalOverdue==='function'){
+    try{ checkCashArrivalOverdue(); }catch(e){ console.warn('現金アラート判定エラー:',e); }
+  }
 }
 
 function _applyServerDataRaw(data) {
