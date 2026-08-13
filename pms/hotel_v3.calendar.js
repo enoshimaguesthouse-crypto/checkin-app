@@ -380,7 +380,7 @@ function renderReg(){
           // ※「部屋移動」はこの一般ロジックに含めず、下で個別に扱う（チェックイン状況で色を切り替えるため）
           let planBorder='',planBg='';
           if(g.note){
-            const matched=PLAN_RULES.filter(r=>r.noteTag&&r.noteTag!=='部屋移動'&&g.note.includes(r.noteTag)&&r.cellBorder);
+            const matched=PLAN_RULES.filter(r=>r.noteTag&&!ALERT_NOTE_TAGS.includes(r.noteTag)&&g.note.includes(r.noteTag)&&r.cellBorder);
             if(matched.length===1){
               planBorder=matched[0].cellBorder;planBg=matched[0].cellBg;
             } else if(matched.length>1){
@@ -401,11 +401,12 @@ function renderReg(){
             else{planBorder='#FF8F00';planBg='#FFF8E1';}
           }
           const _pb=planBorder.includes(',')?planBorder.split(',')[0].trim():planBorder;
-          // 部屋移動：未チェックイン時はセル全体を赤背景で強調（オペレーション上の重要フラグのため）。
-          // チェックイン済みになったら、既存のチェックイン済みセルと同じオレンジ系（.gc.ci のデフォルト
-          // 色）に戻す。他タグが無ければ planStyle を空にして .gc.ci のCSSに委ねるのがそのやり方。
-          const isRoomMove=!!(g.note&&g.note.includes('部屋移動'));
-          const planStyle=(isRoomMove&&!cin)
+          // 「部屋移動」「注意」(ALERT_NOTE_TAGS)：未チェックイン時はセル全体を赤背景で強調
+          // （オペレーション上の重要フラグのため）。チェックイン済みになったら、既存のチェックイン済み
+          // セルと同じオレンジ系（.gc.ci のデフォルト色）に戻す。他タグが無ければ planStyle を空にして
+          // .gc.ci のCSSに委ねるのがそのやり方。
+          const isAlertTag=!!(g.note&&ALERT_NOTE_TAGS.some(t=>g.note.includes(t)));
+          const planStyle=(isAlertTag&&!cin)
             ? `box-shadow:inset 7px 0 0 0 #C62828;background:#FFCDD2;`
             : planBorder
               ? (cin
