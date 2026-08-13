@@ -127,7 +127,11 @@ const PLAN_RULES=[
   // 部屋移動：他タグと違い、チェック済みでもセル全体を赤背景で強調表示する（renderReg内で個別処理）
   {keyword:'部屋移動', icon:'🔄',  noteTag:'部屋移動',           checkboxId:'f-roommove', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2'},
   {keyword:'No Show', icon:'🚫',  noteTag:'No Show',            checkboxId:'f-noshow',   autoAction:null, cellBorder:'#7F0000', cellBg:'#C62828'},
+  // 注意：部屋移動と同様、チェック済みでもセル全体を赤背景で強調表示する（renderReg内で個別処理）
+  {keyword:'注意',     icon:'⚠️', noteTag:'注意',               checkboxId:'f-caution',  autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2'},
 ];
+// セル全体を赤背景で強調するタグ（一般のキーワード色ロジックからは除外し、renderRegで個別処理）
+const ALERT_NOTE_TAGS=['部屋移動','注意'];
 
 // 月別・合計宿泊者数（各月のXX日時点の累計宿泊者数）— 実データ投入
 // 2026年（画像1より）: 各日の累計人数
