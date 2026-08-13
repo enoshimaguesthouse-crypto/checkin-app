@@ -509,10 +509,12 @@ function exportPosSalesCSV(){
     .sort((a,b)=>a.ts.localeCompare(b.ts));
   const payLabel=p=>p==='cash'?'現金':p==='paypay'?'PayPay':'その他';
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  let csv='﻿日付,時刻,商品,数量,単価,金額,支払方法,担当者\n'; // BOM付きUTF-8
+  // 商品名 → カテゴリー名（商品マスターが削除済みの場合は空欄）
+  const catOf=name=>{ const p=posProducts.find(x=>x.name===name); const c=p?_posCat(p.catId):null; return c?c.name:''; };
+  let csv='﻿日付,時刻,カテゴリー,商品,数量,単価,金額,支払方法,担当者\n'; // BOM付きUTF-8
   rows.forEach(s=>{ const d=new Date(s.ts); const p=n=>String(n).padStart(2,'0');
     const date=`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`, time=`${p(d.getHours())}:${p(d.getMinutes())}`;
-    s.items.forEach(it=>{ csv+=[q(date),q(time),q(it.name),it.qty,it.price,it.price*it.qty,q(payLabel(s.pay)),q(s.staff)].join(',')+'\n'; });
+    s.items.forEach(it=>{ csv+=[q(date),q(time),q(catOf(it.name)),q(it.name),it.qty,it.price,it.price*it.qty,q(payLabel(s.pay)),q(s.staff)].join(',')+'\n'; });
   });
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`レジ売上_${y}年${m}月.csv`; a.click();
