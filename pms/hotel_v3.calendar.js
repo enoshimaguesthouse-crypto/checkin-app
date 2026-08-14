@@ -328,7 +328,7 @@ function renderReg(){
               +(cMeta.nat?natFlag(cMeta.nat):'')
               +timeChipC
               +nightsBadgeC
-              +(noteCleanC?`<span class="c-note">📌${esc(noteCleanC.slice(0,30))}</span>`:'')
+              +(noteCleanC?`<span class="c-note">${esc(noteCleanC.slice(0,30))}</span>`:'')
               +`</div>`
               +`</div></td>`;
           } else if(ri===0&&!isAnchorDay){
@@ -466,7 +466,7 @@ function renderReg(){
           row+=nightsBadge;
           // 備考：泊数の右に表示（駐車・サーフ除外）
           const noteClean=(g.note||'').replace(/🚙|🏄|surf|サーフ/gi,'').trim();
-          if(noteClean)row+=`<span class="c-note">📌${esc(noteClean.slice(0,30))}</span>`;
+          if(noteClean)row+=`<span class="c-note">${esc(noteClean.slice(0,30))}</span>`;
           row+=`</div>`;
 
           row+=`</div></td>`;
