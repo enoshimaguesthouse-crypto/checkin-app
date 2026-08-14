@@ -390,6 +390,7 @@ const MERGE_GUARDS = [
   {n:'cleaningStaffList',       g:()=>cleaningStaffList,       s:v=>{cleaningStaffList=v;}},
   {n:'propertySettings',        g:()=>propertySettings,        s:v=>{propertySettings=v;}},
   {n:'garbageRules',            g:()=>garbageRules,            s:v=>{garbageRules=v;}},
+  {n:'planRules',               g:()=>planRules,               s:v=>{planRules=v;}},
   {n:'repeatReminders',         g:()=>repeatReminders,         s:v=>{repeatReminders=v;}},
   {n:'staffNames',              g:()=>staffNames,              s:v=>{staffNames=v;}},
   {n:'snTypes',                 g:()=>snTypes,                 s:v=>{snTypes=v;}},
@@ -636,6 +637,17 @@ function _applyServerDataRaw(data) {
     if (typeof initGarbageRulesIfEmpty==='function') {
       initGarbageRulesIfEmpty();
       propertySettings.garbageRules = garbageRules;
+    }
+    // PLAN_RULES（オプション・注意事項）マスター：サーバ値を採用。未設定なら現行11項目を初期投入。
+    if (Array.isArray(data.propertySettings.planRules) && data.propertySettings.planRules.length) {
+      planRules = data.propertySettings.planRules.map((r,i)=>_normalizePlanRule(r,i));
+      nextPlanRuleId = planRules.reduce((m,r)=>{
+        const n = /^pr(\d+)$/.exec(String(r.id||'')); return n?Math.max(m,Number(n[1])):m;
+      },0)+1;
+    }
+    if (typeof initPlanRulesIfEmpty==='function') {
+      initPlanRulesIfEmpty();
+      propertySettings.planRules = planRules;
     }
     // 自動メール配信設定：欠けているメール種別/言語をデフォルトで補完しつつサーバ値を採用
     const dms = data.propertySettings.mailSettings;

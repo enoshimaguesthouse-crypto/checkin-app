@@ -376,42 +376,41 @@ function renderReg(){
           const isCharter=!!g.charter;
           const tdCls=isCharter?'charter-col':'';
 
-          // キーワードによるセル色（複数マッチ時は最初のもの優先、背景は最初、ボーダーは最初）
-          // ※「部屋移動」はこの一般ロジックに含めず、下で個別に扱う（チェックイン状況で色を切り替えるため）
-          let planBorder='',planBg='';
-          if(g.note){
-            const matched=PLAN_RULES.filter(r=>r.noteTag&&!ALERT_NOTE_TAGS.includes(r.noteTag)&&g.note.includes(r.noteTag)&&r.cellBorder);
-            if(matched.length===1){
-              planBorder=matched[0].cellBorder;planBg=matched[0].cellBg;
-            } else if(matched.length>1){
-              planBg=matched[0].cellBg;
-              planBorder=matched.map(r=>r.cellBorder).join(', ');
+          // ── PLAN_RULESマスターによるセル色 ──────────────────────────
+          // ※無効化したルールもここでは判定対象に含める（過去予約の色を消さないため）。
+          // ※優先順位は従来どおり「備考タグ方式のルール」＞「駐車場・下段希望」＞「貸切」。
+          //   マスターの表示順は同一階層内での優先度（＝先頭の背景色を採用）として効く。
+          let planBorder='',planBg='',planBorders=[];
+          {
+            const checked=allPlanRules().filter(r=>!r.alert&&r.cellBorder&&planRuleChecked(g,r));
+            const primary=checked.filter(r=>r.store==='note');
+            const use=primary.length?primary:checked;
+            if(use.length){
+              planBg=use[0].cellBg;
+              planBorders=use.map(r=>r.cellBorder);
+              planBorder=planBorders[0];
             }
-          }
-          // 駐車場利用：赤系（他キーワード未設定時のみ）
-          if(g.parking&&!planBorder){
-            planBorder='#E53935';planBg='#FFF5F5';
-          }
-          if(g.lowerBunk&&!planBorder){
-            planBorder='#00897b';planBg='#e0f2f1';
           }
           // 貸切背景色：本館→薄オレンジ、ANNEX→薄紫（他キーワード未設定時のみ）
           if(isCharter&&!planBorder){
-            if(g.charterGroup==='ANNEX'){planBorder='#9370DB';planBg='#f5f0ff';}
-            else{planBorder='#FF8F00';planBg='#FFF8E1';}
+            if(g.charterGroup==='ANNEX'){planBorder='#9370DB';planBg='#f5f0ff';planBorders=[planBorder];}
+            else{planBorder='#FF8F00';planBg='#FFF8E1';planBorders=[planBorder];}
           }
-          const _pb=planBorder.includes(',')?planBorder.split(',')[0].trim():planBorder;
-          // 「部屋移動」「注意」(ALERT_NOTE_TAGS)：未チェックイン時はセル全体を赤背景で強調
+          // 複数該当時は左帯を多重ストライプにして「複数設定されている」ことを判別可能にする
+          // （box-shadowは先頭が手前に描画されるため、幅を7pxずつ広げて並べると縞になる）
+          const _stripes=cols=>'box-shadow:'+cols.slice(0,3)
+            .map((c,i)=>`inset ${7*(i+1)}px 0 0 0 ${c}`).join(',')+';';
+          // alert指定のルール（部屋移動・注意）：未チェックイン時はセル全体を強調色で塗る
           // （オペレーション上の重要フラグのため）。チェックイン済みになったら、既存のチェックイン済み
           // セルと同じオレンジ系（.gc.ci のデフォルト色）に戻す。他タグが無ければ planStyle を空にして
           // .gc.ci のCSSに委ねるのがそのやり方。
-          const isAlertTag=!!(g.note&&ALERT_NOTE_TAGS.some(t=>g.note.includes(t)));
-          const planStyle=(isAlertTag&&!cin)
-            ? `box-shadow:inset 7px 0 0 0 #C62828;background:#FFCDD2;`
+          const alertRule=allPlanRules().find(r=>r.alert&&planRuleChecked(g,r));
+          const planStyle=(alertRule&&!cin)
+            ? `box-shadow:inset 7px 0 0 0 ${alertRule.cellBorder};background:${alertRule.cellBg};`
             : planBorder
               ? (cin
-                  ? `box-shadow:inset 7px 0 0 0 ${_pb};`
-                  : `box-shadow:inset 7px 0 0 0 ${_pb};background:${planBg};`)
+                  ? _stripes(planBorders)
+                  : _stripes(planBorders)+`background:${planBg};`)
               : '';
           // 🔴 現金払い・到着時刻超過：連絡が必要な予約を赤枠で強調（既存の色分けは維持し枠線のみ追加）
           const cashOverdue=isCashArrivalOverdue(g,year,month,d);
@@ -976,15 +975,29 @@ function openAdd(){
   document.getElementById('f-nights').value='1';
   document.getElementById('f-guests').value='1';
   document.getElementById('f-status').value='reserved';
-  document.getElementById('f-parking').checked=false;
-  document.getElementById('f-lower').checked=false;
-  PLAN_RULES.forEach(r=>{if(r.checkboxId){const el=document.getElementById(r.checkboxId);if(el)el.checked=false;}});
+  renderPlanRuleChecks();
+  allPlanRules().forEach(r=>{const el=document.getElementById(r.checkboxId);if(el)el.checked=false;});
   const ppRow=document.getElementById('f-passports-row'); if(ppRow)ppRow.style.display='none'; // 追加時はパスポート欄を隠す
   const qrRow=document.getElementById('f-qr-row'); if(qrRow)qrRow.style.display='none'; // 追加時はQR欄を隠す（保存後に表示）
   const mailPanel=document.getElementById('f-mail-panel'); if(mailPanel)mailPanel.style.display='none'; // 追加時はメール欄を隠す
   populateNat('f-nat','日本');populateRS(-1);
   closeAllPanels();document.getElementById('modal').classList.add('open');_openPanelType='reservation';_openPanelKey='reservation:add'; // 排他制御：他パネルを閉じて予約詳細を開く
 }
+
+// ── 予約詳細のチェックボックス群をマスター(planRules)から動的描画 ──────────
+// 「有効」なルールのみを表示順で2列グリッドに描画する。
+// 無効化したルールは描画されない＝saveGuestでも触られないため、
+// 過去予約に記録済みのチェック情報（備考タグ・parking・lowerBunk）はそのまま保持される。
+function renderPlanRuleChecks(){
+  const box=document.getElementById('f-plan-checks');
+  if(!box)return;
+  box.innerHTML=activePlanRules().map(r=>
+    `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">`
+    +`<input type="checkbox" id="${esc(r.checkboxId)}" style="width:15px;height:15px;cursor:pointer;">`
+    +`<span>${esc(r.icon||'')} ${esc(r.name||'')}</span></label>`
+  ).join('');
+}
+
 function openAddAt(rid,day){
   openAdd();
   const selMonth=parseInt(document.getElementById('sel-month').value);
@@ -1017,9 +1030,9 @@ function openEdit(k){
   }
   fSite.value=siteVal;
   document.getElementById('f-status').value=normalizeStatus(g.status);
-  document.getElementById('f-parking').checked=hasParkKw(g.note)||!!g.parking;
-  if(document.getElementById('f-lower'))document.getElementById('f-lower').checked=!!g.lowerBunk;
-  PLAN_RULES.forEach(r=>{if(r.checkboxId){const el=document.getElementById(r.checkboxId);if(el)el.checked=!!(g.note&&g.note.includes(r.noteTag));}});
+  // PLAN_RULESマスターからチェックボックスを描画し、3つの保存方式それぞれで判定して復元
+  renderPlanRuleChecks();
+  allPlanRules().forEach(r=>{const el=document.getElementById(r.checkboxId);if(el)el.checked=planRuleChecked(g,r);});
   // 電話番号・住所を入力欄にセット
   document.getElementById('f-phone').value=g.phone||'';
   document.getElementById('f-address').value=g.address||'';
@@ -1293,10 +1306,13 @@ function saveGuest(){
   const note=document.getElementById('f-note').value;
   // チェックボックスから備考タグを自動追記（重複なし）
   let noteWithTags=note;
-  PLAN_RULES.forEach(rule=>{
-    const cb=rule.checkboxId?document.getElementById(rule.checkboxId):null;
-    const checked=cb&&cb.checked;
-    if(checked){
+  allPlanRules().forEach(rule=>{
+    if(rule.store!=='note'||!rule.noteTag)return;   // 専用フィールド方式は下で個別に処理
+    const cb=document.getElementById(rule.checkboxId);
+    // 無効化などでチェックボックスが描画されていない場合は備考に一切触れない。
+    // （ここでelse節に落とすと、無効化した項目のタグが過去予約から消えてしまう）
+    if(!cb)return;
+    if(cb.checked){
       // チェックON：noteTagが未追加なら追記
       if(!noteWithTags.includes(rule.noteTag))
         noteWithTags=noteWithTags?noteWithTags+' '+rule.noteTag:rule.noteTag;
@@ -1308,9 +1324,14 @@ function saveGuest(){
   const finalNote=noteWithTags.trim();
   const arrivalTime=(document.getElementById('f-arrival').value||'').trim();
   const reservationId=(document.getElementById('f-resid')?.value||'').replace(/\D/g,'').slice(0,6);
-  const useParking=document.getElementById('f-parking').checked||hasParkKw(finalNote);
-  const useSurf=!!(document.getElementById('f-surf')&&document.getElementById('f-surf').checked)||hasSurfKw(finalNote);
-  const lowerBunk=!!(document.getElementById('f-lower')?.checked);
+  // 専用フィールド方式（駐車場・下段希望）とサーフィン連携。
+  // 該当ルールを無効化してチェックボックスが未描画の場合は、既存予約の値をそのまま引き継ぐ
+  // （過去データのチェック情報を失わないため）。
+  const _prevG=editKey?guestData[editKey]:null;
+  const _cbVal=(id,prev)=>{const el=document.getElementById(id);return el?el.checked:!!prev;};
+  const useParking=_cbVal('f-parking',_prevG&&_prevG.parking)||hasParkKw(finalNote);
+  const useSurf=_cbVal('f-surf',false)||hasSurfKw(finalNote);
+  const lowerBunk=_cbVal('f-lower',_prevG&&_prevG.lowerBunk);
   const guests=parseInt(document.getElementById('f-guests').value)||1;
   const prevCharter=editKey?!!(guestData[editKey]?.charter):false;
   const base={

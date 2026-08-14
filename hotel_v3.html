@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260812c">
+<link rel="stylesheet" href="hotel_v3.css?v=20260814a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -88,6 +88,7 @@
     <div id="property-submenu" style="display:none;">
       <button class="nitem" onclick="showP('property-info',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🏷</span><span class="nlbl">物件情報</span></button>
       <button class="nitem" onclick="showP('rooms',this)" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🚪</span><span class="nlbl">部屋情報</span></button>
+      <button class="nitem" id="nitem-planrules" onclick="openPlanRulesModal()" style="padding-left:28px;font-size:12px;"><span class="nico" style="font-size:13px;">🏷</span><span class="nlbl">PLAN_RULES設定</span></button>
     </div>
   </div>
   </div>
@@ -965,6 +966,50 @@
 </div>
 </div>
 
+<!-- PLAN_RULES設定（オプション・注意事項のマスターデータ） -->
+<style>
+#planrules-modal .modal{width:900px!important;max-width:96vw!important;}
+.pr-row{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:11px 13px;margin-bottom:9px;}
+.pr-row.off{opacity:.55;background:var(--sand);}
+.pr-grid{display:grid;grid-template-columns:52px 64px 1fr 150px 78px 62px;gap:10px;align-items:end;}
+.pr-grid label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.02em;}
+.pr-grid input[type=text],.pr-grid input[type=number]{width:100%;border:1.5px solid var(--sand-border);border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.pr-icon-in{text-align:center;font-size:17px!important;}
+.pr-ord{display:flex;flex-direction:column;gap:2px;}
+.pr-ord button{border:1.5px solid var(--sand-border);background:#fff;border-radius:5px;font-size:10px;line-height:1;padding:3px 0;cursor:pointer;font-family:inherit;}
+.pr-ord button:hover{background:var(--sand-mid);}
+.pr-sub{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--sand-border);font-size:11px;color:var(--muted);}
+.pr-sub label{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text);font-size:12px;}
+.pr-sysid{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a96a3;background:var(--sand-mid);border-radius:5px;padding:2px 7px;}
+.pr-swatch{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1.5px solid var(--sand-border);cursor:pointer;height:30px;}
+.pr-swatch i{display:block;width:11px;height:100%;}
+.pr-swatch span{flex:1;padding:0 8px;font-size:11px;line-height:28px;white-space:nowrap;}
+.pr-pal{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.pr-pal button{width:26px;height:22px;border-radius:5px;border:1.5px solid var(--sand-border);cursor:pointer;padding:0;position:relative;overflow:hidden;}
+.pr-pal button i{position:absolute;left:0;top:0;bottom:0;width:8px;}
+.pr-emo{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.pr-emo button{width:28px;height:26px;border-radius:5px;border:1.5px solid var(--sand-border);background:#fff;cursor:pointer;font-size:15px;padding:0;line-height:1;}
+.pr-emo button:hover{background:var(--sand-mid);}
+@media(max-width:760px){ .pr-grid{grid-template-columns:52px 60px 1fr;} }
+</style>
+<div class="mbg" id="planrules-modal" onclick="if(event.target===this)closeM('planrules-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:900px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:6px;flex-shrink:0;">🏷 PLAN_RULES設定（オプション・注意事項）</div>
+  <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px;flex-shrink:0;">
+    予約詳細のチェック項目・予約セルの色・アイコンをここで管理します。<br>
+    項目を使わなくなった場合は<b>削除ではなく「有効」のチェックを外して無効化</b>してください。無効にすると新規の予約詳細には表示されなくなりますが、<b>過去の予約に記録済みのチェック情報・セル色・アイコンはそのまま残ります</b>。<br>
+    <span style="color:#b5651d;">🔒 が付いた項目はシステム連携（駐車場カレンダー・サーフィンリストへの自動追加など）があるため、システムIDと保存方式は変更できません。</span>
+  </div>
+  <div style="flex:1;min-height:0;overflow-y:auto;padding-right:2px;" id="pr-list"></div>
+  <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center;flex-wrap:wrap;">
+    <button class="btn" onclick="addPlanRule()" style="padding:9px 16px;font-size:13px;">＋ PLAN_RULESを追加</button>
+    <button class="btn" onclick="resetPlanRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 初期設定に戻す</button>
+    <button class="btn" onclick="closeM('planrules-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
+    <button class="btn btn-blue" onclick="savePlanRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+  </div>
+</div>
+</div>
+
 <!-- 自動メール配信設定モーダル -->
 <style>
 .ms-mtab{font-size:12.5px;font-weight:700;padding:8px 14px;border:1.5px solid var(--sand-border);background:#fff;color:#888;border-radius:8px 8px 0 0;cursor:pointer;font-family:inherit;border-bottom:none;}
@@ -1538,52 +1583,8 @@
     </div>
   </div></div>
   <div class="mr"><div class="fl"><label>備考</label><input id="f-note" placeholder="備考・メモ"></div></div>
-  <div class="mr" style="margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;">
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-parking" style="width:15px;height:15px;cursor:pointer;">
-      <span>🚗 駐車場（カレンダーに自動追加）</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-surf" style="width:15px;height:15px;cursor:pointer;">
-      <span>🏄 サーフィン（リストに自動追加）</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-enospa" style="width:15px;height:15px;cursor:pointer;">
-      <span>♨ えのすぱ</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-enosui" style="width:15px;height:15px;cursor:pointer;">
-      <span>🐬 えのすい</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-wshoku" style="width:15px;height:15px;cursor:pointer;">
-      <span>🍙 和食</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-yshoku" style="width:15px;height:15px;cursor:pointer;">
-      <span>🍳 洋食</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-late" style="width:15px;height:15px;cursor:pointer;">
-      <span>🌙 レイトチェックアウト</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-lower" style="width:15px;height:15px;cursor:pointer;">
-      <span>🛏 下段希望</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-roommove" style="width:15px;height:15px;cursor:pointer;">
-      <span>🔄 部屋移動</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-noshow" style="width:15px;height:15px;cursor:pointer;">
-      <span>🚫 No Show</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">
-      <input type="checkbox" id="f-caution" style="width:15px;height:15px;cursor:pointer;">
-      <span>⚠️ 注意</span>
-    </label>
-  </div>
+  <!-- PLAN_RULES（オプション・注意事項）：[物件管理 ＞ PLAN_RULES設定]のマスターから動的描画 -->
+  <div class="mr" id="f-plan-checks" style="margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;"></div>
   <!-- 手動メール送信パネル（予約詳細のみ表示） -->
   <div id="f-mail-panel" style="display:none;">
     <div style="border-top:2px solid var(--sand-border);margin-top:20px;padding-top:14px;">
@@ -1842,11 +1843,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260812c"></script>
-<script src="hotel_v3.calendar.js?v=20260812c"></script>
-<script src="hotel_v3.sync.js?v=20260812c"></script>
-<script src="hotel_v3.pos.js?v=20260812c"></script>
-<script src="hotel_v3.js?v=20260812c"></script>
+<script src="hotel_v3.cleaning.js?v=20260814a"></script>
+<script src="hotel_v3.calendar.js?v=20260814a"></script>
+<script src="hotel_v3.sync.js?v=20260814a"></script>
+<script src="hotel_v3.pos.js?v=20260814a"></script>
+<script src="hotel_v3.js?v=20260814a"></script>
 <div id="notification-container"></div>
 </body>
 </html>
