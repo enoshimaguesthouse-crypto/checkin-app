@@ -113,25 +113,252 @@ function natFlag(nat){
   return nat?`<span style="font-size:9px;color:#666;">${esc(nat)}</span>`:'';
 }
 
-// ── 商品プラン名称・備考キーワードルールテーブル ──
-// checkboxId: モーダルのチェックボックスID（nullなら備考判定のみ）
-// noteTag: 備考に追記するタグ文字列
-// autoAction: 'park'=駐車場, 'surf'=サーフィン, null=なし
-const PLAN_RULES=[
-  {keyword:'えのすぱ', icon:'♨',  noteTag:'えのすぱ',           checkboxId:'f-enospa', autoAction:null, cellBorder:'#9370DB', cellBg:'#f5f0ff'},
-  {keyword:'えのすい', icon:'🐬', noteTag:'えのすい',           checkboxId:'f-enosui', autoAction:null, cellBorder:'#7B1FA2', cellBg:'#F3E5F5'},
-  {keyword:'和食',     icon:'🍙', noteTag:'和食',               checkboxId:'f-wshoku', autoAction:null, cellBorder:'#FF8F00', cellBg:'#FFF8E1'},
-  {keyword:'洋食',     icon:'🍳', noteTag:'洋食',               checkboxId:'f-yshoku', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF'},
-  {keyword:'レイトチェックアウト', icon:'🌙', noteTag:'レイトチェックアウト', checkboxId:'f-late',   autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6'},
-  {keyword:'サーフィン', icon:'🏄', noteTag:'サーフィン',        checkboxId:'f-surf',   autoAction:'surf', cellBorder:'#E53935', cellBg:'#FFF5F5'},
-  // 部屋移動：他タグと違い、チェック済みでもセル全体を赤背景で強調表示する（renderReg内で個別処理）
-  {keyword:'部屋移動', icon:'🔄',  noteTag:'部屋移動',           checkboxId:'f-roommove', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2'},
-  {keyword:'No Show', icon:'🚫',  noteTag:'No Show',            checkboxId:'f-noshow',   autoAction:null, cellBorder:'#7F0000', cellBg:'#C62828'},
-  // 注意：部屋移動と同様、チェック済みでもセル全体を赤背景で強調表示する（renderReg内で個別処理）
-  {keyword:'注意',     icon:'⚠️', noteTag:'注意',               checkboxId:'f-caution',  autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2'},
+// ══════════════════════════════════════════════════════════════════════
+// PLAN_RULES（オプション・注意事項）マスターデータ
+// ──────────────────────────────────────────────────────────────────────
+// 予約詳細のチェックボックス群・セル着色・アイコン・CSV取込の自動判定を
+// すべてこの1つの配列が駆動する。[物件管理 ＞ PLAN_RULES設定]で編集可能。
+// 保存先は propertySettings.planRules（既存のGAS/Driveの保存方式をそのまま利用）。
+//
+// 【各項目の意味】
+//  id         : システム識別ID（内部キー・編集不可）。連携処理の判定に使う。
+//  icon       : 表示アイコン（絵文字）
+//  name       : 予約詳細に表示するプラン名
+//  keyword    : CSV取込時に商品プラン名/備考から検出するキーワード
+//  noteTag    : 備考に追記するタグ文字列（store:'note' のとき使用）
+//  checkboxId : チェックボックスのDOM ID（既存IDを保持＝既存コードとの互換性）
+//  cellBorder : 予約セルの左帯色  /  cellBg: 予約セルの背景色
+//  order      : 表示順             /  enabled: 有効/無効（無効でも過去データは描画する）
+//  system     : 組み込み項目（IDと保存方式の変更不可。削除ではなく無効化のみ）
+//  alert      : true ならチェック時にセル全体を強調色で塗る（部屋移動・注意）
+//  store      : 保存方式。既存データを壊さないため3方式を維持する
+//               'note'      … 備考(g.note)にnoteTagを追記（既定・新規追加項目もこれ）
+//               'parking'   … g.parking フィールド + 備考キーワード（駐車場カレンダー連携）
+//               'lowerBunk' … g.lowerBunk フィールド（備考タグを持たない）
+//  autoAction : システム連携トリガー 'park'=駐車場カレンダー自動追加 /
+//               'surf'=サーフィンリスト自動追加 / null=なし
+// ══════════════════════════════════════════════════════════════════════
+const PLAN_RULES_DEFAULTS=[
+  {id:'park',     icon:'🚗', name:'駐車場（カレンダーに自動追加）', keyword:'駐車場',   noteTag:'駐車場',   checkboxId:'f-parking',  store:'parking',   autoAction:'park', cellBorder:'#E53935', cellBg:'#FFF5F5', alert:false, system:true},
+  {id:'surf',     icon:'🏄', name:'サーフィン（リストに自動追加）', keyword:'サーフィン', noteTag:'サーフィン', checkboxId:'f-surf',    store:'note',      autoAction:'surf', cellBorder:'#E53935', cellBg:'#FFF5F5', alert:false, system:true},
+  {id:'enospa',   icon:'♨',  name:'えのすぱ',              keyword:'えのすぱ',           noteTag:'えのすぱ',           checkboxId:'f-enospa',   store:'note', autoAction:null, cellBorder:'#9370DB', cellBg:'#f5f0ff', alert:false, system:true},
+  {id:'enosui',   icon:'🐬', name:'えのすい',              keyword:'えのすい',           noteTag:'えのすい',           checkboxId:'f-enosui',   store:'note', autoAction:null, cellBorder:'#7B1FA2', cellBg:'#F3E5F5', alert:false, system:true},
+  {id:'wshoku',   icon:'🍙', name:'和食',                  keyword:'和食',               noteTag:'和食',               checkboxId:'f-wshoku',   store:'note', autoAction:null, cellBorder:'#FF8F00', cellBg:'#FFF8E1', alert:false, system:true},
+  {id:'yshoku',   icon:'🍳', name:'洋食',                  keyword:'洋食',               noteTag:'洋食',               checkboxId:'f-yshoku',   store:'note', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF', alert:false, system:true},
+  {id:'late',     icon:'🌙', name:'レイトチェックアウト',  keyword:'レイトチェックアウト', noteTag:'レイトチェックアウト', checkboxId:'f-late',   store:'note', autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6', alert:false, system:true},
+  {id:'lower',    icon:'🛏', name:'下段希望',              keyword:'下段希望',           noteTag:'下段希望',           checkboxId:'f-lower',    store:'lowerBunk', autoAction:null, cellBorder:'#00897b', cellBg:'#e0f2f1', alert:false, system:true},
+  {id:'roommove', icon:'🔄', name:'部屋移動',              keyword:'部屋移動',           noteTag:'部屋移動',           checkboxId:'f-roommove', store:'note', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2', alert:true,  system:true},
+  {id:'noshow',   icon:'🚫', name:'No Show',               keyword:'No Show',            noteTag:'No Show',            checkboxId:'f-noshow',   store:'note', autoAction:null, cellBorder:'#7F0000', cellBg:'#C62828', alert:false, system:true},
+  {id:'caution',  icon:'⚠️', name:'注意',                  keyword:'注意',               noteTag:'注意',               checkboxId:'f-caution',  store:'note', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2', alert:true,  system:true},
 ];
-// セル全体を赤背景で強調するタグ（一般のキーワード色ロジックからは除外し、renderRegで個別処理）
-const ALERT_NOTE_TAGS=['部屋移動','注意'];
+let planRules=[];        // マスターデータ本体（propertySettings.planRules 経由でクラウド保存）
+let nextPlanRuleId=1;    // ユーザー追加分のID採番（'pr1','pr2'…）
+
+// 未設定なら現行の11項目をそのまま初期マスターとして投入する（既存データの完全踏襲）
+function initPlanRulesIfEmpty(){
+  if(planRules&&planRules.length>0)return;
+  planRules=PLAN_RULES_DEFAULTS.map((r,i)=>Object.assign({},r,{order:i,enabled:true}));
+}
+// 欠損プロパティの補完（古い保存データや手編集への耐性）
+function _normalizePlanRule(r,i){
+  const def=PLAN_RULES_DEFAULTS.find(d=>d.id===r.id);
+  const base={
+    id:r.id||('pr'+(i+1)), icon:'🏷', name:'', keyword:'', noteTag:'',
+    checkboxId:'f-pr-'+(r.id||i), store:'note', autoAction:null,
+    cellBorder:'#90A4AE', cellBg:'#ECEFF1', alert:false, system:false, order:i, enabled:true
+  };
+  // 組み込み項目は保存方式・連携キー・DOM IDを常に既定値へ強制（連携が切れるのを防ぐ）
+  const locked=def?{store:def.store,autoAction:def.autoAction,checkboxId:def.checkboxId,system:true}:{};
+  return Object.assign(base, r, locked);
+}
+// 表示順に整列した全ルール（無効も含む＝過去データの色・アイコン描画に使用）
+function allPlanRules(){
+  if(!planRules||!planRules.length)initPlanRulesIfEmpty();
+  return planRules.slice().sort((a,b)=>(a.order??0)-(b.order??0));
+}
+// 有効なルールのみ（チェックボックス描画・CSV取込の自動付与に使用）
+function activePlanRules(){ return allPlanRules().filter(r=>r.enabled!==false); }
+function planRuleById(id){ return (planRules||[]).find(r=>r.id===id)||null; }
+// ルールが予約に適用されているか（3つの保存方式に対応）
+function planRuleChecked(g,r){
+  if(!g||!r)return false;
+  if(r.store==='lowerBunk')return !!g.lowerBunk;
+  if(r.store==='parking')  return !!g.parking||hasParkKw(g.note);
+  return !!(g.note&&r.noteTag&&g.note.includes(r.noteTag));
+}
+// よく使う絵文字パレット（管理画面のアイコン選択用）
+const PLAN_EMOJI_PALETTE=['🚗','🏄','♨','🐬','🍙','🍳','🌙','🛏','🔄','🚫','⚠️','🏷','⭐','❗','🎁','🎂','🍺','🚭','🐕','👶','♿','🧳','🔑','🚿','🧺','📌','🕒','💤','📶','🎫'];
+// セル色プリセット（管理画面のカラーパレット）
+const PLAN_COLOR_PRESETS=[
+  {name:'青',       border:'#1A237E', bg:'#E8EAF6'},
+  {name:'水色',     border:'#0277BD', bg:'#E1F5FE'},
+  {name:'緑',       border:'#00897b', bg:'#e0f2f1'},
+  {name:'黄',       border:'#FF8F00', bg:'#FFF8E1'},
+  {name:'オレンジ', border:'#FF5722', bg:'#FFF3EF'},
+  {name:'赤',       border:'#E53935', bg:'#FFF5F5'},
+  {name:'濃赤',     border:'#C62828', bg:'#FFCDD2'},
+  {name:'紫',       border:'#9370DB', bg:'#f5f0ff'},
+  {name:'濃紫',     border:'#7B1FA2', bg:'#F3E5F5'},
+  {name:'グレー',   border:'#607D8B', bg:'#ECEFF1'},
+];
+
+// ══════════════════════════════════════════════════════════════════════
+// PLAN_RULES設定 管理画面（物件管理 ＞ PLAN_RULES設定）
+// ──────────────────────────────────────────────────────────────────────
+// ゴミ回収設定と同じ「下書き配列を編集し、保存ボタンで確定」方式。
+// 保存先は propertySettings.planRules（既存のクラウド保存に相乗り）。
+// ══════════════════════════════════════════════════════════════════════
+let _prDraft=[];          // 編集中の下書き（キャンセルで破棄）
+let _prOpenPal=null;      // カラーパレットを開いている行index
+let _prOpenEmo=null;      // 絵文字パレットを開いている行index
+
+function openPlanRulesModal(){
+  initPlanRulesIfEmpty();
+  _prDraft=JSON.parse(JSON.stringify(allPlanRules()));
+  _prOpenPal=_prOpenEmo=null;
+  renderPlanRulesSettings();
+  document.getElementById('planrules-modal').classList.add('open');
+}
+function renderPlanRulesSettings(){
+  const el=document.getElementById('pr-list'); if(!el)return;
+  el.innerHTML=_prDraft.map((r,i)=>{
+    const sys=!!r.system;
+    const storeLabel=r.store==='parking'?'駐車場フィールド':r.store==='lowerBunk'?'下段希望フィールド':'備考タグ';
+    return `<div class="pr-row${r.enabled===false?' off':''}">
+      <div class="pr-grid">
+        <div class="pr-ord">
+          <button onclick="movePlanRule(${i},-1)" title="上へ"${i===0?' disabled style="opacity:.3;"':''}>▲</button>
+          <button onclick="movePlanRule(${i},1)" title="下へ"${i===_prDraft.length-1?' disabled style="opacity:.3;"':''}>▼</button>
+        </div>
+        <div>
+          <label>アイコン</label>
+          <input type="text" class="pr-icon-in" maxlength="4" value="${esc(r.icon||'')}"
+                 oninput="prEdit(${i},'icon',this.value)" onfocus="prTogglePal(${i},'emo')">
+        </div>
+        <div>
+          <label>プラン名（表示名）</label>
+          <input type="text" value="${esc(r.name||'')}" placeholder="例：江の島温泉"
+                 oninput="prEdit(${i},'name',this.value)">
+        </div>
+        <div>
+          <label>セルの色</label>
+          <span class="pr-swatch" onclick="prTogglePal(${i},'col')" title="クリックで色を選択">
+            <i style="background:${esc(r.cellBorder||'#ccc')}"></i>
+            <span style="background:${esc(r.cellBg||'#fff')};">${esc(_prColorName(r))}</span>
+          </span>
+        </div>
+        <div>
+          <label>表示順</label>
+          <input type="number" value="${i+1}" min="1" max="99" onchange="prSetOrder(${i},this.value)">
+        </div>
+        <div>
+          <label>有効</label>
+          <input type="checkbox" ${r.enabled===false?'':'checked'} onchange="prEdit(${i},'enabled',this.checked)"
+                 style="width:17px;height:17px;cursor:pointer;margin-top:6px;">
+        </div>
+      </div>
+      ${_prOpenEmo===i?`<div class="pr-emo">${PLAN_EMOJI_PALETTE.map(e=>
+        `<button onclick="prPickEmoji(${i},'${e}')">${e}</button>`).join('')}</div>`:''}
+      ${_prOpenPal===i?`<div class="pr-pal">${PLAN_COLOR_PRESETS.map((c,ci)=>
+        `<button onclick="prPickColor(${i},${ci})" title="${esc(c.name)}" style="background:${c.bg};"><i style="background:${c.border}"></i></button>`).join('')}
+        <span style="display:flex;align-items:center;gap:6px;margin-left:8px;font-size:11px;color:var(--muted);">
+          カスタム:
+          <input type="color" value="${esc(r.cellBorder||'#607D8B')}" onchange="prEdit(${i},'cellBorder',this.value)" title="帯の色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+          <input type="color" value="${esc(r.cellBg||'#ECEFF1')}" onchange="prEdit(${i},'cellBg',this.value)" title="背景色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+        </span></div>`:''}
+      <div class="pr-sub">
+        <span>システムID <span class="pr-sysid">${esc(r.id)}</span></span>
+        <span>保存方式 <span class="pr-sysid">${esc(storeLabel)}</span></span>
+        ${r.store==='note'?`<span>備考タグ <span class="pr-sysid">${esc(r.noteTag||'（保存時に確定）')}</span></span>`:''}
+        <label title="チェックするとセル全体を強調色で塗ります（部屋移動・注意と同じ挙動）">
+          <input type="checkbox" ${r.alert?'checked':''} onchange="prEdit(${i},'alert',this.checked)"> セル全体を強調
+        </label>
+        ${sys?`<span style="color:#b5651d;">🔒 システム連携あり${r.autoAction?`（${r.autoAction==='park'?'駐車場カレンダー自動追加':'サーフィンリスト自動追加'}）`:''}</span>`
+             :`<button class="btn btn-xs" onclick="removePlanRule(${i})" style="margin-left:auto;color:#c0392b;">削除</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+function _prColorName(r){
+  const p=PLAN_COLOR_PRESETS.find(c=>c.border.toLowerCase()===String(r.cellBorder||'').toLowerCase());
+  return p?p.name:'カスタム';
+}
+function prEdit(i,key,val){
+  if(!_prDraft[i])return;
+  _prDraft[i][key]=val;
+  // 色・有効・強調はプレビューに影響するので再描画。名前/アイコンは入力中のため再描画しない
+  if(key==='cellBorder'||key==='cellBg'||key==='enabled'||key==='alert')renderPlanRulesSettings();
+}
+function prPickEmoji(i,e){ if(!_prDraft[i])return; _prDraft[i].icon=e; _prOpenEmo=null; renderPlanRulesSettings(); }
+function prPickColor(i,ci){
+  const c=PLAN_COLOR_PRESETS[ci]; if(!_prDraft[i]||!c)return;
+  _prDraft[i].cellBorder=c.border; _prDraft[i].cellBg=c.bg; _prOpenPal=null; renderPlanRulesSettings();
+}
+function prTogglePal(i,kind){
+  if(kind==='col'){ _prOpenPal=(_prOpenPal===i?null:i); _prOpenEmo=null; }
+  else            { _prOpenEmo=(_prOpenEmo===i?null:i); _prOpenPal=null; }
+  renderPlanRulesSettings();
+}
+function movePlanRule(i,dir){
+  const j=i+dir; if(j<0||j>=_prDraft.length)return;
+  const t=_prDraft[i]; _prDraft[i]=_prDraft[j]; _prDraft[j]=t;
+  _prOpenPal=_prOpenEmo=null; renderPlanRulesSettings();
+}
+function prSetOrder(i,val){
+  let j=(parseInt(val)||1)-1;
+  j=Math.max(0,Math.min(_prDraft.length-1,j));
+  if(j===i){ renderPlanRulesSettings(); return; }
+  const [item]=_prDraft.splice(i,1);
+  _prDraft.splice(j,0,item);
+  _prOpenPal=_prOpenEmo=null; renderPlanRulesSettings();
+}
+function addPlanRule(){
+  const id='pr'+(nextPlanRuleId++);
+  _prDraft.push({
+    id, icon:'🏷', name:'', keyword:'', noteTag:'',   // noteTagは保存時にプラン名から確定
+    checkboxId:'f-'+id, store:'note', autoAction:null,
+    cellBorder:'#607D8B', cellBg:'#ECEFF1', alert:false, system:false, enabled:true, order:_prDraft.length
+  });
+  renderPlanRulesSettings();
+  const el=document.getElementById('pr-list'); if(el)el.scrollTop=el.scrollHeight;
+}
+function removePlanRule(i){
+  const r=_prDraft[i]; if(!r||r.system)return;
+  if(!confirm(`「${r.name||r.id}」を一覧から削除しますか？\n\n※過去の予約に記録済みのデータを残したい場合は、削除ではなく「有効」のチェックを外して無効化してください。`))return;
+  _prDraft.splice(i,1); _prOpenPal=_prOpenEmo=null; renderPlanRulesSettings();
+}
+function resetPlanRules(){
+  if(!confirm('PLAN_RULESを初期設定（既定の11項目）に戻しますか？\n\n※追加した項目は一覧から消えますが、過去の予約に記録済みの備考タグ自体は消えません。'))return;
+  _prDraft=PLAN_RULES_DEFAULTS.map((r,i)=>Object.assign({},r,{order:i,enabled:true}));
+  _prOpenPal=_prOpenEmo=null; renderPlanRulesSettings();
+}
+function savePlanRules(){
+  // プラン名が空の行は保存しない（誤登録防止）
+  const rows=_prDraft.filter(r=>String(r.name||'').trim());
+  if(!rows.length){ alert('プラン名が入力された項目がありません。'); return; }
+  // 備考タグはデータ本体なので「初回保存時にプラン名から確定し、以降は変更しない」。
+  // （後からプラン名を変えてもタグを変えないことで、過去予約との紐付けが切れないようにする）
+  rows.forEach((r,i)=>{
+    r.name=String(r.name).trim();
+    if(r.store==='note'&&!String(r.noteTag||'').trim()){
+      r.noteTag=r.name; r.keyword=r.name;
+    }
+    r.order=i;
+  });
+  // 備考タグの重複はデータが混線するため保存を止める
+  const tags=rows.filter(r=>r.store==='note').map(r=>r.noteTag);
+  const dup=tags.find((t,i)=>tags.indexOf(t)!==i);
+  if(dup){ alert(`備考タグ「${dup}」が重複しています。\nプラン名を変更してから保存してください。`); return; }
+
+  planRules=rows.map((r,i)=>_normalizePlanRule(r,i));
+  propertySettings.planRules=planRules;
+  logAudit('設定変更','PLAN_RULES設定',`${planRules.length}件を保存（有効 ${planRules.filter(r=>r.enabled!==false).length}件）`);
+  closeM('planrules-modal');
+  cloudSave();
+  renderReg();                                  // セル色・アイコンを即時反映
+  if(document.getElementById('modal')?.classList.contains('open'))renderPlanRuleChecks(); // 予約詳細を開いていれば再描画
+  showToast('🏷 PLAN_RULES設定を保存しました');
+}
 
 // 月別・合計宿泊者数（各月のXX日時点の累計宿泊者数）— 実データ投入
 // 2026年（画像1より）: 各日の累計人数
@@ -483,17 +710,23 @@ function hasSurfKw(note){if(!note)return false;const l=note.toLowerCase();return
 // 備考・プランから表示アイコンを毎回再評価（データ保存なし）
 function getPlanIcons(note){
   let icons='';
-  // PLAN_RULES順で重複なくアイコン追加
-  PLAN_RULES.forEach(rule=>{ if(note&&note.includes(rule.keyword))icons+=rule.icon; });
+  // マスターの表示順でアイコンを連結（備考タグ方式のルールのみ）
+  allPlanRules().forEach(rule=>{
+    if(rule.store!=='note')return;
+    if(note&&rule.keyword&&note.includes(rule.keyword))icons+=rule.icon;
+  });
   return icons;
 }
 // 全アイコンをまとめて取得（描画で使用）
-// 表示順: 🚗→PLAN_RULES順（🏄♨🐬🍙🍳🌙）
+// 表示順はマスターの order に従う。
+// ※無効化したルールもここでは対象に含める：過去予約のアイコンを消さないため。
 function getCellIcons(g){
+  let icons='';
+  allPlanRules().forEach(rule=>{ if(planRuleChecked(g,rule))icons+=rule.icon; });
+  // all/plan は既存の呼び出し互換のため残す（現在の描画では combined のみ使用）
   const park=(hasParkKw(g.note)||g.parking)?'🚗':'';
   const lower=g.lowerBunk?'🛏':'';
-  const plan=getPlanIcons(g.note); // PLAN_RULESの順序（サーフィン含む）
-  return {all:park+lower, plan, combined:park+lower+plan};
+  return {all:park+lower, plan:getPlanIcons(g.note), combined:icons};
 }
 // ============================================================
 // 複数選択・一括削除
@@ -1151,13 +1384,16 @@ function importCSVText(text){
     // ─── 商品プランルール適用（PLAN_RULES テーブル） ───────────
     // planName・判定元テキストにキーワードが含まれる場合、noteTagを備考に追記
     // （noteTagはgetCellIconsのアイコン自動判定に使用。OTA本文は含めない）
-    PLAN_RULES.forEach(rule=>{
+    // ※新規取込への自動付与は「有効」なルールのみ（無効化した項目は新たに付けない）
+    activePlanRules().forEach(rule=>{
+      if(rule.store!=='note'||!rule.keyword||!rule.noteTag)return;
       if(planName.includes(rule.keyword)){
         if(!note.includes(rule.noteTag))note=note?note+' '+rule.noteTag:rule.noteTag;
       }
     });
     // 判定元テキスト（CSV備考）にキーワードが含まれる場合もnoteTagを追記
-    PLAN_RULES.forEach(rule=>{
+    activePlanRules().forEach(rule=>{
+      if(rule.store!=='note'||!rule.keyword||!rule.noteTag)return;
       if(_detectText.includes(rule.keyword)&&!note.includes(rule.noteTag))
         note=note?note+' '+rule.noteTag:rule.noteTag;
     });
