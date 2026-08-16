@@ -20,20 +20,36 @@ let _posTileEdit = false; // タイル配置変更モード
 let _posDragId = null;
 
 // カテゴリ色パレット（AirREGI風）
-const POS_COLORS = ['#4db6d6','#f2c94c','#f2994a','#4caf50','#2f6fba','#9e9e9e','#c8a96a','#e2574c','#8e44ad','#16a085','#e91e63','#607d8b'];
+const POS_COLORS = ['#4C586F','#697584','#697488','#5D7A6C','#4F6E60','#886F4D','#7D6140','#BE5252','#9E4F4F','#75737E','#6B757D','#7F726A'];
+
+// 背景色に対して十分なコントラストの文字色を返す。
+// カテゴリー色はユーザーが自由に選べるため、固定の白文字だと薄い色で読めなくなる。
+// 相対輝度から白／濃色を選ぶことで、どの色を選んでも可読性(WCAG AA)を確保する。
+function _posTextOn(bg){
+  const m=String(bg||'').match(/^#([0-9a-fA-F]{6})$/);
+  if(!m) return 'var(--bg-surface)';
+  const h=m[1];
+  const v=[0,2,4].map(i=>{ const x=parseInt(h.substr(i,2),16)/255;
+    return x<=0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055,2.4); });
+  const L=0.2126*v[0]+0.7152*v[1]+0.0722*v[2];
+  // 白と濃色の両方を試し、コントラスト比が高い方を採用する
+  const white=1.05/(L+0.05);
+  const dark=(L+0.05)/0.0533;       // #2B2B29 の相対輝度 ≒ 0.0233
+  return white>=dark ? '#FFFFFF' : '#2B2B29';
+}
 
 function _posYen(n){ return '¥' + (Number(n)||0).toLocaleString(); }
 function _posCat(id){ return posCategories.find(c=>c.id===id)||null; }
-function _posCatColor(id){ const c=_posCat(id); return c?c.color:'#9e9e9e'; }
+function _posCatColor(id){ const c=_posCat(id); return c?c.color:'#6E767C'; }
 
 // 初回のみ：カテゴリ・商品の初期データを投入
 function _posSeedIfEmpty(){
   if(posCategories.length) return;
   const seedCats = [
-    {name:'ソフトドリンク',color:'#4db6d6'},{name:'アルコール',color:'#f2c94c'},
-    {name:'フード',color:'#f2994a'},{name:'朝食',color:'#4caf50'},
-    {name:'宿泊費',color:'#2f6fba'},{name:'アメニティ',color:'#9e9e9e'},
-    {name:'駐車場',color:'#c8a96a'},{name:'レンタル',color:'#e2574c'},{name:'チケット',color:'#8e44ad'}
+    {name:'ソフトドリンク',color:'#4C586F'},{name:'アルコール',color:'#886F4D'},
+    {name:'フード',color:'#886F4D'},{name:'朝食',color:'#4F6E60'},
+    {name:'宿泊費',color:'#4C586F'},{name:'アメニティ',color:'#6B757D'},
+    {name:'駐車場',color:'#886F4D'},{name:'レンタル',color:'#9E4F4F'},{name:'チケット',color:'#4C586F'}
   ];
   posCategories = seedCats.map((c,i)=>({id:i+1,name:c.name,color:c.color,visible:true,order:i}));
   nextPosCatId = posCategories.length+1;
@@ -79,7 +95,7 @@ function renderPosCatFilter(){
   const el=document.getElementById('pos-cat-filter'); if(!el)return;
   const cats=posCategories.filter(c=>c.visible).sort((a,b)=>a.order-b.order);
   let html=`<button class="pos-catbtn ${_posCurCat===null?'active':''}" style="${_posCurCat===null?'background:var(--ocean);':''}" onclick="posSelectCat(null)">すべて</button>`;
-  html+=cats.map(c=>`<button class="pos-catbtn ${_posCurCat===c.id?'active':''}" style="${_posCurCat===c.id?'background:'+c.color+';':''}" onclick="posSelectCat(${c.id})">${esc(c.name)}</button>`).join('');
+  html+=cats.map(c=>`<button class="pos-catbtn ${_posCurCat===c.id?'active':''}" style="${_posCurCat===c.id?'background:'+c.color+';color:'+_posTextOn(c.color)+';':''}" onclick="posSelectCat(${c.id})">${esc(c.name)}</button>`).join('');
   el.innerHTML=html;
 }
 function posSelectCat(id){ _posCurCat=id; renderPosCatFilter(); renderPosTiles(); }
@@ -88,9 +104,9 @@ function renderPosTiles(){
   let list=posProducts.filter(p=>p.visible);
   if(_posCurCat!==null)list=list.filter(p=>p.catId===_posCurCat);
   list=list.sort((a,b)=>a.order-b.order);
-  if(!list.length){ el.innerHTML=`<div style="grid-column:1/-1;color:#bbb;text-align:center;padding:30px;font-size:13px;">商品がありません（商品設定から追加）</div>`; return; }
+  if(!list.length){ el.innerHTML=`<div style="grid-column:1/-1;color:var(--border-cashmere);text-align:center;padding:30px;font-size:13px;">商品がありません（商品設定から追加）</div>`; return; }
   el.innerHTML=list.map(p=>`
-    <button class="pos-tile ${_posTileEdit?'editing':''}" style="background:${_posCatColor(p.catId)};"
+    <button class="pos-tile ${_posTileEdit?'editing':''}" style="background:${_posCatColor(p.catId)};color:${_posTextOn(_posCatColor(p.catId))};"
       ${_posTileEdit?`draggable="true" ondragstart="posTileDragStart(event,${p.id})" ondragover="event.preventDefault()" ondrop="posTileDrop(event,${p.id})" ondragend="posTileDragEnd(event)"`:`onclick="posAddToCart(${p.id})"`}>
       <span>${esc(p.name)}</span><span class="pos-tile-price">${_posYen(p.price)}</span>
     </button>`).join('');
@@ -217,7 +233,7 @@ function _posRenderQR(){
   if(posSettings&&posSettings.paypayQr){
     wrap.innerHTML=`<img src="${posSettings.paypayQr}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
   } else {
-    wrap.innerHTML=`<div style="color:#bbb;font-size:12px;padding:12px;text-align:center;">PayPay QR画像が未登録です<br>（商品設定＞店舗設定）</div>`;
+    wrap.innerHTML=`<div style="color:var(--border-cashmere);font-size:12px;padding:12px;text-align:center;">PayPay QR画像が未登録です<br>（商品設定＞店舗設定）</div>`;
   }
 }
 
@@ -249,11 +265,11 @@ function renderPosProducts(){
   _posRenderQRPreview();
   const tb=document.getElementById('pos-product-list'); if(!tb)return;
   const list=posProducts.slice().sort((a,b)=>a.order-b.order);
-  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#bbb;padding:20px;">商品がありません</td></tr>`; return; }
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--border-cashmere);padding:20px;">商品がありません</td></tr>`; return; }
   tb.innerHTML=list.map(p=>{
     const c=_posCat(p.catId);
     return `<tr style="border-bottom:1px solid var(--sand-border);">
-      <td style="padding:10px 14px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c?c.color:'#ccc'};margin-right:6px;"></span>${esc(c?c.name:'—')}</td>
+      <td style="padding:10px 14px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c?c.color:'#D8DADB'};margin-right:6px;"></span>${esc(c?c.name:'—')}</td>
       <td style="padding:10px 14px;font-weight:600;">${esc(p.name)}</td>
       <td style="padding:10px 14px;text-align:right;">${_posYen(p.price)}</td>
       <td style="padding:10px 14px;text-align:center;">${p.visible?'✅':'—'}</td>
@@ -309,12 +325,12 @@ function renderPosCategoryList(){
   el.innerHTML=cats.map(c=>`
     <div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--sand);">
       <div style="display:flex;gap:3px;flex-wrap:wrap;width:118px;">
-        ${POS_COLORS.map(col=>`<span onclick="posSetCatColor(${c.id},'${col}')" title="${col}" style="width:16px;height:16px;border-radius:4px;background:${col};cursor:pointer;box-shadow:${c.color===col?'0 0 0 2px #1a5276':'inset 0 0 0 1px rgba(0,0,0,.1)'};"></span>`).join('')}
+        ${POS_COLORS.map(col=>`<span onclick="posSetCatColor(${c.id},'${col}')" title="${col}" style="width:16px;height:16px;border-radius:4px;background:${col};cursor:pointer;box-shadow:${c.color===col?'0 0 0 2px var(--accent-primary)':'inset 0 0 0 1px rgba(0,0,0,.1)'};"></span>`).join('')}
       </div>
       <input value="${esc(c.name)}" oninput="posSetCatName(${c.id},this.value)" style="flex:1;min-width:80px;border:1.5px solid var(--sand-border);border-radius:6px;padding:6px 9px;font-size:13px;font-family:inherit;">
-      <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" ${c.visible?'checked':''} onchange="posSetCatVisible(${c.id},this.checked)">表示</label>
+      <label style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" ${c.visible?'checked':''} onchange="posSetCatVisible(${c.id},this.checked)">表示</label>
       <span onclick="deletePosCategory(${c.id})" style="color:var(--coral);cursor:pointer;font-weight:700;padding:0 4px;" title="削除">🗑</span>
-    </div>`).join('')||`<div style="color:#bbb;text-align:center;padding:16px;">カテゴリーがありません</div>`;
+    </div>`).join('')||`<div style="color:var(--border-cashmere);text-align:center;padding:16px;">カテゴリーがありません</div>`;
 }
 function posSetCatColor(id,col){ const c=_posCat(id); if(c)c.color=col; renderPosCategoryList(); }
 function posSetCatName(id,v){ const c=_posCat(id); if(c)c.name=v; }
@@ -384,7 +400,7 @@ function renderPosSales(){
   document.getElementById('pos-sum-other').textContent=_posYen(sum.other);
   // テーブル
   const tb=document.getElementById('pos-sales-list'); if(!tb)return;
-  if(!keys.length){ tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#bbb;padding:20px;">売上データがありません</td></tr>`; return; }
+  if(!keys.length){ tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--border-cashmere);padding:20px;">売上データがありません</td></tr>`; return; }
   tb.innerHTML=keys.map((k,i)=>{ const g=groups[k]; return `<tr style="border-bottom:1px solid var(--sand-border);cursor:pointer;${i%2?'background:var(--sand);':''}" onclick="openPosSaleList('${k}')" title="クリックで取引明細を表示">
     <td style="padding:9px 14px;font-weight:600;color:var(--ocean);text-decoration:underline;">${esc(k)}</td>
     <td style="padding:9px 14px;text-align:right;">${g.count}</td>
@@ -407,7 +423,7 @@ function _posPayLabel(p){ return p==='cash'?'現金':p==='paypay'?'PayPay':'そ�
 function _posRenderSaleList(ids){
   const body=document.getElementById('pos-sale-list-body'); if(!body)return;
   const list=ids.map(id=>posSales.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>b.ts.localeCompare(a.ts));
-  if(!list.length){ body.innerHTML=`<div style="color:#bbb;text-align:center;padding:20px;">取引がありません</div>`; closeM('pos-sale-list-modal'); renderPosSales(); return; }
+  if(!list.length){ body.innerHTML=`<div style="color:var(--border-cashmere);text-align:center;padding:20px;">取引がありません</div>`; closeM('pos-sale-list-modal'); renderPosSales(); return; }
   body.innerHTML=list.map(s=>{
     const d=new Date(s.ts); const p=n=>String(n).padStart(2,'0'); const time=`${p(d.getHours())}:${p(d.getMinutes())}`;
     const itemsStr=s.items.map(it=>`${esc(it.name)}×${it.qty}`).join('、');
@@ -416,9 +432,9 @@ function _posRenderSaleList(ids){
         <span style="font-weight:700;">${time}</span>
         <span style="font-weight:800;font-size:15px;">${_posYen(s.total)}</span>
       </div>
-      <div style="font-size:12px;color:#666;margin:3px 0;">${itemsStr}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin:3px 0;">${itemsStr}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:11px;color:#999;">${_posPayLabel(s.pay)}・担当:${esc(s.staff||'—')}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${_posPayLabel(s.pay)}・担当:${esc(s.staff||'—')}</span>
         <span style="display:flex;gap:6px;">
           <button class="btn btn-xs" onclick="openPosSaleEdit(${s.id})">編集</button>
           <button class="btn btn-xs btn-red" onclick="posDeleteSale(${s.id})">削除</button>
@@ -461,7 +477,7 @@ function openPosSaleEdit(id){
 }
 function _posRenderSaleEditItems(){
   const el=document.getElementById('pos-sale-edit-items'); if(!el)return;
-  if(!_posSaleEditItems.length){ el.innerHTML=`<div style="color:#bbb;text-align:center;padding:12px;font-size:12px;">商品がありません</div>`; }
+  if(!_posSaleEditItems.length){ el.innerHTML=`<div style="color:var(--border-cashmere);text-align:center;padding:12px;font-size:12px;">商品がありません</div>`; }
   else {
     el.innerHTML=_posSaleEditItems.map((it,i)=>`
       <div class="pos-cart-row">

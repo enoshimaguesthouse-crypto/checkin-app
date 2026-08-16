@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260814c">
+<link rel="stylesheet" href="hotel_v3.css?v=20260814n">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -45,14 +45,14 @@
   <button class="sb-toggle" onclick="toggleSB()">&#9776;</button>
   <div class="sb-div"></div>
   <div class="sb-body">
-  <button class="nitem active" onclick="showP('register',this)"><span class="nico">&#128197;</span><span class="nlbl">宿泊者名簿</span></button>
-  <button class="nitem" onclick="showP('import',this)"><span class="nico">&#128229;</span><span class="nlbl">CSV取込</span></button>
+  <button class="nitem active" onclick="showP('register',this)"><span class="nico">&var(--accent-primary);</span><span class="nlbl">宿泊者名簿</span></button>
+  <button class="nitem" onclick="showP('import',this)"><span class="nico">&var(--color-success-strong);</span><span class="nlbl">CSV取込</span></button>
   <button class="nitem" onclick="showP('todo',this)"><span class="nico">&#9745;</span><span class="nlbl">TODO</span></button>
-  <button class="nitem" onclick="showP('parking',this)"><span class="nico">&#128664;</span><span class="nlbl">駐車場</span></button>
+  <button class="nitem" onclick="showP('parking',this)"><span class="nico">&var(--color-success-strong);</span><span class="nlbl">駐車場</span></button>
   <button class="nitem" onclick="showP('rental',this)"><span class="nico">📷</span><span class="nlbl">レンタルスペース</span></button>
-  <button class="nitem" onclick="showP('surf',this)"><span class="nico">&#127940;</span><span class="nlbl">サーフィン</span></button>
-  <button class="nitem" onclick="showP('occupancy',this)"><span class="nico">&#128200;</span><span class="nlbl">稼働率</span></button>
-  <button class="nitem" onclick="showP('sales',this)"><span class="nico">&#128181;</span><span class="nlbl">売上高</span></button>
+  <button class="nitem" onclick="showP('surf',this)"><span class="nico">&var(--color-success-strong);</span><span class="nlbl">サーフィン</span></button>
+  <button class="nitem" onclick="showP('occupancy',this)"><span class="nico">&var(--color-success-strong);</span><span class="nlbl">稼働率</span></button>
+  <button class="nitem" onclick="showP('sales',this)"><span class="nico">&var(--accent-deep);</span><span class="nlbl">売上高</span></button>
   <button class="nitem" onclick="showP('cancel',this)"><span class="nico">&#10060;</span><span class="nlbl">キャンセル</span></button>
   <!-- レジ（簡易POS）折りたたみ -->
   <div id="sidebar-pos-group">
@@ -82,7 +82,7 @@
   <!-- 物件管理 折りたたみ -->
   <div id="sidebar-property-group">
     <button class="nitem" onclick="togglePropertyMenu(this)" id="property-menu-btn" style="justify-content:space-between;">
-      <span style="display:flex;align-items:center;gap:8px;"><span class="nico">&#127968;</span><span class="nlbl">物件管理</span></span>
+      <span style="display:flex;align-items:center;gap:8px;"><span class="nico">&var(--accent-deep);</span><span class="nlbl">物件管理</span></span>
       <span class="nlbl property-chevron" style="font-size:10px;transition:transform .2s;">▾</span>
     </button>
     <div id="property-submenu" style="display:none;">
@@ -94,7 +94,7 @@
   </div>
   <div class="sb-footer">
     <div class="sb-div"></div>
-    <button class="nitem" id="role-badge" onclick="pinLogout()" style="display:none;" title="ログアウト"><span class="nico">&#128274;</span><span class="nlbl">ログアウト</span></button>
+    <button class="nitem" id="role-badge" onclick="pinLogout()" style="display:none;" title="ログアウト"><span class="nico">&var(--accent-deep);</span><span class="nlbl">ログアウト</span></button>
   </div>
 </div>
 
@@ -117,7 +117,7 @@
         <input type="text" id="reg-search-input" class="search-input" placeholder="Enterで検索 スペース区切りで複数条件可">
       </div>
       <button class="btn btn-blue" onclick="openAdd()">＋ 予約追加</button>
-      <button class="btn" style="background:var(--sunset-lt);color:#7d4c00;border-color:var(--sunset);" onclick="openCharterNew()">＋ 🔒 貸切追加</button>
+      <button class="btn" style="background:var(--sunset-lt);color:var(--color-warning-strong);border-color:var(--sunset);" onclick="openCharterNew()">＋ 🔒 貸切追加</button>
       <button class="btn" id="mobile-stats-toggle-btn" onclick="toggleMobileStats()" title="集計・ダッシュボードの表示/非表示">
         <span id="mobile-stats-icon">▼</span> <span id="mobile-stats-label">集計</span>
       </button>
@@ -133,14 +133,14 @@
     <div class="sc" style="flex:1;min-width:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span class="sl" style="margin:0;">今月予約数</span>
-        <span style="font-size:11px;color:#888;" id="s-occ-sub">— / — セル</span>
+        <span style="font-size:11px;color:var(--text-secondary);" id="s-occ-sub">— / — セル</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;">
         <div style="font-size:20px;font-weight:600;text-align:left;" id="s-total">—</div>
-        <div style="font-size:11px;color:#888;" id="s-occ">—</div>
+        <div style="font-size:11px;color:var(--text-secondary);" id="s-occ">—</div>
       </div>
-      <div style="margin-top:5px;height:5px;background:#f0ede6;border-radius:99px;overflow:hidden;">
-        <div id="s-occ-bar" style="height:100%;border-radius:99px;background:#0F6E56;transition:width .3s;width:0%;"></div>
+      <div style="margin-top:5px;height:5px;background:var(--color-warning-bg);border-radius:99px;overflow:hidden;">
+        <div id="s-occ-bar" style="height:100%;border-radius:99px;background:var(--color-success-strong);transition:width .3s;width:0%;"></div>
       </div>
     </div>
     <div class="sc" style="flex:1;min-width:0;"><div class="sl">男性</div><div class="sv" id="s-male" style="text-align:left;">—</div><div class="ss">名</div></div>
@@ -149,19 +149,19 @@
     <div class="sc" style="flex:2;min-width:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span class="sl" style="margin:0;">今月売上</span>
-        <span style="font-size:11px;color:#888;display:flex;align-items:center;gap:4px;">
+        <span style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;">
           予算
           <span id="s-budget-label" onclick="openBudgetEdit()" title="クリックで予算設定"
-            style="font-weight:600;color:#185FA5;cursor:pointer;border-bottom:1px dashed #185FA5;padding-bottom:1px;">—</span>
+            style="font-weight:600;color:var(--accent-primary);cursor:pointer;border-bottom:1px dashed var(--accent-primary);padding-bottom:1px;">—</span>
           円
         </span>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;">
         <div style="font-size:20px;font-weight:600;text-align:left;" id="s-sales">—</div>
-        <div style="font-size:11px;color:#888;" id="s-progress-pct">—</div>
+        <div style="font-size:11px;color:var(--text-secondary);" id="s-progress-pct">—</div>
       </div>
-      <div style="margin-top:5px;height:5px;background:#f0ede6;border-radius:99px;overflow:hidden;">
-        <div id="s-progress-bar" style="height:100%;border-radius:99px;background:#185FA5;transition:width .3s;width:0%;"></div>
+      <div style="margin-top:5px;height:5px;background:var(--color-warning-bg);border-radius:99px;overflow:hidden;">
+        <div id="s-progress-bar" style="height:100%;border-radius:99px;background:var(--accent-primary);transition:width .3s;width:0%;"></div>
       </div>
     </div>
     <div style="position:relative;display:flex;align-items:stretch;flex-shrink:0;">
@@ -182,8 +182,8 @@
   <!-- カテゴリ別ダッシュボード -->
   <div id="cat-dashboard" style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:10px;"></div>
   <div class="lg">
-    <div class="li"><div class="lsq" style="background:#eef4fc;box-shadow:inset 4px 0 0 0 #185FA5;"></div>予約済み</div>
-    <div class="li"><div class="lsq" style="background:#fef3c7;box-shadow:inset 4px 0 0 0 #d97706;"></div>チェックイン済み</div>
+    <div class="li"><div class="lsq" style="background:var(--accent-bg);box-shadow:inset 4px 0 0 0 var(--accent-primary);"></div>予約済み</div>
+    <div class="li"><div class="lsq" style="background:var(--color-warning-bg);box-shadow:inset 4px 0 0 0 var(--color-warning-strong);"></div>チェックイン済み</div>
   </div>
   </div><!-- /mobile-stats-area -->
   <div style="display:flex;gap:12px;align-items:flex-start;">
@@ -204,7 +204,7 @@
     <div id="rank-a-panel" style="width:230px;flex-shrink:0;position:sticky;top:8px;overflow:hidden;transition:width .2s;">
       <div style="width:230px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:11px;font-weight:700;color:#A32D2D;letter-spacing:.04em;white-space:nowrap;">TODO</span>
+          <span style="font-size:11px;font-weight:700;color:var(--color-danger-strong);letter-spacing:.04em;white-space:nowrap;">TODO</span>
           <button onclick="toggleRankAPanel()" id="rank-a-toggle" class="btn btn-xs" style="font-size:12px;padding:1px 7px;line-height:1.4;">✕</button>
         </div>
         <div id="rank-a-list"></div>
@@ -226,56 +226,56 @@
       ondragleave="this.classList.remove('drag')"
       ondrop="handleDrop(event)"
       style="display:block;cursor:pointer;">
-      <div style="font-size:32px;">&#128229;</div>
+      <div style="font-size:32px;">&var(--color-success-strong);</div>
       <p>CSVファイルをタップして選択<br><span style="font-size:11px;">またはドラッグ＆ドロップ</span></p>
       <div style="margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-        <span style="font-size:11px;background:#e8f0fe;color:#185FA5;font-weight:600;padding:2px 10px;border-radius:99px;">ねっぱんCSV</span>
-        <span style="font-size:11px;background:#e8f5e9;color:#2e7d32;font-weight:600;padding:2px 10px;border-radius:99px;">Airhost Booking CSV</span>
+        <span style="font-size:11px;background:var(--accent-bg);color:var(--accent-primary);font-weight:600;padding:2px 10px;border-radius:99px;">ねっぱんCSV</span>
+        <span style="font-size:11px;background:var(--color-success-bg);color:var(--color-success-strong);font-weight:600;padding:2px 10px;border-radius:99px;">Airhost Booking CSV</span>
       </div>
-      <p style="font-size:11px;margin-top:6px;color:#888;">UTF-8 / Shift-JIS 自動判定</p>
+      <p style="font-size:11px;margin-top:6px;color:var(--text-secondary);">UTF-8 / Shift-JIS 自動判定</p>
     </label>
     <input type="file" id="csv-file" accept=".csv,.CSV" style="display:none" onchange="handleFileSelect(event)">
     <!-- 自動判定説明 -->
-    <div style="margin-top:10px;padding:10px 14px;background:#f8f9fa;border-radius:8px;font-size:11px;color:#555;line-height:1.8;">
-      <span style="font-weight:700;color:#333;">🤖 CSV自動判定：</span>
+    <div style="margin-top:10px;padding:10px 14px;background:var(--bg-soft);border-radius:8px;font-size:11px;color:var(--text-secondary);line-height:1.8;">
+      <span style="font-weight:700;color:var(--text-primary);">🤖 CSV自動判定：</span>
       ファイル名から種別を自動識別<br>
-      　<code style="background:#e8f0fe;color:#185FA5;padding:1px 5px;border-radius:3px;">ReservationList…</code> → ねっぱんCSV　／　
-      <code style="background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:3px;">Booking…</code> → Airhost CSV<br>
-      　同一 <code style="background:#f1f3f4;padding:1px 5px;border-radius:3px;">reservationId</code> の予約は自動スキップ（重複防止）
+      　<code style="background:var(--accent-bg);color:var(--accent-primary);padding:1px 5px;border-radius:3px;">ReservationList…</code> → ねっぱんCSV　／　
+      <code style="background:var(--color-success-bg);color:var(--color-success-strong);padding:1px 5px;border-radius:3px;">Booking…</code> → Airhost CSV<br>
+      　同一 <code style="background:var(--bg-soft);padding:1px 5px;border-radius:3px;">reservationId</code> の予約は自動スキップ（重複防止）
     </div>
     <div id="import-result"></div>
     <div id="unassigned-panel" style="display:none;"></div>
   </div>
   <div class="card">
     <div style="font-size:13px;font-weight:600;margin-bottom:10px;">取込ルール</div>
-    <div style="font-size:12px;color:#555;line-height:2.0;">
+    <div style="font-size:12px;color:var(--text-secondary);line-height:2.0;">
 
-      <div style="margin-bottom:6px;font-weight:600;color:#1a5276;">📋 対応CSV・予約フィルタ</div>
+      <div style="margin-bottom:6px;font-weight:600;color:var(--accent-deep);">📋 対応CSV・予約フィルタ</div>
       ✓ <strong>ねっぱんCSV</strong>：予約区分「予約」「変更」を取込 ／ 「キャンセル」「仮予約」は除外<br>
       ✓ <strong>Airhost CSV</strong>：状態「確認済み」を取込 ／ 「キャンセル」は除外<br>
       ✓ 同一 reservationId の予約は重複スキップ（2回読込み防止）<br>
       ✓ 連泊（2泊目以降）は自動的に cont セルとして処理 ／ 月跨ぎ連泊に対応<br>
 
-      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:#1a5276;">💳 支払方法の変換</div>
+      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:var(--accent-deep);">💳 支払方法の変換</div>
       ✓ カード系（事前決済・事前カード決済・オンラインカード決済・クレジットカード）→「事前決済」<br>
       ✓ 決済方法が空欄かつポイント割引あり → 「現金」（ねっぱん仕様）<br>
       ✓ Airhost：現金列 > 0 → 「現金」 ／ それ以外 → 「事前決済」<br>
 
-      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:#1a5276;">🔤 エンコーディング</div>
+      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:var(--accent-deep);">🔤 エンコーディング</div>
       ✓ UTF-8 / Shift-JIS 自動判定（Booking.com CSV も取込可）<br>
       ✓ クォート内改行（Booking.com備考の複数行）に対応<br>
 
-      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:#1a5276;">🏨 部屋割当</div>
+      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:var(--accent-deep);">🏨 部屋割当</div>
       ✓ ねっぱん：部屋タイプ名称でマッチング ／ 空き部屋に自動アサイン<br>
       ✓ Airhost：物件名＋部屋番号で roomId を自動判定<br>
       ✓ 本館貸切・ANNEX貸切はグループ全部屋に一括書き込み<br>
 
-      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:#1a5276;">🚗 駐車場・サーフィン</div>
+      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:var(--accent-deep);">🚗 駐車場・サーフィン</div>
       ✓ 備考／商品プランに「駐車」「🚙」「parking」「car」→ 駐車場カレンダーに自動追加<br>
       &nbsp;&nbsp;&nbsp;&nbsp;（平日 ¥1,000 ／ 土日祝 ¥2,000）<br>
       ✓ 備考／商品プランに「サーフィン」「surf」→ サーフィンリストに自動追加<br>
 
-      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:#1a5276;">🎫 商品プランアイコン自動付与</div>
+      <div style="margin-bottom:6px;margin-top:10px;font-weight:600;color:var(--accent-deep);">🎫 商品プランアイコン自動付与</div>
       ✓ 商品プラン名称または備考に以下が含まれる場合、セルにアイコン表示＆備考に自動追記：<br>
       &nbsp;&nbsp;♨ えのすぱ ／ 🐬 えのすい ／ 🍙 和食 ／ 🍳 洋食 ／ 🌙 レイトチェックアウト ／ 🏄 サーフィン
 
@@ -319,9 +319,9 @@
   <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px;">
     <div id="occ-month-tabs" style="display:flex;gap:4px;min-width:max-content;padding-bottom:2px;"></div>
   </div>
-  <div style="font-size:11px;color:#888;margin-bottom:8px;">棒グラフ：累計宿泊者数　折れ線：稼働率（全部屋満室=100%）　●：今日（22時以降に自動反映）　<span style="color:#185FA5;cursor:pointer;" onclick="autoCalcTodayOcc(true)">▶ 今すぐ反映</span></div>
-  <div id="occ-chart-area" style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:12px;">
-    <div id="occ-month-title" style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px;"></div>
+  <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">棒グラフ：累計宿泊者数　折れ線：稼働率（全部屋満室=100%）　●：今日（22時以降に自動反映）　<span style="color:var(--accent-primary);cursor:pointer;" onclick="autoCalcTodayOcc(true)">▶ 今すぐ反映</span></div>
+  <div id="occ-chart-area" style="background:var(--bg-surface);border:1px solid var(--bg-main);border-radius:10px;padding:12px;">
+    <div id="occ-month-title" style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;"></div>
     <div id="occ-month-stats" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"></div>
     <div style="position:relative;width:100%;height:220px;"><canvas id="occ-chart"></canvas></div>
   </div>
@@ -355,7 +355,7 @@
     <table id="sales-table" style="border-collapse:collapse;min-width:100%;font-size:12px;"></table>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:13px;font-weight:600;color:#333;">売上高推移（月別）</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">売上高推移（月別）</div>
     <button class="btn" onclick="openSalesEventModal()" style="font-size:11px;padding:4px 12px;">＋ イベント帯を追加</button>
   </div>
   <div style="position:relative;width:100%;height:340px;"><canvas id="sales-chart"></canvas></div>
@@ -368,19 +368,19 @@
 <div class="modal" onclick="event.stopPropagation()" style="width:360px;">
   <h3>📌 イベント帯を追加</h3>
   <div class="mr" style="margin-top:12px;">
-    <label style="font-size:12px;font-weight:600;color:#555;">イベント名</label>
+    <label style="font-size:12px;font-weight:600;color:var(--text-secondary);">イベント名</label>
     <input id="se-name" type="text" placeholder="例: コロナ禍、大型リノベ" style="margin-top:4px;">
   </div>
   <div class="mr mr2" style="margin-top:10px;">
     <div class="fl">
-      <label style="font-size:12px;font-weight:600;color:#555;">開始（年・月）</label>
+      <label style="font-size:12px;font-weight:600;color:var(--text-secondary);">開始（年・月）</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
         <select id="se-sy" style="flex:1;"><option>2016</option><option>2017</option><option>2018</option><option>2019</option><option>2020</option><option selected>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option>2026</option></select>
         <select id="se-sm" style="flex:1;"><option value="1">1月</option><option value="2">2月</option><option value="3">3月</option><option value="4" selected>4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select>
       </div>
     </div>
     <div class="fl">
-      <label style="font-size:12px;font-weight:600;color:#555;">終了（年・月）</label>
+      <label style="font-size:12px;font-weight:600;color:var(--text-secondary);">終了（年・月）</label>
       <div style="display:flex;gap:6px;margin-top:4px;">
         <select id="se-ey" style="flex:1;"><option>2016</option><option>2017</option><option>2018</option><option>2019</option><option>2020</option><option selected>2022</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option>2026</option></select>
         <select id="se-em" style="flex:1;"><option value="1">1月</option><option value="2">2月</option><option value="3" selected>3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option><option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select>
@@ -388,12 +388,12 @@
     </div>
   </div>
   <div class="mr" style="margin-top:10px;">
-    <label style="font-size:12px;font-weight:600;color:#555;">色</label>
+    <label style="font-size:12px;font-weight:600;color:var(--text-secondary);">色</label>
     <div style="display:flex;gap:8px;margin-top:6px;" id="se-color-group">
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="#E24B4A" checked><span style="width:16px;height:16px;border-radius:3px;background:#FCEBEB;border:2px solid #E24B4A;display:inline-block;"></span><span style="font-size:11px;color:#555;">赤</span></label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="#378ADD"><span style="width:16px;height:16px;border-radius:3px;background:#E6F1FB;border:2px solid #378ADD;display:inline-block;"></span><span style="font-size:11px;color:#555;">青</span></label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="#1D9E75"><span style="width:16px;height:16px;border-radius:3px;background:#E1F5EE;border:2px solid #1D9E75;display:inline-block;"></span><span style="font-size:11px;color:#555;">緑</span></label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="#BA7517"><span style="width:16px;height:16px;border-radius:3px;background:#FAEEDA;border:2px solid #BA7517;display:inline-block;"></span><span style="font-size:11px;color:#555;">橙</span></label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="var(--color-danger-strong)" checked><span style="width:16px;height:16px;border-radius:3px;background:var(--color-danger-bg);border:2px solid var(--color-danger-strong);display:inline-block;"></span><span style="font-size:11px;color:var(--text-secondary);">赤</span></label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="var(--accent-primary)"><span style="width:16px;height:16px;border-radius:3px;background:var(--accent-bg);border:2px solid var(--accent-primary);display:inline-block;"></span><span style="font-size:11px;color:var(--text-secondary);">青</span></label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="var(--color-success-strong)"><span style="width:16px;height:16px;border-radius:3px;background:var(--color-success-bg);border:2px solid var(--color-success-strong);display:inline-block;"></span><span style="font-size:11px;color:var(--text-secondary);">緑</span></label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="radio" name="se-color" value="var(--color-warning-strong)"><span style="width:16px;height:16px;border-radius:3px;background:var(--color-warning-bg);border:2px solid var(--color-warning-strong);display:inline-block;"></span><span style="font-size:11px;color:var(--text-secondary);">橙</span></label>
     </div>
   </div>
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
@@ -437,16 +437,16 @@
     <button class="park-nav-btn" onclick="parkNext()">&#8250;</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:6px;">
-    <div class="park-day-header" style="color:#c0392b;">日</div>
+    <div class="park-day-header" style="color:var(--color-danger-strong);">日</div>
     <div class="park-day-header">月</div><div class="park-day-header">火</div>
     <div class="park-day-header">水</div><div class="park-day-header">木</div>
     <div class="park-day-header">金</div>
-    <div class="park-day-header" style="color:#2980b9;">土</div>
+    <div class="park-day-header" style="color:var(--accent-primary);">土</div>
   </div>
   <div class="park-grid" id="park-grid"></div>
   <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#fef3c7;border:1px solid #fde68a;"></div><span style="font-size:11px;color:#888;">手動追加</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#d1fae5;border:1px solid #a7d7bb;"></div><span style="font-size:11px;color:#888;">🚙 宿泊者（自動）</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--color-warning-bg);border:1px solid var(--color-warning);"></div><span style="font-size:11px;color:var(--text-secondary);">手動追加</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--color-success-bg);border:1px solid var(--color-success);"></div><span style="font-size:11px;color:var(--text-secondary);">🚙 宿泊者（自動）</span></div>
   </div>
 </div>
 
@@ -481,14 +481,14 @@
     <button class="park-nav-btn" onclick="rentalNext()">&#8250;</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:6px;">
-    <div class="park-day-header" style="color:#c0392b;">日</div><div class="park-day-header">月</div><div class="park-day-header">火</div><div class="park-day-header">水</div><div class="park-day-header">木</div><div class="park-day-header">金</div><div class="park-day-header" style="color:#2980b9;">土</div>
+    <div class="park-day-header" style="color:var(--color-danger-strong);">日</div><div class="park-day-header">月</div><div class="park-day-header">火</div><div class="park-day-header">水</div><div class="park-day-header">木</div><div class="park-day-header">金</div><div class="park-day-header" style="color:var(--accent-primary);">土</div>
   </div>
   <div class="park-grid" id="rental-grid"></div>
   <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#d1fae5;border-left:3px solid #10b981;"></div><span style="font-size:11px;color:#888;">直接</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#dbeafe;border-left:3px solid #3b82f6;"></div><span style="font-size:11px;color:#888;">スペースマーケット</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#ffedd5;border-left:3px solid #f97316;"></div><span style="font-size:11px;color:#888;">インスタベース</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#ede9fe;border-left:3px solid #8b5cf6;"></div><span style="font-size:11px;color:#888;">カシカシ</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--color-success-bg);border-left:3px solid var(--color-success-strong);"></div><span style="font-size:11px;color:var(--text-secondary);">直接</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--accent-bg);border-left:3px solid var(--accent-primary);"></div><span style="font-size:11px;color:var(--text-secondary);">スペースマーケット</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--color-warning-bg);border-left:3px solid var(--color-warning-strong);"></div><span style="font-size:11px;color:var(--text-secondary);">インスタベース</span></div>
+    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:var(--accent-bg);border-left:3px solid var(--accent-soft);"></div><span style="font-size:11px;color:var(--text-secondary);">カシカシ</span></div>
   </div>
 </div>
 
@@ -539,9 +539,9 @@
         <option value="2024">2024年</option>
       </select>
       <span id="cancel-count-label" style="font-size:12px;color:var(--muted);align-self:center;"></span>
-      <div style="background:#fff0f0;border:1px solid #f5c6c6;border-radius:8px;padding:5px 14px;display:flex;flex-direction:column;align-items:center;min-width:120px;">
-        <span style="font-size:10px;color:#c0392b;font-weight:600;letter-spacing:.04em;">支払済み合計</span>
-        <span id="cancel-paid-total" style="font-size:16px;font-weight:800;color:#c0392b;">¥0</span>
+      <div style="background:var(--color-danger-bg);border:1px solid var(--color-danger);border-radius:8px;padding:5px 14px;display:flex;flex-direction:column;align-items:center;min-width:120px;">
+        <span style="font-size:10px;color:var(--color-danger-strong);font-weight:600;letter-spacing:.04em;">支払済み合計</span>
+        <span id="cancel-paid-total" style="font-size:16px;font-weight:800;color:var(--color-danger-strong);">¥0</span>
       </div>
       <button class="btn btn-blue" onclick="openCancelAdd()">＋ 追加</button>
       <button class="btn" onclick="exportCancelCSV()">CSV出力</button>
@@ -589,7 +589,7 @@
   display:flex;align-items:center;justify-content:center;font-size:20px;
 }
 .pi-actioncard .pi-label{font-size:14px;font-weight:700;color:var(--text);}
-.pi-actioncard .pi-desc{font-size:11.5px;color:#999;margin-top:2px;}
+.pi-actioncard .pi-desc{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
 </style>
 <div id="page-property-info" class="page">
   <div class="topbar"><div class="ttl">🏠 物件情報</div></div>
@@ -597,28 +597,28 @@
 
     <div class="card" style="display:flex;gap:32px;align-items:center;">
       <div>
-        <div style="font-size:11px;font-weight:700;color:#999;letter-spacing:.03em;margin-bottom:4px;">物件名</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.03em;margin-bottom:4px;">物件名</div>
         <div style="font-size:19px;font-weight:800;color:var(--text);">江の島ゲストハウス134</div>
       </div>
       <div style="width:1px;height:38px;background:var(--sand-border);"></div>
       <div>
-        <div style="font-size:11px;font-weight:700;color:#999;letter-spacing:.03em;margin-bottom:4px;">総部屋数</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.03em;margin-bottom:4px;">総部屋数</div>
         <div style="font-size:19px;font-weight:800;color:var(--text);" id="property-room-count">—</div>
       </div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
       <button class="pi-actioncard" onclick="togglePanel('tablet')">
-        <span class="pi-icon" style="background:#f0f4ff;">📱</span>
+        <span class="pi-icon" style="background:var(--accent-bg);">📱</span>
         <span>
-          <div class="pi-label" style="color:#185FA5;">タブレット表示設定</div>
+          <div class="pi-label" style="color:var(--accent-primary);">タブレット表示設定</div>
           <div class="pi-desc">宿泊約款・施設案内</div>
         </span>
       </button>
       <button class="pi-actioncard" onclick="togglePanel('email')">
-        <span class="pi-icon" style="background:#f0fff4;">✉</span>
+        <span class="pi-icon" style="background:var(--color-success-bg);">✉</span>
         <span>
-          <div class="pi-label" style="color:#1a7a40;">自動メール配信設定</div>
+          <div class="pi-label" style="color:var(--color-success-strong);">自動メール配信設定</div>
           <div class="pi-desc">予約・チェックイン案内など</div>
         </span>
       </button>
@@ -630,16 +630,16 @@
         </span>
       </button>
       <button class="pi-actioncard" onclick="togglePanel('garbage')">
-        <span class="pi-icon" style="background:#f5f7ee;">🧹</span>
+        <span class="pi-icon" style="background:var(--color-success-bg);">🧹</span>
         <span>
-          <div class="pi-label" style="color:#5b7a2e;">清掃設定（ゴミ回収）</div>
+          <div class="pi-label" style="color:var(--color-success-strong);">清掃設定（ゴミ回収）</div>
           <div class="pi-desc">回収曜日・アイコン・隔週設定</div>
         </span>
       </button>
       <button class="pi-actioncard" onclick="togglePanel('audit')">
-        <span class="pi-icon" style="background:#fdf6ec;">📜</span>
+        <span class="pi-icon" style="background:var(--color-warning-bg);">📜</span>
         <span>
-          <div class="pi-label" style="color:#854F0B;">監査ログ</div>
+          <div class="pi-label" style="color:var(--color-warning-strong);">監査ログ</div>
           <div class="pi-desc">誰が・いつ・何を変更したか</div>
         </span>
       </button>
@@ -655,11 +655,11 @@
     <table id="room-list" style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead>
         <tr style="background:var(--sand);border-bottom:1px solid var(--sand-border);">
-          <th style="padding:10px 16px;text-align:left;font-weight:600;color:#888;font-size:12px;white-space:nowrap;">物件名</th>
-          <th style="padding:10px 16px;text-align:left;font-weight:600;color:#888;font-size:12px;white-space:nowrap;">部屋番号</th>
-          <th style="padding:10px 16px;text-align:left;font-weight:600;color:#888;font-size:12px;white-space:nowrap;">部屋タイプ</th>
-          <th style="padding:10px 16px;text-align:center;font-weight:600;color:#888;font-size:12px;white-space:nowrap;">定員</th>
-          <th style="padding:10px 16px;text-align:center;font-weight:600;color:#888;font-size:12px;"></th>
+          <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:12px;white-space:nowrap;">物件名</th>
+          <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:12px;white-space:nowrap;">部屋番号</th>
+          <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:12px;white-space:nowrap;">部屋タイプ</th>
+          <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-secondary);font-size:12px;white-space:nowrap;">定員</th>
+          <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-secondary);font-size:12px;"></th>
         </tr>
       </thead>
       <tbody id="room-list-body"></tbody>
@@ -685,7 +685,7 @@
     </div>
     <div class="ctr" style="gap:8px;flex-wrap:wrap;">
       <!-- 清掃スタッフは左サイドバー(ログアウトボタン含む)が非表示のため、清掃予定表画面にログアウトを別途表示 -->
-      <button class="btn" id="cleaning-logout-btn" onclick="pinLogout()" style="display:none;background:#fdf6ec;color:#854F0B;border:1.5px solid #f0d9b5;">🔒 ログアウト</button>
+      <button class="btn" id="cleaning-logout-btn" onclick="pinLogout()" style="display:none;background:var(--color-warning-bg);color:var(--color-warning-strong);border:1.5px solid var(--color-warning);">🔒 ログアウト</button>
       <select id="cleaning-filter-staff" class="cleaning-staff-only" onchange="renderCleaning()" style="font-size:12px;padding:4px 8px;border:1px solid var(--sand-border);border-radius:6px;">
         <option value="">全担当者</option>
       </select>
@@ -699,7 +699,7 @@
       </label>
       <button class="btn cleaning-staff-only" onclick="openCleaningStaffEdit()">👤 担当者追加</button>
       <button class="btn btn-blue" onclick="generateCleaningList()">🔄 リスト生成</button>
-      <button class="btn cleaning-staff-only" onclick="copyLineMessage()" style="background:#06c755;color:#fff;">📋 LINE用コピー</button>
+      <button class="btn cleaning-staff-only" onclick="copyLineMessage()" style="background:var(--color-success-strong);color:var(--bg-surface);">📋 LINE用コピー</button>
     </div>
   </div>
   <!-- 進捗サマリー -->
@@ -714,15 +714,15 @@
 
 <!-- 自動部屋割り設定モーダル -->
 <div class="mbg" id="manual-assign-modal" onclick="if(event.target===this)document.getElementById('manual-assign-modal').classList.remove('open')">
-  <div class="mbox" style="max-width:480px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid #c0392b;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
-    <div style="background:#fff5f5;padding:14px 22px;font-size:14px;font-weight:800;color:#c0392b;border-bottom:1px solid #f0d0d0;">⚠ 手動で部屋を割り当て</div>
+  <div class="mbox" style="max-width:480px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid var(--color-danger-strong);background:var(--bg-surface);box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:var(--color-danger-bg);padding:14px 22px;font-size:14px;font-weight:800;color:var(--color-danger-strong);border-bottom:1px solid var(--color-danger);">⚠ 手動で部屋を割り当て</div>
     <div style="padding:20px 22px;">
-      <div id="ma-info" style="font-size:13px;color:#555;margin-bottom:14px;padding:8px 10px;background:#f8f8f8;border-radius:6px;"></div>
-      <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">割り当てる部屋</label>
-      <select id="ma-room" style="width:100%;border:1.5px solid #d0dce6;border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;"></select>
-      <div style="font-size:11px;color:#999;margin-top:8px;line-height:1.6;">※「埋まっています」の部屋を選ぶと保存できません。既存予約は上書きされません。</div>
+      <div id="ma-info" style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;padding:8px 10px;background:var(--bg-soft);border-radius:6px;"></div>
+      <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">割り当てる部屋</label>
+      <select id="ma-room" style="width:100%;border:1.5px solid var(--border-strong);border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;background:var(--bg-surface);"></select>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px;line-height:1.6;">※「埋まっています」の部屋を選ぶと保存できません。既存予約は上書きされません。</div>
     </div>
-    <div style="display:flex;gap:10px;padding:14px 22px;background:#f8f8f8;border-top:1px solid #eee;">
+    <div style="display:flex;gap:10px;padding:14px 22px;background:var(--bg-soft);border-top:1px solid var(--bg-soft);">
       <button onclick="document.getElementById('manual-assign-modal').classList.remove('open')" class="btn" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
       <button onclick="saveManualAssign()" class="btn btn-blue" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
     </div>
@@ -730,21 +730,21 @@
 </div>
 
 <div class="mbg" id="sn-edit-modal" onclick="if(event.target===this)document.getElementById('sn-edit-modal').classList.remove('open')">
-  <div class="mbox" style="max-width:500px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid #0f6c8c;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
-    <div style="background:#f0f7fa;padding:14px 22px;font-size:14px;font-weight:800;color:#0f6c8c;border-bottom:1px solid #d0e8f0;display:flex;align-items:center;gap:8px;">✏ TODO 編集</div>
+  <div class="mbox" style="max-width:500px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid var(--accent-primary);background:var(--bg-surface);box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:var(--accent-bg);padding:14px 22px;font-size:14px;font-weight:800;color:var(--accent-primary);border-bottom:1px solid var(--border-strong);display:flex;align-items:center;gap:8px;">✏ TODO 編集</div>
     <div style="padding:20px 22px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:2px;">
         <div>
-          <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">種別</label>
-          <select id="sn-edit-type" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:13px;color:#1a2b3a;background:transparent;font-family:inherit;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">種別</label>
+          <select id="sn-edit-type" style="width:100%;border:none;border-bottom:2px solid var(--border-strong);padding:8px 2px;font-size:13px;color:var(--accent-deep);background:transparent;font-family:inherit;">
             <option value="指示">● 指示</option>
             <option value="引継ぎ">◎ 引継ぎ</option>
             <option value="メモ">○ メモ</option>
           </select>
         </div>
         <div>
-          <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">ランク</label>
-          <select id="sn-edit-rank" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:13px;color:#1a2b3a;background:transparent;font-family:inherit;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">ランク</label>
+          <select id="sn-edit-rank" style="width:100%;border:none;border-bottom:2px solid var(--border-strong);padding:8px 2px;font-size:13px;color:var(--accent-deep);background:transparent;font-family:inherit;">
             <option value="A">A（最重要）</option>
             <option value="B">B（重要）</option>
             <option value="C">C（通常）</option>
@@ -752,15 +752,15 @@
         </div>
       </div>
       <div style="margin-top:16px;">
-        <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">タイトル（必須）</label>
-        <input id="sn-edit-title" placeholder="タイトルを入力" style="width:100%;border:none;border-bottom:2px solid #d0dce6;padding:8px 2px;font-size:14px;color:#1a2b3a;background:transparent;font-family:inherit;box-sizing:border-box;" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))saveSN()">
+        <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">タイトル（必須）</label>
+        <input id="sn-edit-title" placeholder="タイトルを入力" style="width:100%;border:none;border-bottom:2px solid var(--border-strong);padding:8px 2px;font-size:14px;color:var(--accent-deep);background:transparent;font-family:inherit;box-sizing:border-box;" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))saveSN()">
       </div>
       <div style="margin-top:16px;">
-        <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">詳細（任意）</label>
-        <textarea id="sn-edit-detail" rows="4" placeholder="詳細を入力（任意）" style="width:100%;border:1px solid #d0dce6;border-radius:4px;padding:8px;font-size:13px;color:#1a2b3a;background:#fff;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+        <label style="font-size:11px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">詳細（任意）</label>
+        <textarea id="sn-edit-detail" rows="4" placeholder="詳細を入力（任意）" style="width:100%;border:1px solid var(--border-strong);border-radius:4px;padding:8px;font-size:13px;color:var(--accent-deep);background:var(--bg-surface);font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
       </div>
     </div>
-    <div style="display:flex;gap:10px;padding:14px 22px;background:#f8f8f8;border-top:1px solid #eee;align-items:center;">
+    <div style="display:flex;gap:10px;padding:14px 22px;background:var(--bg-soft);border-top:1px solid var(--bg-soft);align-items:center;">
       <button onclick="deleteSNFromEdit()" class="btn btn-red btn-xs" style="margin-right:auto;padding:9px 16px;font-size:13px;">🗑 削除</button>
       <button onclick="document.getElementById('sn-edit-modal').classList.remove('open')" class="btn" style="padding:9px 18px;font-size:13px;">キャンセル</button>
       <button onclick="saveSN()" class="btn btn-blue" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
@@ -771,7 +771,7 @@
 <div class="mbg" id="auto-assign-modal" onclick="if(event.target===this)closeM('auto-assign-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:min(700px,96vw);max-height:85vh;overflow-y:auto;">
   <h3 style="margin-bottom:4px;">🔀 自動部屋割り設定</h3>
-  <p style="font-size:12px;color:#888;margin-bottom:16px;">CSV取込時、数字が小さい順に優先して空き部屋へ割り当てます。同値の場合は定義順になります。</p>
+  <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">CSV取込時、数字が小さい順に優先して空き部屋へ割り当てます。同値の場合は定義順になります。</p>
   <div id="auto-assign-body"></div>
   <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--sand-border);padding-top:16px;">
     <button class="btn" onclick="closeM('auto-assign-modal')">キャンセル</button>
@@ -785,7 +785,7 @@
 <div class="modal" onclick="event.stopPropagation()" style="width:380px;text-align:center;padding:40px 32px;">
   <div id="property-stub-content" style="font-size:32px;margin-bottom:12px;"></div>
   <div id="property-stub-label" style="font-size:16px;font-weight:700;margin-bottom:8px;"></div>
-  <p style="font-size:13px;color:#aaa;">この機能は今後実装予定です。</p>
+  <p style="font-size:13px;color:var(--text-muted);">この機能は今後実装予定です。</p>
   <button class="btn btn-blue" style="margin-top:20px;" onclick="closeM('property-stub-modal')">閉じる</button>
 </div>
 </div>
@@ -793,7 +793,7 @@
 <!-- 監査ログ（閲覧専用。誰が・いつ・何を変更したか） -->
 <div class="mbg" id="audit-log-modal" onclick="if(event.target===this)closeM('audit-log-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:860px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
-  <div style="font-size:16px;font-weight:800;color:#854F0B;margin-bottom:12px;flex-shrink:0;">📜 監査ログ</div>
+  <div style="font-size:16px;font-weight:800;color:var(--color-warning-strong);margin-bottom:12px;flex-shrink:0;">📜 監査ログ</div>
 
   <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;flex-shrink:0;">
     <div>
@@ -808,18 +808,18 @@
       <label class="ms-field-label">キーワード（対象・詳細）</label>
       <input id="al-filter-q" placeholder="氏名・部屋番号など" style="width:100%;border:1.5px solid var(--sand-border);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;" oninput="renderAuditLog()">
     </div>
-    <div id="al-count" style="font-size:12px;color:#888;padding-bottom:10px;white-space:nowrap;"></div>
+    <div id="al-count" style="font-size:12px;color:var(--text-secondary);padding-bottom:10px;white-space:nowrap;"></div>
   </div>
 
   <div style="flex:1;min-height:0;overflow-y:auto;border:1.5px solid var(--sand-border);border-radius:10px;">
     <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
       <thead style="position:sticky;top:0;background:var(--sand);z-index:1;">
         <tr>
-          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">日時</th>
-          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">操作者</th>
-          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;white-space:nowrap;">操作</th>
-          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;">対象</th>
-          <th style="padding:9px 12px;text-align:left;color:#888;font-weight:600;">詳細</th>
+          <th style="padding:9px 12px;text-align:left;color:var(--text-secondary);font-weight:600;white-space:nowrap;">日時</th>
+          <th style="padding:9px 12px;text-align:left;color:var(--text-secondary);font-weight:600;white-space:nowrap;">操作者</th>
+          <th style="padding:9px 12px;text-align:left;color:var(--text-secondary);font-weight:600;white-space:nowrap;">操作</th>
+          <th style="padding:9px 12px;text-align:left;color:var(--text-secondary);font-weight:600;">対象</th>
+          <th style="padding:9px 12px;text-align:left;color:var(--text-secondary);font-weight:600;">詳細</th>
         </tr>
       </thead>
       <tbody id="al-body"></tbody>
@@ -827,7 +827,7 @@
   </div>
 
   <div style="display:flex;gap:10px;margin-top:14px;align-items:center;flex-shrink:0;">
-    <span style="font-size:11px;color:#999;">直近 <span id="al-max">500</span> 件を保持（古い記録は自動的に破棄されます）</span>
+    <span style="font-size:11px;color:var(--text-muted);">直近 <span id="al-max">500</span> 件を保持（古い記録は自動的に破棄されます）</span>
     <button class="btn" onclick="exportAuditLogCSV()" style="margin-left:auto;padding:9px 16px;font-size:13px;">CSV出力</button>
     <button class="btn btn-blue" onclick="closeM('audit-log-modal')" style="padding:9px 22px;font-size:13px;font-weight:700;">閉じる</button>
   </div>
@@ -837,15 +837,15 @@
 <!-- タブレット表示設定（自動メール配信設定とUI共通化：.ms-mtab／.ms-ltab／.ms-field-label／.ms-sel を共用） -->
 <style>
 /* 施設案内タブのカード表示（白背景＋枠線＋角丸、カード間に余白） */
-.td-card{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+.td-card{background:var(--bg-surface);border:1.5px solid var(--sand-border);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
 .td-card:last-child{margin-bottom:0;}
 </style>
 <div class="mbg" id="contract-settings-modal" onclick="if(event.target===this)closeM('contract-settings-modal')">
 <div class="modal" id="contract-settings-modal-box" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;transition:width .18s,max-width .18s;">
-  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:14px;flex-shrink:0;">📱 タブレット表示設定</div>
+  <div style="font-size:16px;font-weight:800;color:var(--accent-primary);margin-bottom:14px;flex-shrink:0;">📱 タブレット表示設定</div>
 
   <!-- 上部タブ（宿泊約款／施設案内）：自動メール配信設定の送信タイミングタブと同一UI(.ms-mtab) -->
-  <div id="td-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid #185FA5;flex-shrink:0;"></div>
+  <div id="td-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid var(--accent-primary);flex-shrink:0;"></div>
 
   <!-- フィルター（タブ直下）：部屋タイプ／言語。物件単位の設定タブ（本人確認）では非表示 -->
   <div id="td-filters" style="padding:14px 2px 0;flex-shrink:0;">
@@ -862,7 +862,7 @@
         <button type="button" class="ms-ltab" data-lang="ko" onclick="tdSwitchLang('ko')">韓国語</button>
       </div>
     </div>
-    <div style="font-size:11px;color:#999;margin-top:10px;">▼ 選択中の <span id="td-cur-label" style="font-weight:700;color:#185FA5;">本館 ダブル × 日本語</span> の設定内容 ▼</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:10px;">▼ 選択中の <span id="td-cur-label" style="font-weight:700;color:var(--accent-primary);">本館 ダブル × 日本語</span> の設定内容 ▼</div>
   </div>
 
   <!-- 選択中タブの内容（この領域のみスクロール） -->
@@ -920,7 +920,7 @@
             <input type="radio" name="td-idv" value="photo" id="td-idv-photo" style="width:16px;height:16px;"> 写真撮影
           </label>
         </div>
-        <div style="margin-top:12px;padding:9px 11px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:#888;line-height:1.7;">
+        <div style="margin-top:12px;padding:9px 11px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:var(--text-secondary);line-height:1.7;">
           「写真撮影」にすると、チェックインアプリの<b>お客様情報</b>と<b>確認</b>の間に<b>本人確認</b>画面が表示されます。<br>
           本人確認写真は<b>代表者1名につき1枚</b>のみ撮影します（パスポート写真は従来どおり全員分必要です）。<br>
           この設定は物件単位です（部屋タイプ・言語による切り替えはありません）。
@@ -941,7 +941,7 @@
 <style>
 /* 基本CSSの .modal{width:400px!important} を上書き（他パネルと同じ手法） */
 #garbage-settings-modal .modal{width:820px!important;max-width:96vw!important;}
-.gb-row{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.gb-row{background:var(--bg-surface);border:1.5px solid var(--sand-border);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
 .gb-grid{display:grid;grid-template-columns:64px 1fr 92px 1fr 78px;gap:10px;align-items:end;}
 .gb-grid label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.02em;}
 .gb-grid input,.gb-grid select{width:100%;border:1.5px solid var(--sand-border);border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
@@ -951,15 +951,15 @@
 </style>
 <div class="mbg" id="garbage-settings-modal" onclick="if(event.target===this)closeM('garbage-settings-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:820px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
-  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:6px;flex-shrink:0;">🗑 ゴミ回収設定</div>
-  <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px;flex-shrink:0;">
+  <div style="font-size:16px;font-weight:800;color:var(--accent-primary);margin-bottom:6px;flex-shrink:0;">🗑 ゴミ回収設定</div>
+  <div style="font-size:11px;color:var(--text-muted);line-height:1.7;margin-bottom:12px;flex-shrink:0;">
     清掃予定表の各セルに「⭐ ゴミ回収」として表示されます。<b>前日表示</b>をONにすると回収日の前日に「明日 〇〇」と表示します。<br>
     隔週は月ではなく<b>年間通しのISO週番号</b>で判定するため、月をまたいでも交互サイクルが崩れません。
   </div>
   <div style="flex:1;min-height:0;overflow-y:auto;padding-right:2px;" id="gb-list"></div>
   <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center;">
     <button class="btn" onclick="addGarbageRule()" style="padding:9px 16px;font-size:13px;">＋ 回収を追加</button>
-    <button class="btn" onclick="resetGarbageRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 藤沢市の初期設定に戻す</button>
+    <button class="btn" onclick="resetGarbageRules()" style="padding:9px 16px;font-size:12px;color:var(--color-warning-strong);">↺ 藤沢市の初期設定に戻す</button>
     <button class="btn" onclick="closeM('garbage-settings-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
     <button class="btn btn-blue" onclick="saveGarbageRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
@@ -969,18 +969,18 @@
 <!-- PLAN_RULES設定（オプション・注意事項のマスターデータ） -->
 <style>
 #planrules-modal .modal{width:900px!important;max-width:96vw!important;}
-.pr-row{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:11px 13px;margin-bottom:9px;}
+.pr-row{background:var(--bg-surface);border:1.5px solid var(--sand-border);border-radius:10px;padding:11px 13px;margin-bottom:9px;}
 .pr-row.off{opacity:.55;background:var(--sand);}
 .pr-grid{display:grid;grid-template-columns:52px 64px 1fr 150px 78px 62px;gap:10px;align-items:end;}
 .pr-grid label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.02em;}
 .pr-grid input[type=text],.pr-grid input[type=number]{width:100%;border:1.5px solid var(--sand-border);border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
 .pr-icon-in{text-align:center;font-size:17px!important;}
 .pr-ord{display:flex;flex-direction:column;gap:2px;}
-.pr-ord button{border:1.5px solid var(--sand-border);background:#fff;border-radius:5px;font-size:10px;line-height:1;padding:3px 0;cursor:pointer;font-family:inherit;}
+.pr-ord button{border:1.5px solid var(--sand-border);background:var(--bg-surface);border-radius:5px;font-size:10px;line-height:1;padding:3px 0;cursor:pointer;font-family:inherit;}
 .pr-ord button:hover{background:var(--sand-mid);}
 .pr-sub{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:9px;padding-top:9px;border-top:1px dashed var(--sand-border);font-size:11px;color:var(--muted);}
 .pr-sub label{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text);font-size:12px;}
-.pr-sysid{font-family:ui-monospace,monospace;font-size:10.5px;color:#8a96a3;background:var(--sand-mid);border-radius:5px;padding:2px 7px;}
+.pr-sysid{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--text-primary);background:var(--sand-mid);border-radius:5px;padding:2px 7px;}
 .pr-swatch{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1.5px solid var(--sand-border);cursor:pointer;height:30px;}
 .pr-swatch i{display:block;width:11px;height:100%;}
 .pr-swatch span{flex:1;padding:0 8px;font-size:11px;line-height:28px;white-space:nowrap;}
@@ -988,22 +988,22 @@
 .pr-pal button{width:26px;height:22px;border-radius:5px;border:1.5px solid var(--sand-border);cursor:pointer;padding:0;position:relative;overflow:hidden;}
 .pr-pal button i{position:absolute;left:0;top:0;bottom:0;width:8px;}
 .pr-emo{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
-.pr-emo button{width:28px;height:26px;border-radius:5px;border:1.5px solid var(--sand-border);background:#fff;cursor:pointer;font-size:15px;padding:0;line-height:1;}
+.pr-emo button{width:28px;height:26px;border-radius:5px;border:1.5px solid var(--sand-border);background:var(--bg-surface);cursor:pointer;font-size:15px;padding:0;line-height:1;}
 .pr-emo button:hover{background:var(--sand-mid);}
 @media(max-width:760px){ .pr-grid{grid-template-columns:52px 60px 1fr;} }
 </style>
 <div class="mbg" id="planrules-modal" onclick="if(event.target===this)closeM('planrules-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:900px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
-  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:6px;flex-shrink:0;">🏷 PLAN_RULES設定（オプション・注意事項）</div>
-  <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px;flex-shrink:0;">
+  <div style="font-size:16px;font-weight:800;color:var(--accent-primary);margin-bottom:6px;flex-shrink:0;">🏷 PLAN_RULES設定（オプション・注意事項）</div>
+  <div style="font-size:11px;color:var(--text-muted);line-height:1.7;margin-bottom:12px;flex-shrink:0;">
     予約詳細のチェック項目・予約セルの色・アイコンをここで管理します。<br>
     項目を使わなくなった場合は<b>削除ではなく「有効」のチェックを外して無効化</b>してください。無効にすると新規の予約詳細には表示されなくなりますが、<b>過去の予約に記録済みのチェック情報・セル色・アイコンはそのまま残ります</b>。<br>
-    <span style="color:#b5651d;">🔒 が付いた項目はシステム連携（駐車場カレンダー・サーフィンリストへの自動追加など）があるため、システムIDと保存方式は変更できません。</span>
+    <span style="color:var(--color-warning-strong);">🔒 が付いた項目はシステム連携（駐車場カレンダー・サーフィンリストへの自動追加など）があるため、システムIDと保存方式は変更できません。</span>
   </div>
   <div style="flex:1;min-height:0;overflow-y:auto;padding-right:2px;" id="pr-list"></div>
   <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center;flex-wrap:wrap;">
     <button class="btn" onclick="addPlanRule()" style="padding:9px 16px;font-size:13px;">＋ PLAN_RULESを追加</button>
-    <button class="btn" onclick="resetPlanRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 初期設定に戻す</button>
+    <button class="btn" onclick="resetPlanRules()" style="padding:9px 16px;font-size:12px;color:var(--color-warning-strong);">↺ 初期設定に戻す</button>
     <button class="btn" onclick="closeM('planrules-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
     <button class="btn btn-blue" onclick="savePlanRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
@@ -1012,27 +1012,27 @@
 
 <!-- 自動メール配信設定モーダル -->
 <style>
-.ms-mtab{font-size:12.5px;font-weight:700;padding:8px 14px;border:1.5px solid var(--sand-border);background:#fff;color:#888;border-radius:8px 8px 0 0;cursor:pointer;font-family:inherit;border-bottom:none;}
-.ms-mtab.active{background:#185FA5;color:#fff;border-color:#185FA5;}
-.ms-ltab{font-size:11.5px;font-weight:700;padding:5px 12px;border:1.5px solid var(--sand-border);background:#fff;color:#888;border-radius:7px;cursor:pointer;font-family:inherit;}
-.ms-ltab.active{background:#1a7a40;color:#fff;border-color:#1a7a40;}
-.ms-kw{font-size:10.5px;font-weight:700;color:#c0397a;background:#fff;border:1.5px solid #f0b9d6;border-radius:99px;padding:3px 10px;cursor:pointer;font-family:inherit;white-space:nowrap;}
-.ms-kw:hover{background:#fdeef6;}
-.ms-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;background:#eef4fc;border:1px solid #c5d5f7;border-radius:6px;padding:4px 8px;color:#185FA5;max-width:220px;}
+.ms-mtab{font-size:12.5px;font-weight:700;padding:8px 14px;border:1.5px solid var(--sand-border);background:var(--bg-surface);color:var(--text-secondary);border-radius:8px 8px 0 0;cursor:pointer;font-family:inherit;border-bottom:none;}
+.ms-mtab.active{background:var(--accent-primary);color:var(--bg-surface);border-color:var(--accent-primary);}
+.ms-ltab{font-size:11.5px;font-weight:700;padding:5px 12px;border:1.5px solid var(--sand-border);background:var(--bg-surface);color:var(--text-secondary);border-radius:7px;cursor:pointer;font-family:inherit;}
+.ms-ltab.active{background:var(--color-success-strong);color:var(--bg-surface);border-color:var(--color-success-strong);}
+.ms-kw{font-size:10.5px;font-weight:700;color:var(--accent-primary);background:var(--bg-surface);border:1.5px solid var(--border-strong);border-radius:99px;padding:3px 10px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.ms-kw:hover{background:var(--accent-bg);}
+.ms-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;background:var(--accent-bg);border:1px solid var(--border-strong);border-radius:6px;padding:4px 8px;color:var(--accent-primary);max-width:220px;}
 .ms-chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.ms-chip .x{cursor:pointer;color:#c0392b;font-weight:700;flex-shrink:0;}
-.ms-chip .mv{cursor:pointer;color:#888;flex-shrink:0;font-size:12px;}
-.ms-field-label{font-size:12px;font-weight:600;color:#666;display:block;margin-bottom:5px;}
-.ms-sel{border:1.5px solid var(--sand-border);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;background:#fff;}
-.ms-dz{border:1.6px dashed #c5d5f7;border-radius:8px;padding:12px;text-align:center;color:#888;font-size:12px;cursor:pointer;transition:.15s;}
-.ms-dz.drag{background:#eef4fc;border-color:#185FA5;color:#185FA5;}
+.ms-chip .x{cursor:pointer;color:var(--color-danger-strong);font-weight:700;flex-shrink:0;}
+.ms-chip .mv{cursor:pointer;color:var(--text-secondary);flex-shrink:0;font-size:12px;}
+.ms-field-label{font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:5px;}
+.ms-sel{border:1.5px solid var(--sand-border);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;background:var(--bg-surface);}
+.ms-dz{border:1.6px dashed var(--border-strong);border-radius:8px;padding:12px;text-align:center;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:.15s;}
+.ms-dz.drag{background:var(--accent-bg);border-color:var(--accent-primary);color:var(--accent-primary);}
 </style>
 <div class="mbg" id="mail-settings-modal" onclick="if(event.target===this)closeM('mail-settings-modal')">
 <div class="modal" id="mail-settings-modal-box" onclick="event.stopPropagation()" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto;padding:22px 24px;transition:width .18s,max-width .18s;">
-  <div style="font-size:16px;font-weight:800;color:#1a7a40;margin-bottom:14px;">✉ 自動メール配信設定</div>
+  <div style="font-size:16px;font-weight:800;color:var(--color-success-strong);margin-bottom:14px;">✉ 自動メール配信設定</div>
 
   <!-- メール種別タブ -->
-  <div id="ms-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid #185FA5;"></div>
+  <div id="ms-mtabs" style="display:flex;gap:4px;flex-wrap:wrap;border-bottom:1.5px solid var(--accent-primary);"></div>
 
   <div style="padding:16px 2px 0;">
     <!-- 自動送信 ON/OFF -->
@@ -1041,7 +1041,7 @@
     </label>
 
     <!-- チェックインコード送信専用：送信日/時間/QR/再送信 -->
-    <div id="ms-checkincode-extra" style="display:none;background:#f7faf8;border:1px solid #d7ebe0;border-radius:10px;padding:14px;margin-bottom:16px;">
+    <div id="ms-checkincode-extra" style="display:none;background:var(--color-success-bg);border:1px solid var(--color-success-bg);border-radius:10px;padding:14px;margin-bottom:16px;">
       <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;">
         <div><label class="ms-field-label">送信日</label>
           <select id="ms-days" class="ms-sel">
@@ -1101,7 +1101,7 @@
         ＋ ファイルを追加（クリック または ドラッグ＆ドロップ）
       </div>
       <input type="file" id="ms-file-input" multiple style="display:none" onchange="msAddFiles(this.files)">
-      <div id="ms-upload-note" style="font-size:11px;color:#888;margin-top:6px;"></div>
+      <div id="ms-upload-note" style="font-size:11px;color:var(--text-secondary);margin-top:6px;"></div>
     </div>
   </div>
 
@@ -1114,8 +1114,8 @@
 
 <!-- 重点清掃項目 編集モーダル -->
 <div class="mbg" id="pc-edit-modal" onclick="if(event.target===this)document.getElementById('pc-edit-modal').classList.remove('open')">
-  <div class="mbox" style="max-width:520px;padding:0;border-radius:8px;overflow:hidden;border-top:5px solid #5fa8a2;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
-    <div style="background:#e8f4f3;padding:14px 22px;font-size:14px;font-weight:700;color:#1e5a55;" id="pc-edit-title">⭐ 重点清掃項目を編集</div>
+  <div class="mbox" style="max-width:520px;padding:0;border-radius:8px;overflow:hidden;border-top:5px solid var(--accent-primary);background:var(--bg-surface);box-shadow:0 20px 50px rgba(0,0,0,.3);">
+    <div style="background:var(--accent-bg);padding:14px 22px;font-size:14px;font-weight:700;color:var(--accent-deep);" id="pc-edit-title">⭐ 重点清掃項目を編集</div>
     <div style="padding:18px 22px;">
       <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px;">カテゴリ</label>
       <select id="pc-edit-category" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;background:transparent;outline:none;"></select>
@@ -1130,11 +1130,11 @@
       <label style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:14px;margin-bottom:4px;">アラート閾値（日数・空欄でグローバル設定を使用）</label>
       <input id="pc-edit-alert" type="number" min="1" placeholder="30" style="width:100%;padding:8px 11px;border:none;border-bottom:1.5px solid var(--sand-border);font-size:13px;font-family:inherit;outline:none;">
     </div>
-    <div style="padding:12px 22px;background:#f5f2ec;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--sand-border);">
-      <button class="btn" id="pc-edit-delete" onclick="deletePriorityCleaningFromEdit()" style="color:#c0392b;background:transparent;border-color:transparent;font-weight:600;">🗑 削除</button>
+    <div style="padding:12px 22px;background:var(--color-warning-bg);display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--sand-border);">
+      <button class="btn" id="pc-edit-delete" onclick="deletePriorityCleaningFromEdit()" style="color:var(--color-danger-strong);background:transparent;border-color:transparent;font-weight:600;">🗑 削除</button>
       <div style="display:flex;gap:8px;">
         <button class="btn" onclick="document.getElementById('pc-edit-modal').classList.remove('open')">キャンセル</button>
-        <button class="btn btn-blue" style="background:#5fa8a2;border-color:#5fa8a2;" onclick="savePriorityCleaningEdit()">保存</button>
+        <button class="btn btn-blue" style="background:var(--accent-primary);border-color:var(--accent-primary);" onclick="savePriorityCleaningEdit()">保存</button>
       </div>
     </div>
   </div>
@@ -1211,7 +1211,7 @@
   <div class="topbar">
     <div><div class="ttl">🧾 注文入力</div><div class="sub">タイルをタップして会計内容へ追加</div></div>
     <div class="ctr">
-      <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:5px;">担当
+      <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;">担当
         <select id="pos-staff" class="ms-sel" style="padding:5px 8px;"></select>
       </label>
       <button class="btn" id="pos-tileedit-btn" onclick="posToggleTileEdit()">⚙ タイル配置変更</button>
@@ -1250,10 +1250,10 @@
     <div style="font-weight:700;color:var(--ocean);margin-bottom:10px;">🏪 店舗設定</div>
     <label class="ms-field-label">店舗用 PayPay QRコード画像（PNG / JPG / SVG）</label>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
-      <div id="pos-qr-preview" style="width:140px;height:140px;border:1.5px dashed var(--sand-border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:12px;overflow:hidden;background:#fff;">未登録</div>
+      <div id="pos-qr-preview" style="width:140px;height:140px;border:1.5px dashed var(--sand-border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--border-cashmere);font-size:12px;overflow:hidden;background:var(--bg-surface);">未登録</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         <input type="file" id="pos-qr-input" accept="image/png,image/jpeg,image/svg+xml" onchange="posUploadQR(this.files)" style="font-size:12px;">
-        <div style="font-size:11px;color:#888;">注文入力の「PayPay」選択時に、この画像を客に提示します。</div>
+        <div style="font-size:11px;color:var(--text-secondary);">注文入力の「PayPay」選択時に、この画像を客に提示します。</div>
         <button class="btn btn-xs" onclick="posRemoveQR()" style="width:fit-content;">画像を削除</button>
       </div>
     </div>
@@ -1262,11 +1262,11 @@
   <div class="card" style="padding:0;overflow:hidden;">
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr style="background:var(--sand);border-bottom:1px solid var(--sand-border);">
-        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">カテゴリー</th>
-        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">商品名</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">金額(税込)</th>
-        <th style="padding:10px 14px;text-align:center;font-size:12px;color:#888;">表示</th>
-        <th style="padding:10px 14px;text-align:center;font-size:12px;color:#888;"></th>
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:var(--text-secondary);">カテゴリー</th>
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:var(--text-secondary);">商品名</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">金額(税込)</th>
+        <th style="padding:10px 14px;text-align:center;font-size:12px;color:var(--text-secondary);">表示</th>
+        <th style="padding:10px 14px;text-align:center;font-size:12px;color:var(--text-secondary);"></th>
       </tr></thead>
       <tbody id="pos-product-list"></tbody>
     </table>
@@ -1285,21 +1285,21 @@
     </div>
   </div>
   <div class="card" style="display:flex;gap:24px;flex-wrap:wrap;">
-    <div><div style="font-size:11px;color:#999;font-weight:700;">総売上</div><div style="font-size:22px;font-weight:800;" id="pos-sum-total">¥0</div></div>
-    <div><div style="font-size:11px;color:#999;font-weight:700;">会計数</div><div style="font-size:22px;font-weight:800;" id="pos-sum-count">0</div></div>
-    <div><div style="font-size:11px;color:#999;font-weight:700;">現金</div><div style="font-size:22px;font-weight:800;color:#1a7a40;" id="pos-sum-cash">¥0</div></div>
-    <div><div style="font-size:11px;color:#999;font-weight:700;">PayPay</div><div style="font-size:22px;font-weight:800;color:#d4126a;" id="pos-sum-paypay">¥0</div></div>
-    <div><div style="font-size:11px;color:#999;font-weight:700;">その他</div><div style="font-size:22px;font-weight:800;color:#666;" id="pos-sum-other">¥0</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);font-weight:700;">総売上</div><div style="font-size:22px;font-weight:800;" id="pos-sum-total">¥0</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);font-weight:700;">会計数</div><div style="font-size:22px;font-weight:800;" id="pos-sum-count">0</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);font-weight:700;">現金</div><div style="font-size:22px;font-weight:800;color:var(--color-success-strong);" id="pos-sum-cash">¥0</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);font-weight:700;">PayPay</div><div style="font-size:22px;font-weight:800;color:var(--accent-primary);" id="pos-sum-paypay">¥0</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);font-weight:700;">その他</div><div style="font-size:22px;font-weight:800;color:var(--text-secondary);" id="pos-sum-other">¥0</div></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden;">
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr style="background:var(--sand);border-bottom:1px solid var(--sand-border);">
-        <th style="padding:10px 14px;text-align:left;font-size:12px;color:#888;">日付</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">件数</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">総売上</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">現金</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">PayPay</th>
-        <th style="padding:10px 14px;text-align:right;font-size:12px;color:#888;">その他</th>
+        <th style="padding:10px 14px;text-align:left;font-size:12px;color:var(--text-secondary);">日付</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">件数</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">総売上</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">現金</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">PayPay</th>
+        <th style="padding:10px 14px;text-align:right;font-size:12px;color:var(--text-secondary);">その他</th>
       </tr></thead>
       <tbody id="pos-sales-list"></tbody>
     </table>
@@ -1318,28 +1318,28 @@
   <div style="display:flex;gap:20px;flex-wrap:wrap;">
     <!-- 現金：電卓 -->
     <div id="pos-pay-cash" style="flex:1;min-width:280px;">
-      <div style="text-align:center;font-size:13px;color:#888;">合計</div>
+      <div style="text-align:center;font-size:13px;color:var(--text-secondary);">合計</div>
       <div style="text-align:center;font-size:34px;font-weight:800;color:var(--ocean);margin-bottom:6px;" id="pos-pay-total">¥0</div>
-      <div style="display:flex;justify-content:space-between;background:#f5f7fa;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
-        <span style="color:#666;">預り金</span><span style="font-weight:800;font-size:18px;" id="pos-pay-received">¥0</span>
+      <div style="display:flex;justify-content:space-between;background:var(--accent-bg);border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+        <span style="color:var(--text-secondary);">預り金</span><span style="font-weight:800;font-size:18px;" id="pos-pay-received">¥0</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:2px 14px 10px;">
-        <span style="color:#666;">おつり</span><span style="font-weight:800;font-size:18px;color:#d85a30;" id="pos-pay-change">¥0</span>
+        <span style="color:var(--text-secondary);">おつり</span><span style="font-weight:800;font-size:18px;color:var(--color-danger-strong);" id="pos-pay-change">¥0</span>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;" id="pos-quick-amounts"></div>
       <div id="pos-keypad" class="pos-keypad"></div>
     </div>
     <!-- PayPay QR -->
     <div id="pos-pay-paypay" style="flex:1;min-width:280px;display:none;text-align:center;">
-      <div style="font-size:13px;color:#888;">お客様のPayPayアプリで読み取ってください</div>
-      <div style="font-size:34px;font-weight:800;color:#d4126a;margin-bottom:10px;" id="pos-paypay-total">¥0</div>
-      <div id="pos-paypay-qr-wrap" style="display:inline-flex;align-items:center;justify-content:center;width:260px;height:260px;border:1.5px solid var(--sand-border);border-radius:12px;background:#fff;overflow:hidden;"></div>
+      <div style="font-size:13px;color:var(--text-secondary);">お客様のPayPayアプリで読み取ってください</div>
+      <div style="font-size:34px;font-weight:800;color:var(--accent-primary);margin-bottom:10px;" id="pos-paypay-total">¥0</div>
+      <div id="pos-paypay-qr-wrap" style="display:inline-flex;align-items:center;justify-content:center;width:260px;height:260px;border:1.5px solid var(--sand-border);border-radius:12px;background:var(--bg-surface);overflow:hidden;"></div>
     </div>
     <!-- その他 -->
     <div id="pos-pay-other" style="flex:1;min-width:280px;display:none;text-align:center;">
-      <div style="font-size:13px;color:#888;">合計</div>
-      <div style="font-size:34px;font-weight:800;color:#666;" id="pos-other-total">¥0</div>
-      <div style="font-size:12px;color:#999;margin-top:10px;">「その他」の支払方法として記録します。</div>
+      <div style="font-size:13px;color:var(--text-secondary);">合計</div>
+      <div style="font-size:34px;font-weight:800;color:var(--text-secondary);" id="pos-other-total">¥0</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">「その他」の支払方法として記録します。</div>
     </div>
   </div>
   <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;">
@@ -1386,7 +1386,7 @@
 <div class="mbg" id="pos-sale-list-modal" onclick="if(event.target===this)closeM('pos-sale-list-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:560px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;">
   <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:4px;flex-shrink:0;" id="pos-sale-list-title">取引明細</div>
-  <div style="font-size:11px;color:#999;margin-bottom:10px;flex-shrink:0;">各取引の「編集」から内容変更、「削除」で取り消せます</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;">各取引の「編集」から内容変更、「削除」で取り消せます</div>
   <div id="pos-sale-list-body" style="flex:1;min-height:0;overflow-y:auto;"></div>
   <div style="display:flex;gap:10px;margin-top:12px;flex-shrink:0;">
     <button class="btn" onclick="closeM('pos-sale-list-modal')" style="margin-left:auto;">閉じる</button>
@@ -1398,7 +1398,7 @@
 <div class="mbg" id="pos-sale-edit-modal" onclick="if(event.target===this)closeM('pos-sale-edit-modal')">
 <div class="modal" onclick="event.stopPropagation()" style="width:480px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;">
   <div style="font-size:15px;font-weight:800;color:var(--ocean);margin-bottom:4px;flex-shrink:0;">取引を編集</div>
-  <div style="font-size:11px;color:#999;margin-bottom:10px;flex-shrink:0;" id="pos-sale-edit-ts"></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;flex-shrink:0;" id="pos-sale-edit-ts"></div>
   <div style="flex:1;min-height:0;overflow-y:auto;">
     <div id="pos-sale-edit-items" style="margin-bottom:10px;"></div>
     <div style="display:flex;gap:6px;margin-bottom:14px;">
@@ -1412,7 +1412,7 @@
     <label class="ms-field-label">担当者</label>
     <select id="pos-sale-edit-staff" class="ms-sel" style="width:100%;margin-bottom:12px;"></select>
     <div style="display:flex;justify-content:space-between;padding:10px 2px;border-top:1px solid var(--sand-border);">
-      <span style="color:#666;">合計</span><span style="font-weight:800;font-size:18px;" id="pos-sale-edit-total">¥0</span>
+      <span style="color:var(--text-secondary);">合計</span><span style="font-weight:800;font-size:18px;" id="pos-sale-edit-total">¥0</span>
     </div>
   </div>
   <div style="display:flex;gap:10px;margin-top:12px;flex-shrink:0;">
@@ -1572,9 +1572,9 @@
   <!-- チェックイン用QRコード（予約IDから生成したURL。画像は外部APIで描画し保存はURLのみ） -->
   <div class="mr" id="f-qr-row" style="display:none;"><div class="fl" style="width:100%;"><label>チェックイン用QRコード</label>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <img id="f-qr-img" alt="QR" style="width:130px;height:130px;border:1px solid var(--sand-border);border-radius:8px;background:#fff;">
+      <img id="f-qr-img" alt="QR" style="width:130px;height:130px;border:1px solid var(--sand-border);border-radius:8px;background:var(--bg-surface);">
       <div style="min-width:0;flex:1;">
-        <a id="f-qr-link" href="#" target="_blank" rel="noopener" style="font-size:12px;color:#185FA5;word-break:break-all;text-decoration:none;"></a>
+        <a id="f-qr-link" href="#" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent-primary);word-break:break-all;text-decoration:none;"></a>
         <div style="margin-top:8px;display:flex;gap:8px;">
           <button type="button" class="btn btn-xs" onclick="copyCheckinUrl()">🔗 URLをコピー</button>
           <button type="button" class="btn btn-xs" onclick="openCheckinQrTab()">⤢ QRを別タブで開く</button>
@@ -1641,7 +1641,7 @@
     </div>
     <div id="mpm-qr-row" style="display:none;padding:4px 12px;">
       <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px;">QRコード（チェックインURL）</div>
-      <img id="mpm-qr-img" alt="QR" style="width:120px;height:120px;border:1px solid var(--sand-border);border-radius:8px;background:#fff;">
+      <img id="mpm-qr-img" alt="QR" style="width:120px;height:120px;border:1px solid var(--sand-border);border-radius:8px;background:var(--bg-surface);">
     </div>
   </div>
   <div class="mbt" style="margin-top:16px;">
@@ -1664,16 +1664,16 @@
   <div class="mr"><div class="fl"><label>チェックイン案内URL</label><input id="rm-checkinurl" placeholder="https://drive.google.com/file/d/..."></div></div>
 
   <!-- 【お部屋情報】部屋単位の情報 -->
-  <div style="margin:16px 0 10px;padding:4px 10px;background:var(--seaglass-lt);border-radius:6px;font-size:12px;font-weight:700;color:#2b7a6a;letter-spacing:.05em;">🚪 お部屋情報</div>
+  <div style="margin:16px 0 10px;padding:4px 10px;background:var(--seaglass-lt);border-radius:6px;font-size:12px;font-weight:700;color:var(--color-success-strong);letter-spacing:.05em;">🚪 お部屋情報</div>
   <div class="mr mr2"><div class="fl"><label>部屋タイプ名</label><input id="rm-type" placeholder="洋室（ダブル）"></div><div class="fl"><label>定員</label><input id="rm-cap" type="number" placeholder="2" min="1"></div></div>
   <div class="mr mr2"><div class="fl"><label>部屋番号</label><input id="rm-no" type="text" placeholder="例: 3-A, 101, B" maxlength="10"></div><div class="fl"><label>部屋：暗証番号</label><input id="rm-roomcode" placeholder="1234"></div></div>
-  <div class="mr"><div class="fl"><label>カラー</label><select id="rm-color"><option value="#185FA5">ブルー</option><option value="#0F6E56">グリーン</option><option value="#854F0B">アンバー</option><option value="#993556">ピンク</option><option value="#534AB7">パープル</option><option value="#5F5E5A">グレー</option></select></div></div>
+  <div class="mr"><div class="fl"><label>カラー</label><select id="rm-color"><option value="var(--accent-primary)">ブルー</option><option value="var(--color-success-strong)">グリーン</option><option value="var(--color-warning-strong)">アンバー</option><option value="var(--color-danger-strong)">ピンク</option><option value="var(--accent-primary)">パープル</option><option value="var(--text-secondary)">グレー</option></select></div></div>
   <div class="mr"><div class="fl"><label>備考１（連泊のお願い・荷物預け 等）</label><textarea id="rm-note1" rows="2" placeholder="メール差し込み [備考1] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
   <div class="mr"><div class="fl"><label>備考２</label><textarea id="rm-note2" rows="2" placeholder="メール差し込み [備考2] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
   <div class="mr"><div class="fl"><label>備考３</label><textarea id="rm-note3" rows="2" placeholder="メール差し込み [備考3] で使用" style="resize:vertical;font-family:inherit;"></textarea></div></div>
 
   <!-- 📱 タブレット表示（施設案内・入室案内・動画）は［物件情報＞タブレット表示設定］で部屋タイプ別に一元管理 -->
-  <div style="margin:16px 0 4px;padding:8px 10px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:#888;line-height:1.6;">📱 タブレット表示（施設案内・入室案内・動画・宿泊約款）は<b>［物件情報 ＞ タブレット表示設定］</b>で部屋タイプ別に管理します。</div>
+  <div style="margin:16px 0 4px;padding:8px 10px;background:var(--sand-mid);border-radius:6px;font-size:11px;color:var(--text-secondary);line-height:1.6;">📱 タブレット表示（施設案内・入室案内・動画・宿泊約款）は<b>［物件情報 ＞ タブレット表示設定］</b>で部屋タイプ別に管理します。</div>
 
   <div class="mbt"><button class="btn btn-red" id="rm-del-btn" style="display:none;margin-right:auto;" onclick="deleteRoom()">削除</button><button class="btn" onclick="closeM('room-modal')">キャンセル</button><button class="btn btn-blue" onclick="saveRoom()">保存</button></div>
 </div>
@@ -1684,7 +1684,7 @@
 <div class="modal">
   <h3 id="pm-title">駐車場利用追加</h3>
   <div class="mr mr2"><div class="fl"><label>日付</label><input id="pm-date" type="date"></div><div class="fl"><label>利用者名</label><input id="pm-name" placeholder="田中 一郎"></div></div>
-  <div class="mr mr2"><div class="fl"><label>金額（円）<span id="pm-auto-price" style="color:#185FA5;font-size:10px;margin-left:4px;"></span></label><input id="pm-price" type="number" placeholder="1000"></div><div class="fl"><label>備考</label><input id="pm-note" placeholder="宿泊者・従業員など"></div></div>
+  <div class="mr mr2"><div class="fl"><label>金額（円）<span id="pm-auto-price" style="color:var(--accent-primary);font-size:10px;margin-left:4px;"></span></label><input id="pm-price" type="number" placeholder="1000"></div><div class="fl"><label>備考</label><input id="pm-note" placeholder="宿泊者・従業員など"></div></div>
   <div class="mbt"><button class="btn btn-red" id="pm-del-btn" style="display:none;margin-right:auto;" onclick="deleteParkEntry()">削除</button><button class="btn" onclick="closeM('park-modal')">キャンセル</button><button class="btn btn-blue" onclick="saveParkEntry()">保存</button></div>
 </div>
 </div>
@@ -1746,7 +1746,7 @@
   <h3>月別予算設定</h3>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;" id="budget-inputs"></div>
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:12px 14px;background:var(--sand-mid);border-radius:8px;">
-    <span style="font-weight:700;color:#666;">年間合計</span>
+    <span style="font-weight:700;color:var(--text-secondary);">年間合計</span>
     <span style="font-size:20px;font-weight:800;color:var(--ocean);" id="budget-total">¥0</span>
   </div>
   <div class="mbt"><button class="btn" onclick="closeM('budget-modal')">キャンセル</button><button class="btn btn-blue" onclick="saveBudget()">保存</button></div>
@@ -1826,10 +1826,10 @@
   </div>
   <!-- 削除確認パネル（confirm()を使わずモーダル内で完結） -->
   <div id="cm2-confirm" style="display:none;padding:16px 0 4px;">
-    <div style="font-size:14px;font-weight:600;color:#A32D2D;margin-bottom:12px;text-align:center;">
+    <div style="font-size:14px;font-weight:600;color:var(--color-danger-strong);margin-bottom:12px;text-align:center;">
       🗑 この貸切予約を削除しますか？
     </div>
-    <div id="cm2-confirm-detail" style="font-size:12px;color:#666;margin-bottom:16px;text-align:center;"></div>
+    <div id="cm2-confirm-detail" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;text-align:center;"></div>
     <div class="mbt">
       <button class="btn" onclick="hideCharterDeleteConfirm()" style="margin-right:auto;">キャンセル</button>
       <button class="btn btn-red" onclick="execDeleteCharter()">削除する</button>
@@ -1843,11 +1843,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260814c"></script>
-<script src="hotel_v3.calendar.js?v=20260814c"></script>
-<script src="hotel_v3.sync.js?v=20260814c"></script>
-<script src="hotel_v3.pos.js?v=20260814c"></script>
-<script src="hotel_v3.js?v=20260814c"></script>
+<script src="hotel_v3.cleaning.js?v=20260814n"></script>
+<script src="hotel_v3.calendar.js?v=20260814n"></script>
+<script src="hotel_v3.sync.js?v=20260814n"></script>
+<script src="hotel_v3.pos.js?v=20260814n"></script>
+<script src="hotel_v3.js?v=20260814n"></script>
 <div id="notification-container"></div>
 </body>
 </html>
