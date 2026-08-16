@@ -106,16 +106,16 @@ function renderAuditLog(){
   const cnt=document.getElementById('al-count');
   if(cnt)cnt.textContent=`${list.length}件 / 全${auditLog.length}件`;
   if(!list.length){
-    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">記録がありません</td></tr>';
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">記録がありません</td></tr>';
     return;
   }
   tb.innerHTML=list.map((e,i)=>`
     <tr style="border-top:1px solid var(--sand-border);${i%2===1?'background:var(--sand);':''}">
-      <td style="padding:8px 12px;white-space:nowrap;color:#666;">${esc(_auditFmtTs(e.ts))}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:var(--text-secondary);">${esc(_auditFmtTs(e.ts))}</td>
       <td style="padding:8px 12px;white-space:nowrap;font-weight:600;">${esc(e.user||'')}</td>
       <td style="padding:8px 12px;white-space:nowrap;">${esc(e.action||'')}</td>
       <td style="padding:8px 12px;">${esc(e.target||'')}</td>
-      <td style="padding:8px 12px;color:#666;">${esc(e.detail||'')}</td>
+      <td style="padding:8px 12px;color:var(--text-secondary);">${esc(e.detail||'')}</td>
     </tr>`).join('');
 }
 function exportAuditLogCSV(){
@@ -647,7 +647,13 @@ function _applyServerDataRaw(data) {
     }
     if (typeof initPlanRulesIfEmpty==='function') {
       initPlanRulesIfEmpty();
+      // テーマ刷新：旧既定色のままの項目のみ新パレットへ移行（ユーザー変更分は保持）
+      if (typeof migratePlanRuleColors==='function') migratePlanRuleColors();
       propertySettings.planRules = planRules;
+    }
+    // テーマ刷新：保存済みの色データ（部屋・POSカテゴリー・種別・売上イベント）も新パレットへ
+    if (typeof migrateLegacyDataColors==='function') {
+      try{ migrateLegacyDataColors(); }catch(e){ console.warn('配色移行エラー:',e); }
     }
     // 自動メール配信設定：欠けているメール種別/言語をデフォルトで補完しつつサーバ値を採用
     const dms = data.propertySettings.mailSettings;
@@ -880,14 +886,14 @@ function fmtTime(iso) {
 function updateSyncStatus(state, msg) {
   const el = document.getElementById('sync-status');
   if (!el) return;
-  const colors = { ok:'#0F6E56', saving:'#185FA5', warn:'#854F0B', error:'#A32D2D' };
+  const colors = { ok:'var(--color-success-strong)', saving:'var(--accent-primary)', warn:'var(--color-warning-strong)', error:'var(--color-danger-strong)' };
   const icons  = { ok:'☁', saving:'⏳', warn:'⚠', error:'❌' };
   el.textContent = (icons[state]||'') + ' ' + msg;
-  el.style.color = colors[state] || '#555';
+  el.style.color = colors[state] || 'var(--text-secondary)';
 }
 function showToast(msg, duration=3000) {
   let t = document.getElementById('toast');
-  if (!t) { t=document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 18px;border-radius:99px;font-size:13px;z-index:9999;pointer-events:none;transition:opacity .3s;'; document.body.appendChild(t); }
+  if (!t) { t=document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--text-primary);color:var(--bg-surface);padding:8px 18px;border-radius:99px;font-size:13px;z-index:9999;pointer-events:none;transition:opacity .3s;'; document.body.appendChild(t); }
   t.textContent = msg; t.style.opacity = '1';
   clearTimeout(t._tid);
   t._tid = setTimeout(() => t.style.opacity='0', duration);
@@ -919,11 +925,11 @@ function renderRankAPanel(){
     el.innerHTML=`<div style="font-size:11px;color:var(--muted);padding:8px 4px;text-align:center;">Aランクはありません</div>`;
     return;
   }
-  const RS={A:{bg:'#FCEBEB',color:'#A32D2D',border:'#E24B4A'},B:{bg:'#FAEEDA',color:'#854F0B',border:'#EF9F27'},C:{bg:'#F1EFE8',color:'#5F5E5A',border:'#B4B2A9'}};
+  const RS={A:{bg:'var(--color-danger-bg)',color:'var(--color-danger-strong)',border:'var(--color-danger)'},B:{bg:'var(--color-warning-bg)',color:'var(--color-warning-strong)',border:'var(--color-warning)'},C:{bg:'var(--bg-soft)',color:'var(--text-secondary)',border:'var(--border-cashmere)'}};
   el.innerHTML=items.map(n=>{
     const ts=getSNTypeStyle(n.type);
     const rs=RS[n.rank||'C'];
-    const borderColor=n.done?'#B4B2A9':ts.border;
+    const borderColor=n.done?'var(--text-muted)':ts.border;
     return `<div style="background:var(--white);border:1.5px solid ${borderColor}44;border-left:4px solid ${borderColor};border-radius:var(--radius-sm);padding:8px 9px;margin-bottom:7px;opacity:${n.done?0.55:1};">
       <div style="display:flex;align-items:flex-start;gap:6px;">
         <div onclick="toggleSN(${n.id});renderRankAPanel();"
@@ -931,11 +937,11 @@ function renderRankAPanel(){
           border:2px solid ${n.done?'var(--seaglass)':'var(--sand-border)'};
           background:${n.done?'var(--seaglass)':'var(--white)'};
           display:flex;align-items:center;justify-content:center;">
-          ${n.done?'<span style="color:#fff;font-size:9px;line-height:1;">✓</span>':''}
+          ${n.done?'<span style="color:var(--bg-surface);font-size:9px;line-height:1;">✓</span>':''}
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;flex-wrap:wrap;">
-            ${n.repeatReminderId?`<span style="font-size:9px;font-weight:700;color:#0e6b5e;background:#d1f2eb;border:1px solid #7fd6c4;border-radius:99px;padding:1px 6px;">🔁</span>`:''}
+            ${n.repeatReminderId?`<span style="font-size:9px;font-weight:700;color:var(--accent-deep);background:var(--color-success-bg);border:1px solid var(--color-success);border-radius:99px;padding:1px 6px;">🔁</span>`:''}
             ${snRankSelectHtml(n.id,n,10)}
             ${snTypeSelectHtml(n.id,n,10)}
           </div>
@@ -1007,7 +1013,7 @@ function openSNTypeEdit(){
   document.getElementById('sn-type-modal').classList.add('open');
 }
 function addSNType(){
-  snTypes.push({label:'新しい種別',icon:'🔵',color:'#0C447C',bg:'#E6F1FB',border:'#185FA5'});
+  snTypes.push({label:'新しい種別',icon:'🔵',color:'#3A4557',bg:'#E3E6EA',border:'#4C586F'});
   openSNTypeEdit();
 }
 function removeSNType(i){
@@ -1018,7 +1024,7 @@ function saveSNType(){
   snTypes=snTypes.map((_,i)=>{
     const icon=(document.getElementById(`snt-icon-${i}`)?.value||'⚪').trim();
     const label=(document.getElementById(`snt-label-${i}`)?.value||`種別${i+1}`).trim();
-    const border=document.getElementById(`snt-color-${i}`)?.value||'#aaa';
+    const border=document.getElementById(`snt-color-${i}`)?.value||'var(--text-muted)';
     // bgはborderを20%透過に近い明るさで生成（固定セット or そのまま）
     const bg=border+'22';
     return{label,icon,color:border,bg,border};
