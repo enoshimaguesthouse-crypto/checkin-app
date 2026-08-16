@@ -6,24 +6,24 @@ const NOW=new Date(); // 現在時刻（グローバル）
 
 // 予約サイト アイコン定義 {bg, text}
 const SITE_ICONS={
-  'Booking.com':  {bg:'#536B8D',t:'Bo'},
-  'Expedia':      {bg:'#80744B',t:'Ex'},
-  '楽天':         {bg:'#4B805F',t:'楽'},
-  '楽天トラベル': {bg:'#4B805F',t:'楽'},
-  'Rakuten Oyado':{bg:'#4B805F',t:'RO'},
-  'じゃらん':     {bg:'#8D6853',t:'じ'},
-  'じゃらんnet':  {bg:'#8D6853',t:'じ'},
-  'agoda':        {bg:'#53698D',t:'Ag'},
-  'Agoda':        {bg:'#53698D',t:'Ag'},
-  'HafH':         {bg:'#4A7D7D',t:'Ha'},
-  'Hostelworld':  {bg:'#8D6653',t:'Hw'},
-  'Airbnb':       {bg:'#8D535B',t:'Ab'},
-  'Trip.com':     {bg:'#536E8D',t:'Tr'},
-  'skyticket':    {bg:'#51788A',t:'SC'},
-  '一休.com':     {bg:'#4B7B80',t:'休'},
-  'HP':           {bg:'#53708D',t:'HP'},
-  '直接':         {bg:'#6E7278',   t:'直'},
-  'Stripe':       {bg:'#56538D',t:'St'},
+  'Booking.com':  {bg:'#003580',t:'Bo'},
+  'Expedia':      {bg:'#fbcc33',t:'Ex',tc:'#1a1a1a'},
+  '楽天':         {bg:'#1a7a3e',t:'楽'},
+  '楽天トラベル': {bg:'#1a7a3e',t:'楽'},
+  'Rakuten Oyado':{bg:'#1a7a3e',t:'RO'},
+  'じゃらん':     {bg:'#e65100',t:'じ'},
+  'じゃらんnet':  {bg:'#e65100',t:'じ'},
+  'agoda':        {bg:'#5392f9',t:'Ag'},
+  'Agoda':        {bg:'#5392f9',t:'Ag'},
+  'HafH':         {bg:'#23b5b5',t:'Ha'},
+  'Hostelworld':  {bg:'#f26522',t:'Hw'},
+  'Airbnb':       {bg:'#e02b44',t:'Ab'},
+  'Trip.com':     {bg:'#1b6ac9',t:'Tr'},
+  'skyticket':    {bg:'#00a0e9',t:'SC'},
+  '一休.com':     {bg:'#00bcd4',t:'休'},
+  'HP':           {bg:'#185FA5',t:'HP'},
+  '直接':         {bg:'#555',   t:'直'},
+  'Stripe':       {bg:'#635bff',t:'St'},
 };
 // HTMLエスケープ（XSS対策）：ユーザー入力・CSV・外部予約データ由来の文字列をinnerHTMLに入れる前に必ず通す
 function esc(s){
@@ -32,8 +32,8 @@ function esc(s){
 }
 function siteIcon(site){
   const s=SITE_ICONS[site];
-  if(!s)return `<span class="site-icon" style="background:var(--text-secondary);">${esc((site||'?').slice(0,2))}</span>`;
-  return `<span class="site-icon" style="background:${s.bg};color:${s.tc||'var(--bg-surface)'};">${s.t}</span>`;
+  if(!s)return `<span class="site-icon" style="background:#aaa;">${esc((site||'?').slice(0,2))}</span>`;
+  return `<span class="site-icon" style="background:${s.bg};color:${s.tc||'#fff'};">${s.t}</span>`;
 }
 
 // 祝日（2026・2027年）。名称は HOLIDAY_NAMES を参照、判定は HOLIDAYS_2026（互換名。中身は複数年）を参照。
@@ -110,7 +110,7 @@ const NAT_CODE={
 function natFlag(nat){
   const code=NAT_CODE[nat];
   if(code)return `<span class="fi fi-${code}" title="${esc(nat)}" style="font-size:14px;border-radius:2px;flex-shrink:0;"></span>`;
-  return nat?`<span style="font-size:9px;color:var(--text-secondary);">${esc(nat)}</span>`:'';
+  return nat?`<span style="font-size:9px;color:#666;">${esc(nat)}</span>`:'';
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -139,17 +139,17 @@ function natFlag(nat){
 //               'surf'=サーフィンリスト自動追加 / null=なし
 // ══════════════════════════════════════════════════════════════════════
 const PLAN_RULES_DEFAULTS=[
-  {id:'park',     icon:'🚗', name:'駐車場（カレンダーに自動追加）', keyword:'駐車場',   noteTag:'駐車場',   checkboxId:'f-parking',  store:'parking',   autoAction:'park', cellBorder:'#9E4F4F', cellBg:'#F3E7E7', alert:false, system:true},
-  {id:'surf',     icon:'🏄', name:'サーフィン（リストに自動追加）', keyword:'サーフィン', noteTag:'サーフィン', checkboxId:'f-surf',    store:'note',      autoAction:'surf', cellBorder:'#4C586F', cellBg:'#E3E6EA', alert:false, system:true},
-  {id:'enospa',   icon:'♨',  name:'えのすぱ',              keyword:'えのすぱ',           noteTag:'えのすぱ',           checkboxId:'f-enospa',   store:'note', autoAction:null, cellBorder:'#7C879A', cellBg:'#E7E9EC', alert:false, system:true},
-  {id:'enosui',   icon:'🐬', name:'えのすい',              keyword:'えのすい',           noteTag:'えのすい',           checkboxId:'f-enosui',   store:'note', autoAction:null, cellBorder:'#4F6E60', cellBg:'#E8EEEB', alert:false, system:true},
-  {id:'wshoku',   icon:'🍙', name:'和食',                  keyword:'和食',               noteTag:'和食',               checkboxId:'f-wshoku',   store:'note', autoAction:null, cellBorder:'#7D6140', cellBg:'#F1EBE1', alert:false, system:true},
-  {id:'yshoku',   icon:'🍳', name:'洋食',                  keyword:'洋食',               noteTag:'洋食',               checkboxId:'f-yshoku',   store:'note', autoAction:null, cellBorder:'#B39A78', cellBg:'#F4EFE7', alert:false, system:true},
-  {id:'late',     icon:'🌙', name:'レイトチェックアウト',  keyword:'レイトチェックアウト', noteTag:'レイトチェックアウト', checkboxId:'f-late',   store:'note', autoAction:null, cellBorder:'#3A4557', cellBg:'#E1E4E8', alert:false, system:true},
-  {id:'lower',    icon:'🛏', name:'下段希望',              keyword:'下段希望',           noteTag:'下段希望',           checkboxId:'f-lower',    store:'lowerBunk', autoAction:null, cellBorder:'#7A9A8B', cellBg:'#E8EEEB', alert:false, system:true},
-  {id:'roommove', icon:'🔄', name:'部屋移動',              keyword:'部屋移動',           noteTag:'部屋移動',           checkboxId:'f-roommove', store:'note', autoAction:null, cellBorder:'#9E4F4F', cellBg:'#EFDFDF', alert:true,  system:true},
-  {id:'noshow',   icon:'🚫', name:'No Show',               keyword:'No Show',            noteTag:'No Show',            checkboxId:'f-noshow',   store:'note', autoAction:null, cellBorder:'#6B3A3A', cellBg:'#E7D6D6', alert:false, system:true},
-  {id:'caution',  icon:'⚠️', name:'注意',                  keyword:'注意',               noteTag:'注意',               checkboxId:'f-caution',  store:'note', autoAction:null, cellBorder:'#9E4F4F', cellBg:'#EFDFDF', alert:true,  system:true},
+  {id:'park',     icon:'🚗', name:'駐車場（カレンダーに自動追加）', keyword:'駐車場',   noteTag:'駐車場',   checkboxId:'f-parking',  store:'parking',   autoAction:'park', cellBorder:'#E53935', cellBg:'#FFF5F5', alert:false, system:true},
+  {id:'surf',     icon:'🏄', name:'サーフィン（リストに自動追加）', keyword:'サーフィン', noteTag:'サーフィン', checkboxId:'f-surf',    store:'note',      autoAction:'surf', cellBorder:'#E53935', cellBg:'#FFF5F5', alert:false, system:true},
+  {id:'enospa',   icon:'♨',  name:'えのすぱ',              keyword:'えのすぱ',           noteTag:'えのすぱ',           checkboxId:'f-enospa',   store:'note', autoAction:null, cellBorder:'#9370DB', cellBg:'#f5f0ff', alert:false, system:true},
+  {id:'enosui',   icon:'🐬', name:'えのすい',              keyword:'えのすい',           noteTag:'えのすい',           checkboxId:'f-enosui',   store:'note', autoAction:null, cellBorder:'#7B1FA2', cellBg:'#F3E5F5', alert:false, system:true},
+  {id:'wshoku',   icon:'🍙', name:'和食',                  keyword:'和食',               noteTag:'和食',               checkboxId:'f-wshoku',   store:'note', autoAction:null, cellBorder:'#FF8F00', cellBg:'#FFF8E1', alert:false, system:true},
+  {id:'yshoku',   icon:'🍳', name:'洋食',                  keyword:'洋食',               noteTag:'洋食',               checkboxId:'f-yshoku',   store:'note', autoAction:null, cellBorder:'#FF5722', cellBg:'#FFF3EF', alert:false, system:true},
+  {id:'late',     icon:'🌙', name:'レイトチェックアウト',  keyword:'レイトチェックアウト', noteTag:'レイトチェックアウト', checkboxId:'f-late',   store:'note', autoAction:null, cellBorder:'#1A237E', cellBg:'#E8EAF6', alert:false, system:true},
+  {id:'lower',    icon:'🛏', name:'下段希望',              keyword:'下段希望',           noteTag:'下段希望',           checkboxId:'f-lower',    store:'lowerBunk', autoAction:null, cellBorder:'#00897b', cellBg:'#e0f2f1', alert:false, system:true},
+  {id:'roommove', icon:'🔄', name:'部屋移動',              keyword:'部屋移動',           noteTag:'部屋移動',           checkboxId:'f-roommove', store:'note', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2', alert:true,  system:true},
+  {id:'noshow',   icon:'🚫', name:'No Show',               keyword:'No Show',            noteTag:'No Show',            checkboxId:'f-noshow',   store:'note', autoAction:null, cellBorder:'#7F0000', cellBg:'#C62828', alert:false, system:true},
+  {id:'caution',  icon:'⚠️', name:'注意',                  keyword:'注意',               noteTag:'注意',               checkboxId:'f-caution',  store:'note', autoAction:null, cellBorder:'#C62828', cellBg:'#FFCDD2', alert:true,  system:true},
 ];
 let planRules=[];        // マスターデータ本体（propertySettings.planRules 経由でクラウド保存）
 let nextPlanRuleId=1;    // ユーザー追加分のID採番（'pr1','pr2'…）
@@ -159,79 +159,13 @@ function initPlanRulesIfEmpty(){
   if(planRules&&planRules.length>0)return;
   planRules=PLAN_RULES_DEFAULTS.map((r,i)=>Object.assign({},r,{order:i,enabled:true}));
 }
-
-// ══════════════════════════════════════════════════════════════════════
-// テーマ刷新：クラウドに保存済みの「色データ」を新パレットへ移行
-// ──────────────────────────────────────────────────────────────────────
-// 部屋・POSカテゴリー・スタッフメモ種別・売上イベントの色は cloudData に
-// 実値(hex)で保存されているため、CSSを変えただけでは旧配色のまま残る。
-// 旧テーマの既定色と完全一致するものだけを新パレットへ置き換える
-// （ユーザーが自分で選んだ色は一致しないので、そのまま保持される）。
-// ══════════════════════════════════════════════════════════════════════
-const LEGACY_COLOR_MAP={
-  // 旧ブルー・パープル系 → デニム系
-  '#185FA5':'#4C586F', '#1A5276':'#4C586F', '#2F6FBA':'#4C586F', '#534AB7':'#56538D',
-  '#7C3AED':'#7C879A', '#8E44AD':'#697488', '#4DB6D6':'#697584', '#0E7490':'#4C586F',
-  '#0F766E':'#4F6E60', '#607D8B':'#75737E', '#90A4AE':'#A2AAB0', '#0C447C':'#3A4557',
-  // 旧グリーン系 → セージ／フォレスト
-  '#4CAF50':'#5D7A6C', '#16A085':'#4F6E60', '#1A7A3E':'#4F6E60', '#45B39D':'#7A9A8B',
-  // 旧イエロー・オレンジ系 → ウォーム
-  '#F2C94C':'#886F4D', '#F2994A':'#7D6140', '#C8A96A':'#7F726A', '#854F0B':'#7D6140',
-  '#633806':'#7D6140', '#EF9F27':'#B39A78', '#E59866':'#B39A78', '#E65100':'#7D6140',
-  // 旧レッド・ピンク系 → クレイ／ボルドー
-  '#E2574C':'#BE5252', '#E91E63':'#9E4F4F', '#E24B4A':'#C86D6D', '#A32D2D':'#9E4F4F',
-  '#791F1F':'#6B3A3A', '#993556':'#9E4F4F', '#C0392B':'#9E4F4F', '#E8877A':'#C86D6D',
-  // 旧ニュートラル
-  '#9E9E9E':'#6B757D', '#5F5E5A':'#5E666D', '#444441':'#3E3E3B', '#B4B2A9':'#CBC5C1',
-  '#F1EFE8':'#F4F5F5', '#FAEEDA':'#F1EBE1', '#FCEBEB':'#F3E7E7', '#E6F1FB':'#E3E6EA',
-};
-function _mapLegacyColor(v){
-  const k=String(v||'').toUpperCase();
-  return LEGACY_COLOR_MAP[k]||v;
-}
-// 保存済みデータ内の色フィールドを走査して置換する
-function migrateLegacyDataColors(){
-  let n=0;
-  const fix=(obj,keys)=>{ if(!obj)return; keys.forEach(k=>{
-    if(!obj[k])return; const nv=_mapLegacyColor(obj[k]);
-    if(nv!==obj[k]){ obj[k]=nv; n++; }
-  });};
-  (typeof rooms!=='undefined'&&rooms||[]).forEach(r=>fix(r,['color']));
-  (typeof posCategories!=='undefined'&&posCategories||[]).forEach(c=>fix(c,['color']));
-  (typeof snTypes!=='undefined'&&snTypes||[]).forEach(t=>fix(t,['color','bg','border']));
-  (typeof salesEvents!=='undefined'&&salesEvents||[]).forEach(e=>fix(e,['color']));
-  (typeof garbageRules!=='undefined'&&garbageRules||[]).forEach(g=>fix(g,['color']));
-  return n;
-}
-
-// ── 旧カラーパレットからの配色移行 ────────────────────────────────
-// テーマ刷新前の既定色のまま保存されている組み込み項目だけを新パレットへ移す。
-// ユーザーが管理画面で変更した色は「旧既定と一致しない」ため対象外となり、そのまま保持される。
-const _PLAN_LEGACY_COLORS={
-  park:['#E53935'], surf:['#E53935'], enospa:['#9370DB'], enosui:['#7B1FA2'],
-  wshoku:['#FF8F00'], yshoku:['#FF5722'], late:['#1A237E'], lower:['#00897B'],
-  roommove:['#C62828'], noshow:['#7F0000','#6B3A3A'], caution:['#C62828']
-};
-function migratePlanRuleColors(){
-  if(!planRules||!planRules.length)return 0;
-  let n=0;
-  planRules.forEach(r=>{
-    const legacy=_PLAN_LEGACY_COLORS[r.id];
-    const def=PLAN_RULES_DEFAULTS.find(d=>d.id===r.id);
-    if(!legacy||!def)return;
-    if(legacy.some(c=>c.toUpperCase()===String(r.cellBorder||'').toUpperCase())){
-      r.cellBorder=def.cellBorder; r.cellBg=def.cellBg; n++;
-    }
-  });
-  return n;
-}
 // 欠損プロパティの補完（古い保存データや手編集への耐性）
 function _normalizePlanRule(r,i){
   const def=PLAN_RULES_DEFAULTS.find(d=>d.id===r.id);
   const base={
     id:r.id||('pr'+(i+1)), icon:'🏷', name:'', keyword:'', noteTag:'',
     checkboxId:'f-pr-'+(r.id||i), store:'note', autoAction:null,
-    cellBorder:'#A2AAB0', cellBg:'#ECEDEE', alert:false, system:false, order:i, enabled:true
+    cellBorder:'#90A4AE', cellBg:'#ECEFF1', alert:false, system:false, order:i, enabled:true
   };
   // 組み込み項目は保存方式・連携キー・DOM IDを常に既定値へ強制（連携が切れるのを防ぐ）
   const locked=def?{store:def.store,autoAction:def.autoAction,checkboxId:def.checkboxId,system:true}:{};
@@ -256,16 +190,16 @@ function planRuleChecked(g,r){
 const PLAN_EMOJI_PALETTE=['🚗','🏄','♨','🐬','🍙','🍳','🌙','🛏','🔄','🚫','⚠️','🏷','⭐','❗','🎁','🎂','🍺','🚭','🐕','👶','♿','🧳','🔑','🚿','🧺','📌','🕒','💤','📶','🎫'];
 // セル色プリセット（管理画面のカラーパレット）
 const PLAN_COLOR_PRESETS=[
-  {name:'デニム',     border:'#4C586F', bg:'#E3E6EA'},
-  {name:'ディープ',   border:'#3A4557', bg:'#E1E4E8'},
-  {name:'フレンチ',   border:'#7C879A', bg:'#E7E9EC'},
-  {name:'セージ',     border:'#7A9A8B', bg:'#E8EEEB'},
-  {name:'フォレスト', border:'#4F6E60', bg:'#E8EEEB'},
-  {name:'カシミア',   border:'#B39A78', bg:'#F4EFE7'},
-  {name:'ウォーム',   border:'#7D6140', bg:'#F1EBE1'},
-  {name:'クレイ',     border:'#C86D6D', bg:'#F3E7E7'},
-  {name:'ボルドー',   border:'#9E4F4F', bg:'#EFDFDF'},
-  {name:'グレー',     border:'#A2AAB0', bg:'#ECEDEE'},
+  {name:'青',       border:'#1A237E', bg:'#E8EAF6'},
+  {name:'水色',     border:'#0277BD', bg:'#E1F5FE'},
+  {name:'緑',       border:'#00897b', bg:'#e0f2f1'},
+  {name:'黄',       border:'#FF8F00', bg:'#FFF8E1'},
+  {name:'オレンジ', border:'#FF5722', bg:'#FFF3EF'},
+  {name:'赤',       border:'#E53935', bg:'#FFF5F5'},
+  {name:'濃赤',     border:'#C62828', bg:'#FFCDD2'},
+  {name:'紫',       border:'#9370DB', bg:'#f5f0ff'},
+  {name:'濃紫',     border:'#7B1FA2', bg:'#F3E5F5'},
+  {name:'グレー',   border:'#607D8B', bg:'#ECEFF1'},
 ];
 
 // ══════════════════════════════════════════════════════════════════════
@@ -309,8 +243,8 @@ function renderPlanRulesSettings(){
         <div>
           <label>セルの色</label>
           <span class="pr-swatch" onclick="prTogglePal(${i},'col')" title="クリックで色を選択">
-            <i style="background:${esc(r.cellBorder||'var(--border-light)')}"></i>
-            <span style="background:${esc(r.cellBg||'var(--bg-surface)')};">${esc(_prColorName(r))}</span>
+            <i style="background:${esc(r.cellBorder||'#ccc')}"></i>
+            <span style="background:${esc(r.cellBg||'#fff')};">${esc(_prColorName(r))}</span>
           </span>
         </div>
         <div>
@@ -329,8 +263,8 @@ function renderPlanRulesSettings(){
         `<button onclick="prPickColor(${i},${ci})" title="${esc(c.name)}" style="background:${c.bg};"><i style="background:${c.border}"></i></button>`).join('')}
         <span style="display:flex;align-items:center;gap:6px;margin-left:8px;font-size:11px;color:var(--muted);">
           カスタム:
-          <input type="color" value="${esc(r.cellBorder||'#A2AAB0')}" onchange="prEdit(${i},'cellBorder',this.value)" title="帯の色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
-          <input type="color" value="${esc(r.cellBg||'#ECEDEE')}" onchange="prEdit(${i},'cellBg',this.value)" title="背景色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+          <input type="color" value="${esc(r.cellBorder||'#607D8B')}" onchange="prEdit(${i},'cellBorder',this.value)" title="帯の色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+          <input type="color" value="${esc(r.cellBg||'#ECEFF1')}" onchange="prEdit(${i},'cellBg',this.value)" title="背景色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
         </span></div>`:''}
       <div class="pr-sub">
         <span>システムID <span class="pr-sysid">${esc(r.id)}</span></span>
@@ -339,8 +273,8 @@ function renderPlanRulesSettings(){
         <label title="チェックするとセル全体を強調色で塗ります（部屋移動・注意と同じ挙動）">
           <input type="checkbox" ${r.alert?'checked':''} onchange="prEdit(${i},'alert',this.checked)"> セル全体を強調
         </label>
-        ${sys?`<span style="color:var(--color-warning-strong);">🔒 システム連携あり${r.autoAction?`（${r.autoAction==='park'?'駐車場カレンダー自動追加':'サーフィンリスト自動追加'}）`:''}</span>`
-             :`<button class="btn btn-xs" onclick="removePlanRule(${i})" style="margin-left:auto;color:var(--color-danger-strong);">削除</button>`}
+        ${sys?`<span style="color:#b5651d;">🔒 システム連携あり${r.autoAction?`（${r.autoAction==='park'?'駐車場カレンダー自動追加':'サーフィンリスト自動追加'}）`:''}</span>`
+             :`<button class="btn btn-xs" onclick="removePlanRule(${i})" style="margin-left:auto;color:#c0392b;">削除</button>`}
       </div>
     </div>`;
   }).join('');
@@ -383,7 +317,7 @@ function addPlanRule(){
   _prDraft.push({
     id, icon:'🏷', name:'', keyword:'', noteTag:'',   // noteTagは保存時にプラン名から確定
     checkboxId:'f-'+id, store:'note', autoAction:null,
-    cellBorder:'#A2AAB0', cellBg:'#ECEDEE', alert:false, system:false, enabled:true, order:_prDraft.length
+    cellBorder:'#607D8B', cellBg:'#ECEFF1', alert:false, system:false, enabled:true, order:_prDraft.length
   });
   renderPlanRulesSettings();
   const el=document.getElementById('pr-list'); if(el)el.scrollTop=el.scrollHeight;
@@ -610,36 +544,36 @@ let rooms=[
   // 本館−個室（ダブル・ツイン）
   // ※ no は「部屋情報」画面に表示される部屋番号そのもの（表示専用の文字列）。
   //    チェックインアプリの DEFAULT_ROOMS と必ず同じ値に保つこと（ズレると誤室案内の原因）。
-  {id:0, no:'①', type:'本館−ダブル', group:'本館−個室', cap:2, color:'#4C586F', label:'①ダブル'},
-  {id:1, no:'②', type:'本館−ツイン', group:'本館−個室', cap:2, color:'#4C586F', label:'②ツイン'},
+  {id:0, no:'①', type:'本館−ダブル', group:'本館−個室', cap:2, color:'#185FA5', label:'①ダブル'},
+  {id:1, no:'②', type:'本館−ツイン', group:'本館−個室', cap:2, color:'#185FA5', label:'②ツイン'},
   // 本館−男女混合ドミトリー（3号室のベッド G H I J K L M N O P の10部屋）
-  {id:2, no:'③−G', type:'本館−男女混合ドミトリー G', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:3, no:'③−H', type:'本館−男女混合ドミトリー H', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:4, no:'③−I', type:'本館−男女混合ドミトリー I', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:5, no:'③−J', type:'本館−男女混合ドミトリー J', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:6, no:'③−K', type:'本館−男女混合ドミトリー K', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:7, no:'③−L', type:'本館−男女混合ドミトリー L', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:8, no:'③−M', type:'本館−男女混合ドミトリー M', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:9, no:'③−N', type:'本館−男女混合ドミトリー N', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:10,no:'③−O', type:'本館−男女混合ドミトリー O', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
-  {id:11,no:'③−P', type:'本館−男女混合ドミトリー P', group:'本館−男女混合ドミトリー', cap:1, color:'#7D6140'},
+  {id:2, no:'③−G', type:'本館−男女混合ドミトリー G', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:3, no:'③−H', type:'本館−男女混合ドミトリー H', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:4, no:'③−I', type:'本館−男女混合ドミトリー I', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:5, no:'③−J', type:'本館−男女混合ドミトリー J', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:6, no:'③−K', type:'本館−男女混合ドミトリー K', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:7, no:'③−L', type:'本館−男女混合ドミトリー L', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:8, no:'③−M', type:'本館−男女混合ドミトリー M', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:9, no:'③−N', type:'本館−男女混合ドミトリー N', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:10,no:'③−O', type:'本館−男女混合ドミトリー O', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
+  {id:11,no:'③−P', type:'本館−男女混合ドミトリー P', group:'本館−男女混合ドミトリー', cap:1, color:'#854F0B'},
   // ANNEX−個室（①②の2部屋）
-  {id:12,no:'①', type:'ANNEX−個室①',           group:'ANNEX−個室',       cap:4, color:'#9E4F4F'},
-  {id:13,no:'②', type:'ANNEX−個室②',           group:'ANNEX−個室',       cap:4, color:'#9E4F4F'},
+  {id:12,no:'①', type:'ANNEX−個室①',           group:'ANNEX−個室',       cap:4, color:'#993556'},
+  {id:13,no:'②', type:'ANNEX−個室②',           group:'ANNEX−個室',       cap:4, color:'#993556'},
   // ANNEX−ドミトリー（3号室のベッド A B C D E F の6部屋）
-  {id:14,no:'③−A', type:'ANNEX−ドミトリー A',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
-  {id:15,no:'③−B', type:'ANNEX−ドミトリー B',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
-  {id:16,no:'③−C', type:'ANNEX−ドミトリー C',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
-  {id:17,no:'③−D', type:'ANNEX−ドミトリー D',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
-  {id:18,no:'③−E', type:'ANNEX−ドミトリー E',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
-  {id:19,no:'③−F', type:'ANNEX−ドミトリー F',      group:'ANNEX−ドミトリー', cap:1, color:'#4C586F'},
+  {id:14,no:'③−A', type:'ANNEX−ドミトリー A',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:15,no:'③−B', type:'ANNEX−ドミトリー B',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:16,no:'③−C', type:'ANNEX−ドミトリー C',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:17,no:'③−D', type:'ANNEX−ドミトリー D',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:18,no:'③−E', type:'ANNEX−ドミトリー E',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
+  {id:19,no:'③−F', type:'ANNEX−ドミトリー F',      group:'ANNEX−ドミトリー', cap:1, color:'#7C3AED'},
   // アパートメント−Southern Court（103・104の2部屋）
-  {id:20,no:'１０３', type:'アパートメント−Southern Court 103', group:'アパートメント−Southern Court', cap:4, color:'#4C586F'},
-  {id:21,no:'１０４', type:'アパートメント−Southern Court 104', group:'アパートメント−Southern Court', cap:4, color:'#4C586F'},
+  {id:20,no:'１０３', type:'アパートメント−Southern Court 103', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
+  {id:21,no:'１０４', type:'アパートメント−Southern Court 104', group:'アパートメント−Southern Court', cap:4, color:'#534AB7'},
   // Sea Breeze 鎌倉・三浦
-  {id:22,no:'１０１', type:'Sea Breeze 鎌倉 101', group:'Sea Breeze 鎌倉', cap:4, color:'#4C586F'},
-  {id:23,no:'１０２', type:'Sea Breeze 鎌倉 102', group:'Sea Breeze 鎌倉', cap:4, color:'#4C586F'},
-  {id:24,no:'25',    type:'Sea Breeze 三浦',     group:'Sea Breeze 三浦', cap:4, color:'#3A4557'},
+  {id:22,no:'１０１', type:'Sea Breeze 鎌倉 101', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
+  {id:23,no:'１０２', type:'Sea Breeze 鎌倉 102', group:'Sea Breeze 鎌倉', cap:4, color:'#0e7490'},
+  {id:24,no:'25',    type:'Sea Breeze 三浦',     group:'Sea Breeze 三浦', cap:4, color:'#0f766e'},
 ];
 let nextRoomId=25;
 let guestData={};
@@ -1100,7 +1034,7 @@ function getRoomIdByType(typeName, month, day, nights, year){
 
   // 未知タイプ→新規作成
   const newId=nextRoomId++;
-  rooms.push({id:newId,no:rooms.length+1,type:typeName,group:typeName,cap:1,color:'#5E666D'});
+  rooms.push({id:newId,no:rooms.length+1,type:typeName,group:typeName,cap:1,color:'#5F5E5A'});
   return newId;
 }
 // CSVレコード分割：クォート内の改行をまたぐ複数物理行を1レコードに結合する
@@ -1829,19 +1763,19 @@ function importCSVText(text){
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
     ${charterCount>0?`<br>🔒 貸切予約 <strong>${charterCount}件</strong>検出`:''}
-    ${unassignedCount>0?`<br><span style="color:var(--color-danger-strong);font-weight:700;">⚠ 割当エラー：${unassignedCount}件（名簿へ未反映・下記から手動割当してください）</span>`:''}
+    ${unassignedCount>0?`<br><span style="color:#c0392b;font-weight:700;">⚠ 割当エラー：${unassignedCount}件（名簿へ未反映・下記から手動割当してください）</span>`:''}
   </div>${skipped>0?`<div class="import-warn">※ 2泊目以降（${skipped}行）はスキップ</div>`:''}
-  ${updatedList.length>0?`<div class="import-changes" style="background:var(--color-warning-bg);border-left:4px solid var(--color-warning-strong);padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
-    <div style="font-weight:700;margin-bottom:6px;color:var(--color-warning-strong);">🔄 予約内容の変更（${updatedList.length}件）</div>
-    ${updatedList.map(u=>`<div style="padding:3px 0;border-bottom:1px dashed var(--bg-soft);">
-      <strong>${esc(u.name)}</strong> <span style="color:var(--text-secondary);">#${esc(u.reservationId||'')}</span>
-      <span style="margin-left:8px;color:var(--color-warning-strong);">${esc(u.changes.join('・'))}</span>
-      ${u.status==='競合エラー'?'<span style="color:var(--color-danger-strong);font-weight:700;margin-left:8px;">⚠ 競合（手動割当が必要）</span>':''}
+  ${updatedList.length>0?`<div class="import-changes" style="background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#7a5800;">🔄 予約内容の変更（${updatedList.length}件）</div>
+    ${updatedList.map(u=>`<div style="padding:3px 0;border-bottom:1px dashed #eee;">
+      <strong>${esc(u.name)}</strong> <span style="color:#888;">#${esc(u.reservationId||'')}</span>
+      <span style="margin-left:8px;color:#7a5800;">${esc(u.changes.join('・'))}</span>
+      ${u.status==='競合エラー'?'<span style="color:#c0392b;font-weight:700;margin-left:8px;">⚠ 競合（手動割当が必要）</span>':''}
     </div>`).join('')}
   </div>`:''}
-  ${dupSkipList.length>0?`<div class="import-dups" style="background:var(--accent-bg);border-left:4px solid var(--text-muted);padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
-    <div style="font-weight:700;margin-bottom:6px;color:var(--accent-primary);">ℹ 重複スキップ（${dupSkipList.length}件・変更なしのため未処理）</div>
-    <div style="color:var(--accent-primary);font-size:11px;">${dupSkipList.map(d=>`${esc(d.name)} <span style="color:var(--text-muted);">#${esc(d.reservationId||'')}</span>`).join(' / ')}</div>
+  ${dupSkipList.length>0?`<div class="import-dups" style="background:#f0f4f8;border-left:4px solid #90a4ae;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#546e7a;">ℹ 重複スキップ（${dupSkipList.length}件・変更なしのため未処理）</div>
+    <div style="color:#546e7a;font-size:11px;">${dupSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>`).join(' / ')}</div>
   </div>`:''}`;
   renderUnassignedPanel();
   renderReg();autoSave();
@@ -1856,19 +1790,19 @@ function renderUnassignedPanel(){
   if(!unassignedReservations.length){ el.innerHTML=''; el.style.display='none'; return; }
   el.style.display='block';
   el.innerHTML=`
-    <div style="margin-top:16px;padding:14px 16px;background:var(--color-danger-bg);border:1.5px solid var(--color-danger);border-radius:8px;">
-      <div style="font-size:13px;font-weight:700;color:var(--color-danger-strong);margin-bottom:10px;">⚠ 部屋割当エラー（${unassignedReservations.length}件）</div>
+    <div style="margin-top:16px;padding:14px 16px;background:#fff5f5;border:1.5px solid #f0b0b0;border-radius:8px;">
+      <div style="font-size:13px;font-weight:700;color:#c0392b;margin-bottom:10px;">⚠ 部屋割当エラー（${unassignedReservations.length}件）</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${unassignedReservations.map((u,i)=>{
           const co=_calcCheckout(u.checkinMonth,u.checkinDay,u.nights);
-          return `<div style="background:var(--bg-surface);border:1px solid var(--color-danger);border-radius:6px;padding:10px 12px;font-size:12px;">
+          return `<div style="background:#fff;border:1px solid #e0c0c0;border-radius:6px;padding:10px 12px;font-size:12px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
               <div style="flex:1;min-width:0;">
-                <div style="font-weight:700;color:var(--accent-deep);font-size:13px;margin-bottom:3px;">${esc(u.name)} <span style="font-weight:400;color:var(--text-secondary);font-size:11px;">${u.reservationId?'#'+esc(u.reservationId):''}</span></div>
-                <div style="color:var(--text-secondary);line-height:1.6;">
+                <div style="font-weight:700;color:#1a2b3a;font-size:13px;margin-bottom:3px;">${esc(u.name)} <span style="font-weight:400;color:#888;font-size:11px;">${u.reservationId?'#'+esc(u.reservationId):''}</span></div>
+                <div style="color:#666;line-height:1.6;">
                   ${u.checkinMonth}/${u.checkinDay} → ${co}　${u.nights}泊　${u.guests}名　${esc(u.site||'')}<br>
                   希望: ${esc(u.typeName||'-')}　区分: ${esc(u.cat||'-')}<br>
-                  <span style="color:var(--color-danger-strong);font-weight:600;">理由: ${esc(u.reason||'空室不足')}</span>
+                  <span style="color:#c0392b;font-weight:600;">理由: ${esc(u.reason||'空室不足')}</span>
                 </div>
               </div>
               <button onclick="openManualAssign(${i})" class="btn btn-blue btn-xs" style="flex-shrink:0;white-space:nowrap;">名簿へ手動追加</button>
@@ -2070,7 +2004,7 @@ function renderOcc(){
   document.getElementById('occ-stats').innerHTML=`
     <div class="sc" style="flex:1;"><div class="sl">${year}年 累計最大値</div><div class="sv">${grandMax.toLocaleString()}</div><div class="ss">人</div></div>
     <div class="sc" style="flex:1;"><div class="sl">データ月数</div><div class="sv">${validTotals.length}</div><div class="ss">ヶ月</div></div>
-    ${cmpYear?`<div class="sc" style="flex:1;"><div class="sl">${cmpYear}年 比較</div><div class="sv" style="font-size:13px;color:var(--text-secondary);">${cmpYear}年と比較中</div></div>`:''}`;
+    ${cmpYear?`<div class="sc" style="flex:1;"><div class="sl">${cmpYear}年 比較</div><div class="sv" style="font-size:13px;color:#888;">${cmpYear}年と比較中</div></div>`:''}`;
 
   // 現在月を初期選択（当年なら今月、それ以外は1月）
   const defaultMonth=(year===NOW.getFullYear())?NOW.getMonth()+1:
@@ -2085,10 +2019,10 @@ function renderOcc(){
     const curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
     const pct=cur&&curLast?Math.round(curLast/cur.max*1000)/10:null;
     const isActive=mi+1===defaultMonth;
-    const pctColor=pct!=null?(pct>=80?'var(--color-success-strong)':pct>=50?'var(--accent-primary)':'var(--text-secondary)'):'var(--border-light)';
+    const pctColor=pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc';
     return `<button id="occ-tab-${mi+1}" onclick="selectOccMonth(${mi+1})"
-      style="padding:6px 10px;border-radius:8px;border:1.5px solid ${isActive?'var(--accent-primary)':'var(--bg-main)'};background:${isActive?'var(--accent-bg)':'var(--bg-surface)'};cursor:pointer;min-width:52px;text-align:center;transition:all .12s;${!hasData?'opacity:.4;':''}">
-      <div style="font-size:12px;font-weight:${isActive?'600':'400'};color:${isActive?'var(--accent-primary)':'var(--text-primary)'};">${mn}月</div>
+      style="padding:6px 10px;border-radius:8px;border:1.5px solid ${isActive?'#185FA5':'#e8e6e0'};background:${isActive?'#eef4fc':'#fff'};cursor:pointer;min-width:52px;text-align:center;transition:all .12s;${!hasData?'opacity:.4;':''}">
+      <div style="font-size:12px;font-weight:${isActive?'600':'400'};color:${isActive?'#185FA5':'#333'};">${mn}月</div>
       <div style="font-size:10px;font-weight:600;color:${pctColor};">${pct!=null?pct+'%':'—'}</div>
     </button>`;
   }).join('');
@@ -2106,10 +2040,10 @@ function selectOccMonth(month,year,cmpYear){
     const btn=document.getElementById(`occ-tab-${m}`);
     if(!btn)return;
     const isActive=m===month;
-    btn.style.border=`1.5px solid ${isActive?'var(--accent-primary)':'var(--bg-main)'}`;
-    btn.style.background=isActive?'var(--accent-bg)':'var(--bg-surface)';
+    btn.style.border=`1.5px solid ${isActive?'#185FA5':'#e8e6e0'}`;
+    btn.style.background=isActive?'#eef4fc':'#fff';
     btn.querySelector('div').style.fontWeight=isActive?'600':'400';
-    btn.querySelector('div').style.color=isActive?'var(--accent-primary)':'var(--text-primary)';
+    btn.querySelector('div').style.color=isActive?'#185FA5':'#333';
   });
 
   const monthLabel=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'][month-1];
@@ -2127,14 +2061,14 @@ function selectOccMonth(month,year,cmpYear){
   const pct=curMax&&curLast!=null?Math.round(curLast/curMax*1000)/10:null;
   const cmpLast=cmp?cmp.data.filter(v=>v!=null).slice(-1)[0]:null;
   const cmpPct=cmpMax&&cmpLast?Math.round(cmpLast/cmpMax*1000)/10:null;
-  const dataTag=cur&&cur.isReal?'<span style="font-size:10px;background:var(--color-success-bg);color:var(--color-success-strong);padding:1px 5px;border-radius:3px;margin-left:6px;">実データ</span>':'<span style="font-size:10px;background:var(--accent-bg);color:var(--text-secondary);padding:1px 5px;border-radius:3px;margin-left:6px;">推計</span>';
+  const dataTag=cur&&cur.isReal?'<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:6px;">実データ</span>':'<span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:1px 5px;border-radius:3px;margin-left:6px;">推計</span>';
 
   document.getElementById('occ-month-title').innerHTML=`${year}年 ${monthLabel} ${cur?dataTag:''}`;
   document.getElementById('occ-month-stats').innerHTML=`
     <div class="sc" style="flex:1;min-width:0;"><div class="sl">${year}年 月末累計</div><div class="sv" style="font-size:17px;">${curLast!=null?curLast+'人':'—'}</div></div>
-    <div class="sc" style="flex:1;min-width:0;"><div class="sl">稼働率</div><div class="sv" style="font-size:17px;color:${pct!=null?(pct>=80?'var(--color-success-strong)':pct>=50?'var(--accent-primary)':'var(--text-secondary)'):'var(--border-light)'};">${pct!=null?pct+'%':'—'}</div></div>
-    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:var(--text-secondary);">${cmpLast!=null?cmpLast+'人':'—'}</div></div>`:''}
-    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 稼働率</div><div class="sv" style="font-size:17px;color:var(--color-warning-strong);">${cmpPct!=null?cmpPct+'%':'—'}</div></div>`:''}`;
+    <div class="sc" style="flex:1;min-width:0;"><div class="sl">稼働率</div><div class="sv" style="font-size:17px;color:${pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc'};">${pct!=null?pct+'%':'—'}</div></div>
+    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:#888;">${cmpLast!=null?cmpLast+'人':'—'}</div></div>`:''}
+    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 稼働率</div><div class="sv" style="font-size:17px;color:#ea580c;">${cmpPct!=null?cmpPct+'%':'—'}</div></div>`:''}`;
 
   // チャート描画
   occCharts.forEach(c=>{try{c.destroy();}catch(e){}});occCharts=[];
@@ -2149,10 +2083,10 @@ function selectOccMonth(month,year,cmpYear){
   const datasets=[];
   if(curData)datasets.push({type:'bar',label:`${year}年 累計`,data:curData,backgroundColor:'rgba(96,165,250,0.55)',borderColor:'rgba(59,130,246,0.7)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
   if(cmpData)datasets.push({type:'bar',label:`${cmpYear}年 累計`,data:cmpData,backgroundColor:'rgba(251,146,60,0.38)',borderColor:'rgba(234,88,12,0.55)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
-  if(pctLine)datasets.push({type:'line',label:`稼働率(${year})`,data:pctLine,borderColor:'var(--accent-primary)',borderWidth:2,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2'});
-  if(cmpPctLine)datasets.push({type:'line',label:`稼働率(${cmpYear})`,data:cmpPctLine,borderColor:'var(--color-warning-strong)',borderWidth:1.5,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2',borderDash:[4,3]});
+  if(pctLine)datasets.push({type:'line',label:`稼働率(${year})`,data:pctLine,borderColor:'#185FA5',borderWidth:2,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2'});
+  if(cmpPctLine)datasets.push({type:'line',label:`稼働率(${cmpYear})`,data:cmpPctLine,borderColor:'#ea580c',borderWidth:1.5,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2',borderDash:[4,3]});
   if(todayCount&&NOW.getMonth()+1===month){
-    datasets.push({type:'scatter',label:'今日',data:[{x:NOW.getDate(),y:todayCount}],backgroundColor:'var(--color-danger-strong)',borderColor:'var(--color-danger-strong)',pointRadius:6,pointHoverRadius:8,yAxisID:'y'});
+    datasets.push({type:'scatter',label:'今日',data:[{x:NOW.getDate(),y:todayCount}],backgroundColor:'#dc2626',borderColor:'#dc2626',pointRadius:6,pointHoverRadius:8,yAxisID:'y'});
   }
 
   const chart=new Chart(ctx,{
@@ -2189,7 +2123,7 @@ function loadSalesEvents(){
   try{const s=localStorage.getItem('hotel_salesEvents');if(s)salesEvents=JSON.parse(s);}catch(e){}
   // 初期プリセット（コロナ禍）
   if(!salesEvents.length){
-    salesEvents=[{id:1,name:'コロナ禍',sy:2020,sm:4,ey:2022,em:3,color:'#9E4F4F'}];
+    salesEvents=[{id:1,name:'コロナ禍',sy:2020,sm:4,ey:2022,em:3,color:'#E24B4A'}];
     saveSalesEventsLS();
   }
 }
@@ -2225,9 +2159,9 @@ function renderSalesEventsList(){
   el.innerHTML=salesEvents.map(ev=>`
     <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:16px;border:1.5px solid ${ev.color};background:${ev.color}18;font-size:11px;">
       <span style="width:10px;height:10px;border-radius:2px;background:${ev.color};flex-shrink:0;"></span>
-      <span style="font-weight:600;color:var(--text-primary);">${ev.name}</span>
-      <span style="color:var(--text-secondary);">${ev.sy}/${ev.sm}〜${ev.ey}/${ev.em}</span>
-      <button onclick="deleteSalesEvent(${ev.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 0 0 4px;line-height:1;">✕</button>
+      <span style="font-weight:600;color:#333;">${ev.name}</span>
+      <span style="color:#888;">${ev.sy}/${ev.sm}〜${ev.ey}/${ev.em}</span>
+      <button onclick="deleteSalesEvent(${ev.id})" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:13px;padding:0 0 0 4px;line-height:1;">✕</button>
     </div>`).join('');
 }
 
@@ -2272,7 +2206,7 @@ function renderSales(){
     if(String(yi)!==String(yk))delete salesData[yk]; // 文字列キーを削除
   });
   const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月','合計'];
-  const colors=['var(--accent-soft)','var(--accent-soft)','var(--color-success-strong)','var(--color-warning-strong)','var(--color-danger)','var(--accent-soft)','var(--color-warning)','var(--color-success-strong)','var(--accent-primary)','var(--accent-soft)','var(--accent-primary)'];
+  const colors=['#94a3b8','#60a5fa','#34d399','#f59e0b','#f87171','#a78bfa','#fb923c','#4ade80','#38bdf8','#e879f9','#185FA5'];
 
   // イベント帯ヘルパー：hex色→rgba変換
   function hexToRgba(hex,a){
@@ -2291,25 +2225,25 @@ function renderSales(){
   }
 
   // Table ヘッダー（1行のみ：イベント枠なし）
-  let th='<tr><th style="background:var(--color-warning-bg);padding:7px 10px;border:1px solid var(--bg-main);font-size:11px;color:var(--text-secondary);min-width:48px;">年</th>';
+  let th='<tr><th style="background:#faf9f6;padding:7px 10px;border:1px solid #e8e6e0;font-size:11px;color:#888;min-width:48px;">年</th>';
   for(let m=1;m<=12;m++){
-    th+=`<th style="background:var(--color-warning-bg);padding:7px 8px;border:1px solid var(--bg-main);font-size:11px;color:var(--text-secondary);text-align:right;min-width:72px;">${m}月</th>`;
+    th+=`<th style="background:#faf9f6;padding:7px 8px;border:1px solid #e8e6e0;font-size:11px;color:#888;text-align:right;min-width:72px;">${m}月</th>`;
   }
-  th+='<th style="background:var(--color-warning-bg);padding:7px 8px;border:1px solid var(--bg-main);font-size:11px;color:var(--text-secondary);text-align:right;min-width:64px;">合計</th></tr>';
+  th+='<th style="background:#faf9f6;padding:7px 8px;border:1px solid #e8e6e0;font-size:11px;color:#888;text-align:right;min-width:64px;">合計</th></tr>';
 
   let rows='';
   years.forEach((y,yi)=>{
     const d=salesData[y];if(!d)return;
     rows+=`<tr>`;
-    rows+=`<td style="padding:6px 10px;border:1px solid var(--bg-main);font-weight:600;font-size:12px;color:var(--text-primary);background:var(--color-warning-bg);">${y}</td>`;
+    rows+=`<td style="padding:6px 10px;border:1px solid #e8e6e0;font-weight:600;font-size:12px;color:#333;background:#faf9f6;">${y}</td>`;
     for(let m=1;m<=12;m++){
       const v=d[m];
       const ev=getEventForCell(y,m);
       const evBg=ev?hexToRgba(ev.color,0.1):'';
       const evBorderTop=ev?`border-top:2px solid ${hexToRgba(ev.color,0.5)};`:'';
-      const hoverBg=ev?hexToRgba(ev.color,0.22):'var(--accent-bg)';
-      const cellStyle=`padding:6px 8px;border:1px solid var(--bg-main);${evBorderTop}text-align:right;font-size:11px;cursor:pointer;transition:background .12s;${evBg?'background:'+evBg+';':''}`;
-      const valStyle=v?'color:var(--text-primary);':'color:var(--border-light);';
+      const hoverBg=ev?hexToRgba(ev.color,0.22):'#f0f4ff';
+      const cellStyle=`padding:6px 8px;border:1px solid #e8e6e0;${evBorderTop}text-align:right;font-size:11px;cursor:pointer;transition:background .12s;${evBg?'background:'+evBg+';':''}`;
+      const valStyle=v?'color:#1a1a1a;':'color:#ccc;';
       rows+=`<td style="${cellStyle}${valStyle}" onclick="openSalesEdit(${y},${m})" title="${y}年${m}月を編集${ev?' ['+ev.name+']':''}"
         onmouseenter="this.style.background='${hoverBg}'" onmouseleave="this.style.background='${evBg}'"
         >${v?'¥'+(v/10000).toFixed(0)+'万':'—'}</td>`;
@@ -2317,7 +2251,7 @@ function renderSales(){
     // 合計列
     const tot=Object.keys(d).filter(k=>k!=='total'&&d[k]).reduce((s,k)=>s+(d[k]||0),0)||null;
     salesData[y].total=tot;
-    rows+=`<td style="padding:6px 8px;border:1px solid var(--bg-main);text-align:right;font-size:11px;font-weight:600;color:var(--accent-primary);background:var(--accent-bg);">${tot?'¥'+(tot/10000).toFixed(0)+'万':'—'}</td>`;
+    rows+=`<td style="padding:6px 8px;border:1px solid #e8e6e0;text-align:right;font-size:11px;font-weight:600;color:#185FA5;background:#eef4fc;">${tot?'¥'+(tot/10000).toFixed(0)+'万':'—'}</td>`;
     rows+='</tr>';
   });
   document.getElementById('sales-table').innerHTML=`<thead>${th}</thead><tbody>${rows}</tbody>`;
@@ -2349,7 +2283,7 @@ function renderSales(){
   renderSalesEventsList();
 
   const leg=document.getElementById('sales-legend');
-  leg.innerHTML=years.map((y,i)=>`<div style="display:flex;align-items:center;gap:4px;"><div style="width:20px;height:3px;background:${colors[i]};border-radius:2px;${y===2026?'border:1px dashed '+colors[i]+';background:transparent;':''}" ></div><span style="color:var(--text-secondary);">${y}</span></div>`).join('');
+  leg.innerHTML=years.map((y,i)=>`<div style="display:flex;align-items:center;gap:4px;"><div style="width:20px;height:3px;background:${colors[i]};border-radius:2px;${y===2026?'border:1px dashed '+colors[i]+';background:transparent;':''}" ></div><span style="color:#555;">${y}</span></div>`).join('');
 }
 
 // ============================================================
@@ -2403,8 +2337,8 @@ function renderParking(){
   }
   const totalCnt=manualCnt+autoCnt;
   document.getElementById('park-summary').innerHTML=
-    `<div class="rs-summary-chip" style="background:var(--accent-bg);color:var(--accent-primary);"><span style="font-size:10px;">今月売上</span><span style="font-size:16px;">¥${monthTotal.toLocaleString()}</span></div>`
-   +`<div class="rs-summary-chip" style="background:var(--color-success-bg);color:var(--color-success-strong);"><span style="font-size:10px;">利用件数</span><span style="font-size:16px;">${totalCnt}件</span></div>`
+    `<div class="rs-summary-chip" style="background:#eef2ff;color:#3730a3;"><span style="font-size:10px;">今月売上</span><span style="font-size:16px;">¥${monthTotal.toLocaleString()}</span></div>`
+   +`<div class="rs-summary-chip" style="background:#f0fdf4;color:#166534;"><span style="font-size:10px;">利用件数</span><span style="font-size:16px;">${totalCnt}件</span></div>`
   ;
 }
 
@@ -2500,9 +2434,9 @@ function renderRental(){
   });
   const cnt=monthList.length;
   const avg=cnt?Math.round(monthTotal/cnt):0;
-  let summaryHtml=`<div class="rs-summary-chip" style="background:var(--accent-bg);color:var(--accent-primary);"><span style="font-size:10px;">今月売上</span><span style="font-size:16px;">¥${monthTotal.toLocaleString()}</span></div>`
-    +`<div class="rs-summary-chip" style="background:var(--color-success-bg);color:var(--color-success-strong);"><span style="font-size:10px;">予約件数</span><span style="font-size:16px;">${cnt}件</span></div>`
-    +`<div class="rs-summary-chip" style="background:var(--color-warning-bg);color:var(--color-warning-strong);"><span style="font-size:10px;">平均単価</span><span style="font-size:16px;">¥${avg.toLocaleString()}</span></div>`;
+  let summaryHtml=`<div class="rs-summary-chip" style="background:#eef2ff;color:#3730a3;"><span style="font-size:10px;">今月売上</span><span style="font-size:16px;">¥${monthTotal.toLocaleString()}</span></div>`
+    +`<div class="rs-summary-chip" style="background:#f0fdf4;color:#166534;"><span style="font-size:10px;">予約件数</span><span style="font-size:16px;">${cnt}件</span></div>`
+    +`<div class="rs-summary-chip" style="background:#fef9c3;color:#854d0e;"><span style="font-size:10px;">平均単価</span><span style="font-size:16px;">¥${avg.toLocaleString()}</span></div>`;
   Object.entries(siteAgg).forEach(([s,a])=>{
     summaryHtml+=`<div class="rs-summary-chip ${RENTAL_SITE_CLASS[s]||''}"><span style="font-size:10px;">${s}</span><span style="font-size:13px;">${a.count}件 ¥${a.sum.toLocaleString()}</span></div>`;
   });
@@ -2635,14 +2569,14 @@ function showRentalDay(y,m,d){
   const list=rentalSpaceReservations.filter(r=>rentalDateOf(r)===dk);
   document.getElementById('rdm-title').textContent=`📷 ${m}/${d} のレンタルスペース予約`;
   let html='';
-  if(list.length===0)html='<div style="color:var(--text-muted);">予約なし</div>';
+  if(list.length===0)html='<div style="color:#aaa;">予約なし</div>';
   list.forEach(r=>{
     const t1=(r.start||'').slice(11,16),t2=(r.end||'').slice(11,16);
-      html+=`<div style="padding:8px;border-bottom:1px solid var(--bg-soft);cursor:pointer;" onclick="closeM('rental-day-modal');showP('rental',document.querySelector('.nitem[onclick*=rental]'));openRentalEdit(${r.id});">`
+      html+=`<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer;" onclick="closeM('rental-day-modal');showP('rental',document.querySelector('.nitem[onclick*=rental]'));openRentalEdit(${r.id});">`
         +`<strong>${t1}-${t2}</strong> ${esc(r.facility)} ／ ${esc(r.name)}（${r.guests}名）<br>`
-        +`<span style="font-size:11px;color:var(--text-secondary);">${esc(r.purpose)} ／ ${esc(r.site)} ／ ¥${(r.price||0).toLocaleString()}</span>`
-        +(r.options&&r.options.length?`<br><span style="font-size:11px;color:var(--text-secondary);">🔧 ${esc(r.options.join('・'))}</span>`:'')
-        +(r.detail?`<br><span style="font-size:11px;color:var(--text-secondary);white-space:pre-wrap;">${esc(r.detail)}</span>`:'')
+        +`<span style="font-size:11px;color:#666;">${esc(r.purpose)} ／ ${esc(r.site)} ／ ¥${(r.price||0).toLocaleString()}</span>`
+        +(r.options&&r.options.length?`<br><span style="font-size:11px;color:#888;">🔧 ${esc(r.options.join('・'))}</span>`:'')
+        +(r.detail?`<br><span style="font-size:11px;color:#555;white-space:pre-wrap;">${esc(r.detail)}</span>`:'')
         +`</div>`;
   });
   document.getElementById('rdm-list').innerHTML=html;
@@ -2756,7 +2690,7 @@ function renderCancel(){
   filtered.forEach(function(c){
     const i=cancelList.indexOf(c);
     const cc=c.cat==='Ｓ'?'ts':c.cat==='Ｇ'?'tg2':'tc2';
-    const rowBg=!c.payDone?'background:var(--color-danger-bg);':'';
+    const rowBg=!c.payDone?'background:#fff8f8;':'';
     const chk='<input type="checkbox" '+(c.payDone?'checked':'')+' onchange="toggleCancelPayDone('+i+',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--seaglass);">';
     const restore=c.restoreData?'<button class="btn btn-xs" style="margin-right:4px;background:var(--ocean-light);color:var(--ocean);border-color:var(--ocean);" onclick="restoreCancel('+i+')">復元</button>':'';
     html+='<tr style="'+rowBg+'">'
@@ -2774,7 +2708,7 @@ function renderCancel(){
       +'<td style="white-space:nowrap;">'+restore+'<button class="btn btn-xs" onclick="openCancelEdit('+i+')">編集</button></td>'
       +'</tr>';
   });
-  if(!filtered.length)html+='<tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:16px;">データなし</td></tr>';
+  if(!filtered.length)html+='<tr><td colspan="12" style="text-align:center;color:#aaa;padding:16px;">データなし</td></tr>';
   table.innerHTML=html+'</tbody>';
 }
 function exportCancelCSV(){
@@ -2830,9 +2764,9 @@ function renderSurf(){
   let html='<thead><tr><th>日程</th><th>氏名</th><th>予約サイト</th><th>料金</th><th>性別</th><th>サーフィン日</th><th>ショップ</th><th>連絡日</th><th>入金日</th><th>備考</th><th></th></tr></thead><tbody>';
   filtered.forEach(s=>{
     const i=surfList.indexOf(s);
-    html+=`<tr><td>${esc(s.date)}</td><td style="font-weight:600;">${esc(s.name)}${s.auto?' <span style="font-size:9px;color:var(--text-muted);">自動</span>':''}</td><td>${esc(s.site)}</td><td>${s.price?'¥'+s.price.toLocaleString():'—'}</td><td><span class="tag ${s.sex==='男'?'tm':'tf'}">${esc(s.sex)}</span></td><td style="font-size:11px;">${esc(s.surfday||'—')}</td><td>${esc(s.shop||'—')}</td><td style="font-size:11px;">${esc(s.contact||'—')}</td><td style="font-size:11px;">${esc(s.payment||'—')}</td><td style="font-size:11px;">${esc(s.note)}</td><td><button class="btn btn-xs" onclick="openSurfEdit(${i})">編集</button></td></tr>`;
+    html+=`<tr><td>${esc(s.date)}</td><td style="font-weight:600;">${esc(s.name)}${s.auto?' <span style="font-size:9px;color:#aaa;">自動</span>':''}</td><td>${esc(s.site)}</td><td>${s.price?'¥'+s.price.toLocaleString():'—'}</td><td><span class="tag ${s.sex==='男'?'tm':'tf'}">${esc(s.sex)}</span></td><td style="font-size:11px;">${esc(s.surfday||'—')}</td><td>${esc(s.shop||'—')}</td><td style="font-size:11px;">${esc(s.contact||'—')}</td><td style="font-size:11px;">${esc(s.payment||'—')}</td><td style="font-size:11px;">${esc(s.note)}</td><td><button class="btn btn-xs" onclick="openSurfEdit(${i})">編集</button></td></tr>`;
   });
-  if(!filtered.length)html+='<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:16px;">データなし</td></tr>';
+  if(!filtered.length)html+='<tr><td colspan="11" style="text-align:center;color:#aaa;padding:16px;">データなし</td></tr>';
   document.getElementById('surf-table').innerHTML=html+'</tbody>';
 }
 function openSurfAdd(){editSurfIdx=null;document.getElementById('sm-title').textContent='サーフィン追加';document.getElementById('sm-del-btn').style.display='none';['sm-name','sm-nat','sm-surfday','sm-note','sm-price'].forEach(id=>document.getElementById(id).value='');document.getElementById('sm-date').value='';document.getElementById('sm-contact').value='';document.getElementById('sm-payment').value='';document.getElementById('sm-shop').value='ミスティ';document.getElementById('surf-modal').classList.add('open');}
@@ -2898,15 +2832,15 @@ function renderRooms(){
   if(!tbody)return;
   tbody.innerHTML=rooms.map((r,i)=>`
     <tr style="border-bottom:1px solid var(--sand-border);${i%2===1?'background:var(--sand);':''}">
-      <td style="padding:12px 16px;color:var(--text-secondary);">${esc((roomSettings[r.id]&&roomSettings[r.id].facilityName)||'江の島ゲストハウス134')}</td>
+      <td style="padding:12px 16px;color:#555;">${esc((roomSettings[r.id]&&roomSettings[r.id].facilityName)||'江の島ゲストハウス134')}</td>
       <td style="padding:12px 16px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="width:10px;height:10px;border-radius:50%;background:${r.color};flex-shrink:0;display:inline-block;"></span>
           <span style="font-weight:600;color:var(--text);">${esc(r.no)}</span>
         </div>
       </td>
-      <td style="padding:12px 16px;color:var(--text-primary);">${esc(r.type)}</td>
-      <td style="padding:12px 16px;text-align:center;color:var(--text-secondary);">${r.cap}名</td>
+      <td style="padding:12px 16px;color:#333;">${esc(r.type)}</td>
+      <td style="padding:12px 16px;text-align:center;color:#555;">${r.cap}名</td>
       <td style="padding:12px 16px;text-align:center;">
         <button class="btn btn-xs" onclick="openRoomEdit(${r.id})" style="font-size:11px;padding:4px 12px;">詳細</button>
       </td>
@@ -3015,17 +2949,17 @@ function _addRoomMediaUrl(){
 function _renderRoomMediaList(){
   const list=document.getElementById('rm-media-list');
   if(!list)return;
-  if(!_rmMediaBuffer.length){ list.innerHTML='<div style="font-size:11px;color:var(--border-cashmere);padding:4px;">メディアは登録されていません</div>'; return; }
+  if(!_rmMediaBuffer.length){ list.innerHTML='<div style="font-size:11px;color:#bbb;padding:4px;">メディアは登録されていません</div>'; return; }
   list.innerHTML=_rmMediaBuffer.map((m,i)=>`
     <div class="rm-media-item" draggable="true" data-idx="${i}"
-      style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--color-warning-bg);border-radius:8px;cursor:grab;">
-      <span style="color:var(--border-light);font-size:13px;">⠿</span>
+      style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f9f8f5;border-radius:8px;cursor:grab;">
+      <span style="color:#ccc;font-size:13px;">⠿</span>
       <span style="font-size:13px;flex-shrink:0;">${_typeLabel(m.type).split(' ')[0]}</span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:11px;color:var(--text-secondary);">${_typeLabel(m.type)}</div>
-        <div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.url}</div>
+        <div style="font-size:11px;color:#888;">${_typeLabel(m.type)}</div>
+        <div style="font-size:11px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.url}</div>
       </div>
-      <button onclick="_removeRoomMedia(${i})" style="background:none;border:none;color:var(--color-danger-strong);cursor:pointer;font-size:12px;padding:4px 8px;flex-shrink:0;">削除</button>
+      <button onclick="_removeRoomMedia(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px;padding:4px 8px;flex-shrink:0;">削除</button>
     </div>`).join('');
   // D&D並び替え
   list.querySelectorAll('.rm-media-item').forEach(el=>{
@@ -3288,7 +3222,7 @@ function rmdRenderList(){
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:3px;">${esc(r.title)}</div>
         <div style="font-size:11px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-          <span style="font-weight:700;color:${(SN_RANK_STYLE[r.rank]||{}).color||'var(--text-secondary)'};">Rank ${esc(r.rank)}</span>
+          <span style="font-weight:700;color:${(SN_RANK_STYLE[r.rank]||{}).color||'#555'};">Rank ${esc(r.rank)}</span>
           <span style="padding:1px 7px;border-radius:99px;${ts.badge}">${esc(ts.label)}</span>
           <span>🔁 ${esc(_rmdScheduleLabel(r))}</span>
         </div>
@@ -3349,7 +3283,7 @@ function renderStaffNotes(){
   el.innerHTML=notes.map(n=>{
     const ts=getSNTypeStyle(n.type);
     const rs=SN_RANK_STYLE[n.rank||'C'];
-    return `<div class="card" style="margin-bottom:8px;border-left:4px solid ${n.done?'var(--text-muted)':ts.border};opacity:${n.done?0.6:1};"
+    return `<div class="card" style="margin-bottom:8px;border-left:4px solid ${n.done?'#B4B2A9':ts.border};opacity:${n.done?0.6:1};"
       data-snid="${n.id}"
       ondragover="event.preventDefault();this.style.outline='2px dashed var(--ocean)'"
       ondragleave="this.style.outline=''"
@@ -3357,16 +3291,16 @@ function renderStaffNotes(){
       <div style="display:flex;align-items:flex-start;gap:10px;">
         <div draggable="true" ondragstart="snDragStart(event,${n.id})" title="ドラッグで並び替え" style="color:var(--light);font-size:18px;cursor:grab;padding-top:1px;flex-shrink:0;line-height:1;">⠿</div>
         <div onclick="toggleSN(${n.id})" style="width:22px;height:22px;border-radius:6px;border:2px solid ${n.done?'var(--seaglass)':'var(--sand-border)'};background:${n.done?'var(--seaglass)':'var(--white)'};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px;">
-          ${n.done?'<span style="color:var(--bg-surface);font-size:13px;line-height:1;">✓</span>':''}
+          ${n.done?'<span style="color:#fff;font-size:13px;line-height:1;">✓</span>':''}
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-            ${n.repeatReminderId?`<span style="font-size:10px;font-weight:700;color:var(--accent-deep);background:var(--color-success-bg);border:1px solid var(--color-success);border-radius:99px;padding:2px 8px;">🔁 定期</span>`:''}
+            ${n.repeatReminderId?`<span style="font-size:10px;font-weight:700;color:#0e6b5e;background:#d1f2eb;border:1px solid #7fd6c4;border-radius:99px;padding:2px 8px;">🔁 定期</span>`:''}
             ${snRankSelectHtml(n.id,n,11)}
             ${snTypeSelectHtml(n.id,n,11)}
             <span style="font-size:11px;font-weight:600;color:var(--ink);">${esc(n.author)}</span>
             <span style="font-size:11px;color:var(--muted);">${esc(n.created)}</span>
-            ${n.done?`<span style="font-size:10px;color:var(--color-success-strong);margin-left:auto;">✓ 確認済</span>`:''}
+            ${n.done?`<span style="font-size:10px;color:var(--seaglass);margin-left:auto;">✓ 確認済</span>`:''}
           </div>
           <!-- タイトル（タップで直接編集） -->
           <div class="sn-ce" contenteditable="true" data-ph="タイトルを入力"

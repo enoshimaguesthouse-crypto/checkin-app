@@ -7,15 +7,15 @@ let priorityCleaningItems=[];
 let priorityCleaningSettings={defaultAlertDays:30, viewMonth:null, showThisMonthOnly:false, categoryOrder:null};
 let nextPriorityCleaningId=1;
 const PRIORITY_CLEAN_CATEGORIES=[
-  {key:'ほこり',     icon:'🌫️', color:'var(--text-muted)'},
-  {key:'湿気・カビ', icon:'💧',  color:'var(--accent-primary)'},
-  {key:'害虫',       icon:'🐛',  color:'var(--color-warning-strong)'},
-  {key:'臭気',       icon:'👃',  color:'var(--color-danger)'},
-  {key:'サビ',       icon:'🔧',  color:'var(--text-secondary)'},
-  {key:'床',         icon:'🧴',  color:'var(--color-success-strong)'},
-  {key:'ペンキ',     icon:'🎨',  color:'var(--accent-primary)'},
-  {key:'整理',       icon:'📦',  color:'var(--color-warning-strong)'},
-  {key:'補充',       icon:'🧺',  color:'var(--text-muted)'},
+  {key:'ほこり',     icon:'🌫️', color:'#a89b8a'},
+  {key:'湿気・カビ', icon:'💧',  color:'#5fa8a2'},
+  {key:'害虫',       icon:'🐛',  color:'#9c7a52'},
+  {key:'臭気',       icon:'👃',  color:'#c47b6f'},
+  {key:'サビ',       icon:'🔧',  color:'#8a8077'},
+  {key:'床',         icon:'🧴',  color:'#8b9b6e'},
+  {key:'ペンキ',     icon:'🎨',  color:'#7e9aab'},
+  {key:'整理',       icon:'📦',  color:'#b59169'},
+  {key:'補充',       icon:'🧺',  color:'#9c8aaa'},
 ];
 const PRIORITY_CLEAN_FREQUENCIES=['毎日','1週間','2週間','1ヶ月','2ヶ月','半年','1年'];
 const PRIORITY_CLEAN_DEFAULTS=[
@@ -175,7 +175,7 @@ function renderGarbageSettings(){
         <span style="font-size:10.5px;font-weight:700;color:var(--muted);">表示タイミング</span>
         <label><input type="checkbox" ${r.showToday?'checked':''} onchange="gbEdit(${i},'showToday',this.checked)"> 当日表示</label>
         <label><input type="checkbox" ${r.showPrevDay?'checked':''} onchange="gbEdit(${i},'showPrevDay',this.checked)"> 前日表示（明日 〇〇）</label>
-        <button class="btn btn-xs" style="margin-left:auto;color:var(--color-danger-strong);font-size:11px;" onclick="removeGarbageRule(${i})">🗑 削除</button>
+        <button class="btn btn-xs" style="margin-left:auto;color:var(--coral);font-size:11px;" onclick="removeGarbageRule(${i})">🗑 削除</button>
       </div>
     </div>`).join('');
 }
@@ -225,15 +225,15 @@ function renderGarbagePreview(){
   if(!list.length){ el.innerHTML=''; return; }
   const todayCount=list.filter(n=>n.when==='today').length;
   let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-    <div style="font-size:14px;font-weight:700;color:var(--color-warning-strong);">⭐ ゴミ回収${todayCount?`（本日 ${todayCount}件）`:''}</div>
+    <div style="font-size:14px;font-weight:700;color:#7a4f00;">⭐ ゴミ回収${todayCount?`（本日 ${todayCount}件）`:''}</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:6px;">`;
   list.forEach(n=>{
     const isToday=n.when==='today';
-    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-surface);border:1.5px solid ${isToday?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${isToday?'var(--color-danger)':'var(--accent-soft)'};border-radius:8px;">
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border:1.5px solid ${isToday?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${isToday?'#e67e6a':'#94a3b8'};border-radius:8px;">
       <span style="font-size:15px;flex-shrink:0;">${esc(n.rule.icon||'🗑')}</span>
       <span style="font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(n.rule.name||'')}</span>
-      <span style="font-size:11px;background:${isToday?'var(--color-danger)':'var(--accent-bg)'};color:${isToday?'var(--bg-surface)':'var(--accent-primary)'};padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">${isToday?'本日':'明日'}</span>
+      <span style="font-size:11px;background:${isToday?'#e67e6a':'#eef5f4'};color:${isToday?'#fff':'#3b6c69'};padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">${isToday?'本日':'明日'}</span>
     </div>`;
   });
   html+=`</div>`;
@@ -565,8 +565,8 @@ function renderCleaning(){
         ?`（${Math.round((new Date('2000/01/01 '+d.completedAt)-new Date('2000/01/01 '+d.startAt))/60000)}分）`:'';
 
       // カードのボーダー色（次予約準備は清掃セルと一目で区別できる水色系）
-      const borderColor=isPrep?'var(--accent-primary)':isStayover?'var(--color-success-strong)':isCompleted?'var(--color-success-strong)':'var(--color-danger)';
-      const cardBg=isPrep?(isCompleted?'var(--accent-bg)':'var(--accent-bg)'):isStayover?'var(--color-success-bg)':isCompleted?'var(--bg-soft)':'var(--bg-surface)';
+      const borderColor=isPrep?'#0284c7':isStayover?'#22c55e':isCompleted?'#3d9441':'#ef4444';
+      const cardBg=isPrep?(isCompleted?'#f4f8fa':'#f0f9ff'):isStayover?'#f0fdf4':isCompleted?'#f9f9f9':'#fff';
       // 部屋の識別記号（セクション見出しと重複するグループ名を除いた残り。例:「H」「A」「103」）
       const roomLabel=_clRoomLabel(room);
       // ワンタップで清掃待ち⇄清掃済（次予約準備セルは 未完了⇄次予約準備完了）を切り替える
@@ -582,13 +582,13 @@ function renderCleaning(){
           style="border-left-color:${borderColor};background:${cardBg};">
           <div class="cl-card-head">
             <span class="cl-room-code">${esc(roomLabel)}</span>
-            <span class="cl-badge" style="background:var(--accent-bg);color:var(--accent-deep);">🛏 次予約あり</span>
+            <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🛏 次予約あり</span>
           </div>
           <div class="cl-next-alert">⚠️ 次予約あり（${guestCountOf(ng)}名 / ${info.nextNights||1}泊）${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>
           <div class="cl-guest">👤 ${esc(ng.name||'—')}</div>
           <div class="cl-badges">
-            <span class="cl-badge" style="background:var(--color-success-bg);color:var(--color-success-strong);">✅ 清掃不要</span>
-            <span class="cl-badge" style="background:var(--accent-bg);color:var(--accent-deep);">🧳 準備のみ</span>
+            <span class="cl-badge" style="background:#dcfce7;color:#15803d;">✅ 清掃不要</span>
+            <span class="cl-badge" style="background:#e0f2fe;color:#075985;">🧳 準備のみ</span>
           </div>
           <div class="cl-meta-row">
             <span class="cl-assignee">📝 担当：${esc(d.assignedTo||'未割当')}${d.completedAt?` ／ 完了 ${esc(d.completedAt)}${elapsed}`:''}</span>
@@ -605,8 +605,8 @@ function renderCleaning(){
         <div class="cl-card-head">
           <span class="cl-room-code">${esc(roomLabel)}</span>
           ${isStayover
-            ?'<span class="cl-badge" style="background:var(--color-success-bg);color:var(--color-success-strong);">🏠 連泊中</span>'
-            :'<span class="cl-badge" style="background:var(--color-danger-bg);color:var(--color-danger-strong);">🔴 本日OUT</span>'}
+            ?'<span class="cl-badge" style="background:#dcfce7;color:#15803d;">🏠 連泊中</span>'
+            :'<span class="cl-badge" style="background:#fee2e2;color:#991b1b;">🔴 本日OUT</span>'}
         </div>
         ${info.hasNextBooking
           ? `<div class="cl-next-alert">⚠️ 次予約あり${info.nextGuest?'（'+guestCountOf(info.nextGuest)+'名 / '+(info.nextNights||1)+'泊）':''}${nextTime?' 🕒'+esc(nextTime)+' IN':''}</div>`
@@ -770,13 +770,13 @@ function openPriorityCleaningEdit(itemId){
   const monthsArea=document.getElementById('pc-edit-months');
   monthsArea.innerHTML=Array.from({length:12},(_,i)=>{
     const m=i+1;const checked=item.scheduledMonths&&item.scheduledMonths.includes(m);
-    return `<label style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;border:1.5px solid ${checked?'var(--accent-primary)':'var(--sand-border)'};border-radius:6px;background:${checked?'var(--accent-bg)':'var(--bg-surface)'};cursor:pointer;font-size:11px;"><input type="checkbox" data-month="${m}" ${checked?'checked':''} style="margin:0;">${m}月</label>`;
+    return `<label style="display:inline-flex;align-items:center;gap:3px;padding:4px 7px;border:1.5px solid ${checked?'#5fa8a2':'var(--sand-border)'};border-radius:6px;background:${checked?'#e8f4f3':'#fff'};cursor:pointer;font-size:11px;"><input type="checkbox" data-month="${m}" ${checked?'checked':''} style="margin:0;">${m}月</label>`;
   }).join('');
   monthsArea.querySelectorAll('input[type=checkbox]').forEach(cb=>{
     cb.addEventListener('change',()=>{
       const lbl=cb.parentElement;
-      if(cb.checked){lbl.style.borderColor='var(--accent-primary)';lbl.style.background='var(--accent-bg)';}
-      else{lbl.style.borderColor='var(--sand-border)';lbl.style.background='var(--bg-surface)';}
+      if(cb.checked){lbl.style.borderColor='#5fa8a2';lbl.style.background='#e8f4f3';}
+      else{lbl.style.borderColor='var(--sand-border)';lbl.style.background='#fff';}
     });
   });
   document.getElementById('pc-edit-alert').value=item.alertDays!=null?item.alertDays:'';
@@ -864,16 +864,16 @@ function renderPriorityCleaningPreview(){
     .sort((a,b)=>(a.order||0)-(b.order||0))
     .filter(it=>shouldDisplayTask(it,now));
   if(!items.length){
-    el.innerHTML=`<div style="background:var(--accent-bg);border:1.5px solid var(--border-strong);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
+    el.innerHTML=`<div style="background:#f0faf9;border:1.5px solid #c0e0dc;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:18px;">✅</span>
-      <span style="font-size:13px;color:var(--accent-primary);font-weight:600;">今月予定の重点清掃はすべて実施済みです</span>
+      <span style="font-size:13px;color:#3b6c69;font-weight:600;">今月予定の重点清掃はすべて実施済みです</span>
       <button class="btn btn-xs" onclick="showP('cleaning-focus',document.getElementById('nitem-cleaning-focus'))" style="margin-left:auto;font-size:11px;">⭐ 詳細を見る</button>
     </div>`;
     return;
   }
   const alertItems=items.filter(it=>isPriorityCleaningAlert(it));
   let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-    <div style="font-size:14px;font-weight:700;color:var(--color-warning-strong);">⭐ 今月の重点清掃（未実施 ${items.length}件${alertItems.length?` ／ ⚠ 警告 ${alertItems.length}件`:''}）</div>
+    <div style="font-size:14px;font-weight:700;color:#7a4f00;">⭐ 今月の重点清掃（未実施 ${items.length}件${alertItems.length?` ／ ⚠ 警告 ${alertItems.length}件`:''}）</div>
     <button class="btn btn-xs" onclick="showP('cleaning-focus',document.getElementById('nitem-cleaning-focus'))" style="margin-left:auto;font-size:11px;">すべて見る →</button>
   </div>
   <div style="display:flex;flex-direction:column;gap:6px;">`;
@@ -881,14 +881,14 @@ function renderPriorityCleaningPreview(){
   items.forEach(it=>{
     const alert=isPriorityCleaningAlert(it);
     const days=getPriorityCleaningDaysSince(it);
-    const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐',color:'var(--text-muted)'};
-    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-surface);border:1.5px solid ${alert?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${alert?'var(--color-danger)':cat.color};border-radius:8px;">
+    const cat=PRIORITY_CLEAN_CATEGORIES.find(c=>c.key===it.category)||{icon:'⭐',color:'#aaa'};
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border:1.5px solid ${alert?'#e67e6a44':'var(--sand-border)'};border-left:4px solid ${alert?'#e67e6a':cat.color};border-radius:8px;">
       ${isAdmin?`<div class="pc-check ${it.history&&it.history.includes(todayKey)?'done':''}" onclick="togglePriorityCleaningDone(${it.id})" style="flex-shrink:0;" title="今日実施したことを記録"></div>`:''}
       <span style="font-size:15px;flex-shrink:0;">${cat.icon}</span>
       <span style="font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(it.name)}</span>
       ${isAdmin&&it.place?`<span style="font-size:12px;color:var(--muted);flex-shrink:0;white-space:nowrap;">${esc(it.place)}</span>`:''}
-      ${isAdmin?`<span style="font-size:11px;background:var(--accent-bg);color:var(--accent-primary);padding:2px 8px;border-radius:99px;font-weight:600;flex-shrink:0;white-space:nowrap;">${it.frequency}</span>`:''}
-      ${isAdmin&&alert?`<span style="font-size:11px;background:var(--color-danger);color:var(--bg-surface);padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
+      ${isAdmin?`<span style="font-size:11px;background:#eef5f4;color:#3b6c69;padding:2px 8px;border-radius:99px;font-weight:600;flex-shrink:0;white-space:nowrap;">${it.frequency}</span>`:''}
+      ${isAdmin&&alert?`<span style="font-size:11px;background:#e67e6a;color:#fff;padding:2px 8px;border-radius:99px;font-weight:700;flex-shrink:0;white-space:nowrap;">⚠${days!=null?` ${days}日`:'未実施'}</span>`:''}
     </div>`;
   });
   html+=`</div>`;
@@ -928,15 +928,15 @@ function renderPriorityCleaning(){
     <div class="pc-section-title">⭐ 重点清掃項目</div>
     <div class="pc-section-stats">
       <div>今月予定 <strong>${scheduledCount}</strong>件</div>
-      <div>実施済 <strong style="color:var(--accent-primary);">${doneCount}</strong>件</div>
-      <div>未実施警告 <strong style="color:var(--color-danger-strong);">${alertCount}</strong>件</div>
+      <div>実施済 <strong style="color:#5fa8a2;">${doneCount}</strong>件</div>
+      <div>未実施警告 <strong style="color:#e67e6a;">${alertCount}</strong>件</div>
       <div>項目数 <strong>${items.length}</strong></div>
     </div>
   </div>
   <div class="pc-toolbar">
     <button class="btn pc-btn-add" onclick="openPriorityCleaningEdit(null)">＋ 項目を追加</button>
     <button class="btn" onclick="setPriorityCleaningAlertDays()">⚙ アラート設定（${priorityCleaningSettings.defaultAlertDays}日）</button>
-    <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 11px;border:1.5px solid ${priorityCleaningSettings.showThisMonthOnly?'var(--color-warning)':'var(--sand-border)'};border-radius:6px;background:${priorityCleaningSettings.showThisMonthOnly?'var(--color-warning-bg)':'var(--bg-surface)'};">
+    <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 11px;border:1.5px solid ${priorityCleaningSettings.showThisMonthOnly?'#f4b860':'var(--sand-border)'};border-radius:6px;background:${priorityCleaningSettings.showThisMonthOnly?'#fff7e6':'#fff'};">
       <input type="checkbox" ${priorityCleaningSettings.showThisMonthOnly?'checked':''} onchange="togglePriorityCleaningThisMonthOnly()" style="margin:0;"> ⚡ 今月予定のみ表示
     </label>
     <div style="flex:1;"></div>
@@ -949,7 +949,7 @@ function renderPriorityCleaning(){
     </div>
     <div class="pc-month-pills">
       ${monthCounts.length===0?'<span style="font-size:11px;color:var(--muted);">この月はまだ実施記録がありません</span>':monthCounts.map(x=>`<div class="pc-month-pill"><span>${esc(x.name)}</span><strong>${x.count}回</strong></div>`).join('')}
-      ${zeroCount.map(it=>`<div class="pc-month-pill" style="color:var(--text-muted);"><span>${esc(it.name)}</span><strong style="color:var(--text-muted);">0回</strong></div>`).join('')}
+      ${zeroCount.map(it=>`<div class="pc-month-pill" style="color:#aaa;"><span>${esc(it.name)}</span><strong style="color:#aaa;">0回</strong></div>`).join('')}
     </div>
   </div>
   <div class="pc-grid">`;
@@ -996,7 +996,7 @@ function renderPriorityCleaning(){
     html+=`</div></div>`;
   });
   if(filtered.length===0){
-    html+=`<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:13px;background:var(--bg-surface);border:1px dashed var(--sand-border);border-radius:10px;">${priorityCleaningSettings.showThisMonthOnly?'今月予定の項目はありません':'重点清掃項目がありません。「項目を追加」から登録してください。'}</div>`;
+    html+=`<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);font-size:13px;background:#fff;border:1px dashed var(--sand-border);border-radius:10px;">${priorityCleaningSettings.showThisMonthOnly?'今月予定の項目はありません':'重点清掃項目がありません。「項目を追加」から登録してください。'}</div>`;
   }
   html+=`</div>`;
   el.innerHTML=html;
@@ -1689,7 +1689,7 @@ function msRenderAttachments(){
        <span class="nm" title="${esc(a.name||'')}">📎 ${esc(a.name||a.id)}</span>
        ${i<list.length-1?`<span class="mv" title="後へ" onclick="msMoveAttachment(${i},1)">▶</span>`:''}
        <span class="x" title="削除" onclick="msRemoveAttachment(${i})">✕</span>
-     </span>`).join('') : '<span style="font-size:11.5px;color:var(--text-muted);">添付なし</span>';
+     </span>`).join('') : '<span style="font-size:11.5px;color:#aaa;">添付なし</span>';
 }
 function msRemoveAttachment(i){
   const t=_msCurTpl(), l=_mailCur.lang;
@@ -1762,23 +1762,23 @@ function openAutoAssignModal(){
   let html='';
   Object.entries(groups).forEach(([grpName,grpRooms])=>{
     html+=`<div style="margin-bottom:20px;">
-      <div style="font-size:12px;font-weight:700;color:var(--text-secondary);letter-spacing:.05em;border-bottom:1px solid var(--sand-border);padding-bottom:4px;margin-bottom:8px;">${grpName}</div>
+      <div style="font-size:12px;font-weight:700;color:#888;letter-spacing:.05em;border-bottom:1px solid var(--sand-border);padding-bottom:4px;margin-bottom:8px;">${grpName}</div>
       <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="font-size:11px;color:var(--text-muted);">
+        <thead><tr style="font-size:11px;color:#aaa;">
           <th style="text-align:left;padding:4px 8px;font-weight:600;">部屋名</th>
           <th style="text-align:center;padding:4px 8px;font-weight:600;width:60px;">定員</th>
           <th style="text-align:center;padding:4px 8px;font-weight:600;width:100px;">優先順位</th>
         </tr></thead><tbody>`;
     grpRooms.forEach(r=>{
       const pri=getRoomPriority(r.id);
-      html+=`<tr style="border-bottom:1px solid var(--color-warning-bg);">
+      html+=`<tr style="border-bottom:1px solid #f5f3ef;">
         <td style="padding:7px 8px;font-size:13px;">${r.type.replace(r.group+'−','').replace(r.group+'　','')}</td>
-        <td style="text-align:center;padding:7px 8px;font-size:12px;color:var(--text-secondary);">${r.cap}名</td>
+        <td style="text-align:center;padding:7px 8px;font-size:12px;color:#888;">${r.cap}名</td>
         <td style="text-align:center;padding:7px 8px;">
           <select data-room-id="${r.id}" style="padding:4px 6px;border:1px solid var(--sand-border);border-radius:6px;font-size:13px;width:64px;">
             ${Array.from({length:maxPri},(_,i)=>`<option value="${i+1}"${pri===i+1?' selected':''}>${i+1}</option>`).join('')}
           </select>
-          <span style="font-size:11px;color:var(--text-muted);margin-left:2px;">位</span>
+          <span style="font-size:11px;color:#aaa;margin-left:2px;">位</span>
         </td>
       </tr>`;
     });
