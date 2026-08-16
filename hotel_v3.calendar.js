@@ -2,8 +2,8 @@
 // REGISTER
 // ============================================================
 // 今日の列を強調する色（チェックイン済みのアンバー・部屋色のブルー等と被らないティール系）
-const TODAY_COLOR='var(--accent-primary)';
-const TODAY_COLOR_WASH='var(--accent-bg)';
+const TODAY_COLOR='#0e7490';
+const TODAY_COLOR_WASH='#f4fbfc';
 function toggleFilterPanel(e){
   e.stopPropagation();
   const p=document.getElementById('filter-panel');
@@ -107,15 +107,15 @@ function renderReg(){
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
     const rsCnt=rentalCountOnDate(year,month,d);
-    const rentalBg=rsCnt>0?'background:var(--color-warning-bg);':'';
+    const rentalBg=rsCnt>0?'background:#fff3e0;':'';
     const isToday=(year===_ty&&month===_tm&&d===_td);
     const todayId=isToday?' id="th-today"':'';
     // 今日の列：チェックイン済み(アンバー)・部屋色(ブルー等)と被らないティール系で強調（レビュー要望）
     const todayNumHtml=isToday
-      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--bg-surface);color:${TODAY_COLOR};border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
+      ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#fff;color:${TODAY_COLOR};border-radius:50%;font-size:12px;font-weight:700;line-height:1;">${d}</span>`
       : `${d}`;
     const todayBorder=isToday?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
-    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid var(--color-danger-strong)':'none'};${todayBorder}position:sticky;top:0;z-index:20;background:${isToday?TODAY_COLOR:'var(--white)'};color:${isToday?'var(--bg-surface)':''};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:var(--color-warning-strong);color:var(--bg-surface);font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
+    html+=`<th${todayId} style="width:${DAY_W}px;min-width:${DAY_W}px;border-top:${hol&&!isToday?'2px solid #c0392b':'none'};${todayBorder}position:sticky;top:0;z-index:20;background:${isToday?TODAY_COLOR:'var(--white)'};color:${isToday?'#fff':''};${rentalBg}" onclick="${rsCnt>0?`showRentalDay(${year},${month},${d})`:''}">${todayNumHtml}${rsCnt>0?` <span style="display:inline-block;background:#e65100;color:#fff;font-size:13px;padding:1px 5px;border-radius:99px;font-weight:700;vertical-align:middle;line-height:1.5;">📷</span>`:''}</th>`;
   }
   html+=`</tr>`;
   // 曜日行（sticky top:日付行高さ分）
@@ -123,10 +123,10 @@ function renderReg(){
   for(let d=1;d<=days;d++){
     const dow=gDow(year,month,d),hol=isHoliday(year,month,d);
     const rsCnt2=rentalCountOnDate(year,month,d);
-    const rentalBg2=rsCnt2>0?'background:var(--color-warning-bg);':'';
+    const rentalBg2=rsCnt2>0?'background:#fff3e0;':'';
     const isToday2=(year===_ty&&month===_tm&&d===_td);
     const todayBorder2=isToday2?`border-left:3px solid ${TODAY_COLOR};border-right:3px solid ${TODAY_COLOR};`:'';
-    html+=`<th style="font-size:10px;color:${isToday2?'var(--bg-surface)':dow===0||hol?'var(--color-danger-strong)':dow===6?'var(--accent-primary)':'var(--text-muted)'};font-weight:${isToday2?'700':'400'};${todayBorder2}position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?TODAY_COLOR:rsCnt2>0?'var(--color-warning-bg)':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
+    html+=`<th style="font-size:10px;color:${isToday2?'#fff':dow===0||hol?'#c0392b':dow===6?'#2980b9':'#aaa'};font-weight:${isToday2?'700':'400'};${todayBorder2}position:sticky;top:var(--th-row1-h,32px);z-index:20;background:${isToday2?TODAY_COLOR:rsCnt2>0?'#fff3e0':'var(--white)'};">${DOW[dow]}${hol?'祝':''}</th>`;
   }
   html+='</tr></thead><tbody>';
   let tM=0,tF=0,cS=0,cG=0,cC=0,cF=0,tS=0,tCash=0;
@@ -212,7 +212,7 @@ function renderReg(){
       const _kc=_rs.roomCode||''; // 部屋詳細＞「部屋：暗証番号」（各部屋固有のドア暗証番号）
       row+=`<td class="st2 ri" style="width:${C2}px;min-width:${C2}px;max-width:${C2}px;padding:${isMob?'2px 3px':'4px 6px'};vertical-align:middle;left:${C1}px;overflow:hidden;background:var(--white);">`
         +`<span style="font-size:${isMob?'9':'10'}px;font-weight:600;color:${grp.color};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${roomLabel}</span>`
-        +(_kc?`<span style="font-size:9px;color:var(--text-secondary);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">🔑${_kc}</span>`:'')
+        +(_kc?`<span style="font-size:9px;color:#888;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">🔑${_kc}</span>`:'')
         +`</td>`;
 
       let rS=0,rM=0,rF=0,skip=0;
@@ -280,15 +280,15 @@ function renderReg(){
             const isStripeC=cMeta.pay==='Stripe決済';
             const isBankC=cMeta.pay==='銀行振込';
             const payLabelC=isCashC?'💴現金':isStripeC?'Stripe':isBankC?'振込':'事前';
-            const payColorC=isCashC?'var(--coral)':isStripeC?'var(--accent-primary)':isBankC?'var(--seaglass)':'var(--ocean)';
-            const payBgC=isCashC?'var(--coral-lt)':isStripeC?'var(--accent-bg)':isBankC?'var(--seaglass-lt)':'var(--ocean-light)';
+            const payColorC=isCashC?'var(--coral)':isStripeC?'#7c3aed':isBankC?'var(--seaglass)':'var(--ocean)';
+            const payBgC=isCashC?'var(--coral-lt)':isStripeC?'#ede9fe':isBankC?'var(--seaglass-lt)':'var(--ocean-light)';
             const cinC=isCheckedIn(cMeta.status); // 貸切のチェックイン済み判定
             const gcC=guestCountOf(cMeta);
             const guestsBadgeC=`<span class="c-guests${cinC?' ci':''}">${gcC}</span>`;
             const payChipC=`<span class="c-pay" style="color:${payColorC};background:${payBgC};">${payLabelC}</span>`;
             const priceChipC=cMeta.price
               ? isCashC
-                ? `<span class="c-price" style="color:var(--color-danger-strong);font-size:10.5px;font-weight:800;background:var(--color-danger-bg);border-radius:3px;padding:1px 5px;border:1px solid var(--color-danger);">¥${cMeta.price.toLocaleString()}</span>`
+                ? `<span class="c-price" style="color:#c0392b;font-size:10.5px;font-weight:800;background:#fde8e6;border-radius:3px;padding:1px 5px;border:1px solid #e8877a;">¥${cMeta.price.toLocaleString()}</span>`
                 : `<span class="c-price">¥${cMeta.price.toLocaleString()}</span>`
               : '';
             const timeChipC=cMeta.arrivalTime?`<span class="c-time">${esc(cMeta.arrivalTime)}</span>`:'';
@@ -301,8 +301,8 @@ function renderReg(){
             const noteCleanC=(cMeta.note||'').replace(/🚙|🏄|surf|サーフ/gi,'').trim();
 
             // 貸切背景色
-            let cBorder='var(--color-warning-strong)',cBg='var(--color-warning-bg)';
-            if(cg==='ANNEX'){cBorder='var(--accent-soft)';cBg='var(--accent-bg)';}
+            let cBorder='#FF8F00',cBg='#FFF8E1';
+            if(cg==='ANNEX'){cBorder='#9370DB';cBg='#f5f0ff';}
 
             row+=`<td colspan="${charterSpan}" rowspan="${rowspan}" `
               +`style="padding:0;vertical-align:top;cursor:pointer;" `
@@ -315,9 +315,9 @@ function renderReg(){
               +`oncontextmenu="event.preventDefault();charterCiFromContext('${cg}',${booking.startDay},${month})">`
               // 上段：🔒 + アイコン + 氏名 + 人数 + 支払 + 料金
               +`<div class="c-namerow">`
-              +`<span style="font-size:8px;font-weight:700;color:var(--color-warning-strong);background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`
+              +`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`
               +planIconsHtmlC
-              +`<span class="c-name" style="color:${cinC?'var(--color-warning-strong)':'var(--ocean)'};">${esc(cMeta.name||'貸切')}</span>`
+              +`<span class="c-name" style="color:${cinC?'#92400e':'var(--ocean)'};">${esc(cMeta.name||'貸切')}</span>`
               +guestsBadgeC+payChipC+priceChipC
               +`</div>`
               // 下段：サイト + 性別 + 区分 + 国籍 + 時刻 + 泊数 + 備考
@@ -393,8 +393,8 @@ function renderReg(){
           }
           // 貸切背景色：本館→薄オレンジ、ANNEX→薄紫（他キーワード未設定時のみ）
           if(isCharter&&!planBorder){
-            if(g.charterGroup==='ANNEX'){planBorder='var(--accent-soft)';planBg='var(--accent-bg)';planBorders=[planBorder];}
-            else{planBorder='var(--color-warning-strong)';planBg='var(--color-warning-bg)';planBorders=[planBorder];}
+            if(g.charterGroup==='ANNEX'){planBorder='#9370DB';planBg='#f5f0ff';planBorders=[planBorder];}
+            else{planBorder='#FF8F00';planBg='#FFF8E1';planBorders=[planBorder];}
           }
           // 複数該当時は左帯を多重ストライプにして「複数設定されている」ことを判別可能にする
           // （box-shadowは先頭が手前に描画されるため、幅を7pxずつ広げて並べると縞になる）
@@ -433,23 +433,23 @@ function renderReg(){
 
           // ── 上段：アイコン + 氏名 + 人数 + 支払 + 料金（1行）──
           const payLabel=isCash?'💴現金':isStripe?'Stripe':isBank?'振込':'事前';
-          const payColor=isCash?'var(--color-danger-strong)':isStripe?'var(--accent-primary)':isBank?'var(--seaglass)':'var(--ocean)';
-          const payBg=isCash?'var(--coral-lt)':isStripe?'var(--accent-bg)':isBank?'var(--seaglass-lt)':'var(--ocean-light)';
+          const payColor=isCash?'var(--coral)':isStripe?'#7c3aed':isBank?'var(--seaglass)':'var(--ocean)';
+          const payBg=isCash?'var(--coral-lt)':isStripe?'#ede9fe':isBank?'var(--seaglass-lt)':'var(--ocean-light)';
           const guestsBadge=`<span class="c-guests${cin?' ci':''}">${gc}</span>`;
           const payChip=`<span class="c-pay" style="color:${payColor};background:${payBg};">${payLabel}</span>`;
           const priceChip=g.price
             ? isCash
-              ? `<span class="c-price" style="color:var(--color-danger-strong);font-size:10.5px;font-weight:800;background:var(--color-danger-bg);border-radius:3px;padding:1px 5px;border:1px solid var(--color-danger);">¥${g.price.toLocaleString()}</span>`
+              ? `<span class="c-price" style="color:#c0392b;font-size:10.5px;font-weight:800;background:#fde8e6;border-radius:3px;padding:1px 5px;border:1px solid #e8877a;">¥${g.price.toLocaleString()}</span>`
               : `<span class="c-price">¥${g.price.toLocaleString()}</span>`
             : '';
           const timeChip=g.arrivalTime?`<span class="c-time">${esc(g.arrivalTime)}</span>`:'';
           // 氏名・人数・支払・料金をすべて1行に
           row+=`<div class="c-namerow">`;
           if(cashOverdue)row+=`<span class="c-cash-alert" title="現金払い・到着時刻を1時間以上超過／未チェックイン">🔴</span>`;
-          if(isCharter)row+=`<span style="font-size:8px;font-weight:700;color:var(--color-warning-strong);background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`;
+          if(isCharter)row+=`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`;
           if(allIcons)row+=planIconsHtml;
           row+=`<span class="${ncls} c-name">${esc(g.name)}</span>`;
-          if(g.reservationId)row+=`<span style="font-size:9px;font-weight:600;color:var(--accent-primary);background:var(--accent-bg);border-radius:3px;padding:0 4px;flex-shrink:0;">${esc(g.reservationId)}</span>`;
+          if(g.reservationId)row+=`<span style="font-size:9px;font-weight:600;color:#185FA5;background:#e8f0fe;border-radius:3px;padding:0 4px;flex-shrink:0;">${esc(g.reservationId)}</span>`;
           row+=guestsBadge+payChip+priceChip;
           row+=`</div>`;
 
@@ -511,7 +511,7 @@ function renderReg(){
     }); // end grp.rooms.forEach
 
     // グループ間の区切り帯（4px 濃いグレー）
-    html+=`<tr><td colspan="${days+2}" style="height:4px;background:var(--border-cashmere);padding:0;border:none;"></td></tr>`;
+    html+=`<tr><td colspan="${days+2}" style="height:4px;background:#b0bec5;padding:0;border:none;"></td></tr>`;
   }); // end groups.forEach
   document.getElementById('main-table').innerHTML=html+'</tbody>';
   // 曜日行のtopを日付行の高さに合わせて動的設定
@@ -527,19 +527,19 @@ function renderReg(){
 
   // ── カテゴリ別ダッシュボード集計（フィルタ適用）──
   const CAT_GROUPS=[
-    {key:'本館−個室',      label:'本館個室',        color:'var(--accent-primary)',
+    {key:'本館−個室',      label:'本館個室',        color:'#185FA5',
      roomIds:rooms.filter(r=>r.group==='本館−個室').map(r=>r.id)},
-    {key:'本館−男女混合ドミトリー',label:'本館 ドミトリー',color:'var(--color-warning-strong)',
+    {key:'本館−男女混合ドミトリー',label:'本館 ドミトリー',color:'#854F0B',
      roomIds:rooms.filter(r=>r.group==='本館−男女混合ドミトリー').map(r=>r.id)},
-    {key:'ANNEX−個室',      label:'ANNEX 個室',      color:'var(--color-danger-strong)',
+    {key:'ANNEX−個室',      label:'ANNEX 個室',      color:'#993556',
      roomIds:rooms.filter(r=>r.group==='ANNEX−個室').map(r=>r.id)},
-    {key:'ANNEX−ドミトリー',label:'ANNEX ドミトリー',color:'var(--accent-primary)',
+    {key:'ANNEX−ドミトリー',label:'ANNEX ドミトリー',color:'#7C3AED',
      roomIds:rooms.filter(r=>r.group==='ANNEX−ドミトリー').map(r=>r.id)},
-    {key:'アパートメント−Southern Court',label:'アパートメント',color:'var(--accent-primary)',
+    {key:'アパートメント−Southern Court',label:'アパートメント',color:'#534AB7',
      roomIds:rooms.filter(r=>r.group==='アパートメント−Southern Court').map(r=>r.id)},
-    {key:'Sea Breeze 鎌倉',label:'Sea Breeze 鎌倉',color:'var(--accent-primary)',
+    {key:'Sea Breeze 鎌倉',label:'Sea Breeze 鎌倉',color:'#0e7490',
      roomIds:rooms.filter(r=>r.group==='Sea Breeze 鎌倉').map(r=>r.id)},
-    {key:'Sea Breeze 三浦',label:'Sea Breeze 三浦',color:'var(--accent-deep)',
+    {key:'Sea Breeze 三浦',label:'Sea Breeze 三浦',color:'#0f766e',
      roomIds:rooms.filter(r=>r.group==='Sea Breeze 三浦').map(r=>r.id)},
   ];
   const catStats=CAT_GROUPS.filter(cat=>roomFilter[cat.key]!==false).map(cat=>{
@@ -570,7 +570,7 @@ function renderReg(){
         <div style="font-size:10px;font-weight:700;color:${c.color};margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.label}</div>
         <div style="font-size:16px;font-weight:800;color:var(--ink);line-height:1.1;margin-bottom:4px;">${c.sales>0?'¥'+c.sales.toLocaleString():'—'}</div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <span style="font-size:10px;font-weight:700;color:${c.occ>=70?'var(--color-success-strong)':c.occ>=40?c.color:'var(--muted)'};">${c.occ}%</span>
+          <span style="font-size:10px;font-weight:700;color:${c.occ>=70?'#16a34a':c.occ>=40?c.color:'var(--muted)'};">${c.occ}%</span>
           <span style="font-size:9px;color:var(--muted);">${c.cells}/${c.totalCells}泊</span>
           ${c.adr>0?`<span style="font-size:10px;color:var(--muted);">ADR ¥${c.adr.toLocaleString()}</span>`:''}
         </div>
@@ -589,8 +589,8 @@ function renderReg(){
       if(th.classList.contains('st')||th.classList.contains('st2'))return; // 左上コーナー(ナビ)は除外
       const dayNum=parseInt(th.textContent);
       if(!isNaN(dayNum)&&allCharterDays.has(dayNum)){
-        th.style.background='var(--color-warning-bg)';
-        th.style.color='var(--color-warning-strong)';
+        th.style.background='#fef9c3';
+        th.style.color='#92400e';
         th.style.fontWeight='700';
       }
     });
@@ -648,7 +648,7 @@ function renderReg(){
   document.getElementById('s-occ-sub').textContent=`${usedCells} / ${totalCells} セル`;
   const occBar=document.getElementById('s-occ-bar');
   occBar.style.width=Math.min(occPct,100)+'%';
-  occBar.style.background=occPct>=80?'var(--color-success-strong)':occPct>=50?'var(--color-success-strong)':'var(--color-warning-strong)';
+  occBar.style.background=occPct>=80?'#16a34a':occPct>=50?'#0F6E56':'#f59e0b';
 
   // usedCellsをautoCalcTodayOccに渡す（当日の値として直接使用）
   window._lastRenderRegYear=year;
@@ -662,7 +662,7 @@ function renderReg(){
   document.getElementById('s-progress-pct').textContent=budget?(pct+'%'):'—';
   const bar=document.getElementById('s-progress-bar');
   bar.style.width=Math.min(pct,100)+'%';
-  bar.style.background=pct>=100?'var(--color-success-strong)':pct>=70?'var(--accent-primary)':'var(--color-warning-strong)';
+  bar.style.background=pct>=100?'#16a34a':pct>=70?'#185FA5':'#f59e0b';
 
   // ── スクロール制御 ──────────────────────────────
   // 今日へジャンプするのは：初回起動 / 「今日」ボタン / 月変更時のみ
@@ -992,7 +992,7 @@ function renderPlanRuleChecks(){
   const box=document.getElementById('f-plan-checks');
   if(!box)return;
   box.innerHTML=activePlanRules().map(r=>
-    `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary);padding:4px 0;">`
+    `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:#555;padding:4px 0;">`
     +`<input type="checkbox" id="${esc(r.checkboxId)}" style="width:15px;height:15px;cursor:pointer;">`
     +`<span>${esc(r.icon||'')} ${esc(r.name||'')}</span></label>`
   ).join('');
@@ -1148,7 +1148,7 @@ function renderMailPanel(g){
   const ms=(propertySettings&&propertySettings.mailSettings)||{};
   let rowsHtml='';
   if(!email){
-    rowsHtml+='<div style="font-size:11px;color:var(--color-danger-strong);margin-bottom:8px;">⚠ メールアドレスが登録されていません</div>';
+    rowsHtml+='<div style="font-size:11px;color:#c0392b;margin-bottom:8px;">⚠ メールアドレスが登録されていません</div>';
   }
   Object.keys(MAIL_TYPE_LABELS).forEach(key=>{
     const label=MAIL_TYPE_LABELS[key];
@@ -1278,19 +1278,19 @@ async function loadPassportPhotos(resId){
       const nm=((x.familyName||'')+' '+(x.givenName||'')).trim()||('宿泊者'+(i+1));
       return `<div style="text-align:center;">
         <img src="${x.passportImage}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
-        <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">${esc(nm)}</div>
-        <a href="${x.passportImage}" download="passport_${String(resId)}_${i+1}.jpg" style="font-size:10px;color:var(--accent-primary);text-decoration:none;">⬇ 保存</a>
+        <div style="font-size:10px;color:#888;margin-top:2px;">${esc(nm)}</div>
+        <a href="${x.passportImage}" download="passport_${String(resId)}_${i+1}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
       </div>`;
-    }).join(''):`<div style="font-size:11px;color:var(--text-muted);">パスポート写真はありません</div>`;
+    }).join(''):`<div style="font-size:11px;color:#999;">パスポート写真はありません</div>`;
     // 本人確認写真：パスポートと同サイズ・同じ拡大表示（openDataUrl）
     if(idvBox){
       idvBox.innerHTML=identityPhoto
         ? `<div style="text-align:center;">
              <img src="${identityPhoto}" title="クリックで拡大" style="width:120px;height:90px;object-fit:cover;border:1px solid var(--sand-border);border-radius:6px;cursor:pointer;" onclick="openDataUrl(this.src)">
-             <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">代表者</div>
-             <a href="${identityPhoto}" download="identity_${String(resId)}.jpg" style="font-size:10px;color:var(--accent-primary);text-decoration:none;">⬇ 保存</a>
+             <div style="font-size:10px;color:#888;margin-top:2px;">代表者</div>
+             <a href="${identityPhoto}" download="identity_${String(resId)}.jpg" style="font-size:10px;color:#185FA5;text-decoration:none;">⬇ 保存</a>
            </div>`
-        : `<div style="font-size:11px;color:var(--text-muted);">本人確認写真はありません</div>`;
+        : `<div style="font-size:11px;color:#999;">本人確認写真はありません</div>`;
     }
     row.style.display='';
   }catch(e){ console.warn('パスポート写真の取得に失敗:',e); }
