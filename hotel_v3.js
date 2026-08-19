@@ -1362,6 +1362,21 @@ function importCSVText(text){
       console.log(`[未割当キュー清掃] 名簿に既存の予約ID ${beforeLen-unassignedReservations.length}件を未割当エラーから除去しました`);
     }
   }
+  // チェックアウト日が既に過ぎた未割当エラーは、今取り込んだCSVと無関係な古い残骸なので自動除去する。
+  // （このガードが無いと、無関係な過去のCSVで発生した部屋競合が「今回の取込結果」であるかのように
+  //   毎回のCSV取込のたびに表示され続けてしまう＝今回の不具合報告の直接の原因）
+  if(unassignedReservations.length>0){
+    const _nowJst=new Date(Date.now()+9*60*60*1000);
+    const _todayY=_nowJst.getUTCFullYear(),_todayM=_nowJst.getUTCMonth()+1,_todayD=_nowJst.getUTCDate();
+    const beforeLen2=unassignedReservations.length;
+    unassignedReservations=unassignedReservations.filter(u=>{
+      const co=addDays(u.checkinMonth,u.checkinDay,(u.nights==null?1:u.nights),u.checkinYear||_todayY);
+      return (co.y>_todayY)||(co.y===_todayY&&co.m>_todayM)||(co.y===_todayY&&co.m===_todayM&&co.d>_todayD);
+    });
+    if(unassignedReservations.length<beforeLen2){
+      console.log(`[未割当キュー清掃] チェックアウト日超過の古いエラー ${beforeLen2-unassignedReservations.length}件を除去しました`);
+    }
+  }
 
   for(let li=1;li<records.length;li++){
     const cols=parseCSVLine(records[li]);if(cols.length<5)continue;
