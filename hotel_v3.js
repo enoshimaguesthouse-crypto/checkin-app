@@ -1573,6 +1573,7 @@ function importCSVText(text){
     // ★重要：自分自身の既存セルが「空室なし」原因にならないよう、
     //   部屋を検索する前に既存予約の重複・変更を判定する
     let preservedNote=null; // CSV更新時にスタッフ手入力の備考を保護
+    let _pendingRestore=null; // 日程変更で削除した旧セルの退避（新配置に失敗したら復元する）
     if(!isCharter && reservationId){
       const existing=findExistingReservationInfo(reservationId);
       if(existing){
@@ -1591,7 +1592,13 @@ function importCSVText(text){
         }
         // パターンC：変更あり → 既存セルを先に削除してから後続の部屋割当へ進む
         // （削除しておくことで、自分の古いセルが空室判定の邪魔にならない）
+        // ただし新しい配置に失敗した場合に備え、削除前の内容を退避しておく。
+        // 退避が無いと「新しい日程の部屋が見つからない」場合に、管理者が手動で
+        // 移動・調整した予約（元のセル）まで丸ごと消えてしまう（過去の不具合の原因）。
         preservedNote=existing.data.note||''; // スタッフ手入力の備考を保存
+        _pendingRestore=Object.entries(guestData)
+          .filter(([k,g])=>g&&String(g.reservationId)===String(reservationId))
+          .map(([k,g])=>[k,{...g}]);
         clearReservationCells(reservationId);
         updatedCount++;
         updatedList.push({name:guestName,reservationId,changes,status:'反映'});
@@ -1633,6 +1640,17 @@ function importCSVText(text){
 
     // 自動割当に失敗（空室なし）→ 未割当キューへ退避（既存予約を上書きしない）
     if(rid===null){
+      // 日程変更で旧セルを削除済みだった場合、新しい配置先が見つからないなら
+      // 旧セル（管理者が手動で移動・調整した内容を含む）をそのまま復元する。
+      // ここで復元しないと、配置に失敗しただけで既存の予約データが消えてしまう。
+      let _restored=false;
+      if(_pendingRestore&&_pendingRestore.length){
+        _pendingRestore.forEach(([k,g])=>{guestData[k]=g;});
+        _restored=true;
+        if(updatedList.length && updatedList[updatedList.length-1].reservationId===reservationId){
+          updatedList[updatedList.length-1].status='競合エラー（元の予約を保持）';
+        }
+      }
       if(guestName){
         // 既に未割当キューにある同一予約は重複追加しない
         if(!unassignedReservations.some(u=>u.reservationId&&u.reservationId===reservationId&&reservationId)){
@@ -1644,10 +1662,12 @@ function importCSVText(text){
             guests:guestCount,
             site,cat,sex,pay:payMethod,price,
             typeName:effectiveType,
-            reason:_judgeAssignError(effectiveType,cm,cd,nights,guestCount,cy),
+            reason:_restored
+              ?'日程変更による部屋競合（元の予約は名簿に残しています）'
+              :_judgeAssignError(effectiveType,cm,cd,nights,guestCount,cy),
             addedAt:new Date().toISOString(),
           });
-          if(updatedList.length && updatedList[updatedList.length-1].reservationId===reservationId){
+          if(!_restored&&updatedList.length && updatedList[updatedList.length-1].reservationId===reservationId){
             // 変更反映からの競合（日程変更で空室がなくなったケース）は理由を上書き
             unassignedReservations[unassignedReservations.length-1].reason='日程変更による部屋競合';
             updatedList[updatedList.length-1].status='競合エラー';
@@ -1865,6 +1885,10 @@ function saveManualAssign(){
       return;
     }
   }
+  // 日程変更の配置失敗時は「元の予約（旧日程）」がそのまま名簿に残っている。
+  // ここで新しい日程の配置を確定する前に、その旧セルを消しておかないと
+  // 同一予約IDが旧日程・新日程の二重登録になってしまう。
+  if(u.reservationId)clearReservationCells(u.reservationId);
   // guestDataへ書き込み（全泊）
   const gBase={
     name:u.name,site:u.site,pay:u.pay,price:u.price,nat:'',sex:u.sex||'',cat:u.cat||'Ｓ',note:'',
