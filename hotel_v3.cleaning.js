@@ -1466,6 +1466,9 @@ function openContractSettings(){
   // 本人確認方法（物件単位）：未設定は「行わない」
   const _idv=(_tdDraft.identityVerification==='photo')?'photo':'none';
   const _idvEl=document.getElementById('td-idv-'+_idv); if(_idvEl)_idvEl.checked=true;
+  // 音声案内（物件単位）：未設定は従来動作を維持するため「ON」を既定とする
+  const _vg=(_tdDraft.voiceGuide==='off')?'off':'on';
+  const _vgEl=document.getElementById('td-voice-'+_vg); if(_vgEl)_vgEl.checked=true;
   document.querySelectorAll('#contract-settings-modal .ms-ltab[data-lang]').forEach(b=>b.classList.toggle('active',b.dataset.lang==='ja'));
   _tdResetExpand();
   tdRenderMTabs();
@@ -1480,6 +1483,8 @@ function saveTabletSettings(){
   _tdDraft.consentType=document.getElementById('ca-consent-type').value;
   // 本人確認方法（物件単位）：'none'（行わない）または 'photo'（写真撮影）
   _tdDraft.identityVerification=document.getElementById('td-idv-photo').checked?'photo':'none';
+  // 音声案内（物件単位）：'on'（既定・従来動作）または 'off'（全音声停止）
+  _tdDraft.voiceGuide=document.getElementById('td-voice-off').checked?'off':'on';
   propertySettings.tabletDisplaySettings=_tdDraft;
   // 旧 contractAgreement も同期（後方互換：旧チェックインアプリ/旧GAS参照時のフォールバック用に日本語ダブルの約款を代表値として保持）
   const rep=_tdDraft.roomTypes.honkan_double||{};
@@ -1487,7 +1492,7 @@ function saveTabletSettings(){
     enabled:_tdDraft.enabled, consentType:_tdDraft.consentType,
     texts:{ ja:(rep.ja&&rep.ja.agreement)||'', en:(rep.en&&rep.en.agreement)||'', zh:(rep.zh&&rep.zh.agreement)||'', ko:(rep.ko&&rep.ko.agreement)||'' }
   };
-  logAudit('設定変更', 'タブレット表示設定', `契約確認:${_tdDraft.enabled?'有効':'無効'} 同意方法:${_tdDraft.consentType||'checkbox'} 本人確認:${_tdDraft.identityVerification==='photo'?'写真撮影':'行わない'}`);
+  logAudit('設定変更', 'タブレット表示設定', `契約確認:${_tdDraft.enabled?'有効':'無効'} 同意方法:${_tdDraft.consentType||'checkbox'} 本人確認:${_tdDraft.identityVerification==='photo'?'写真撮影':'行わない'} 音声案内:${_tdDraft.voiceGuide==='off'?'OFF':'ON'}`);
   closeM('contract-settings-modal');
   cloudSave();
   showToast('📱 タブレット表示設定を保存しました');
