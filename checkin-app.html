@@ -23,6 +23,9 @@
   --green:       #1a8a5a;
   --shadow:      rgba(15,108,140,0.10);
   --accent:      #ff8f4d;
+  /* 常に濃い青のまま保つ実体色。--ocean-deep はダークテーマで明色へ反転するため、
+     チェックボックスの塗りなど「濃色でなければ成立しない」箇所はこちらを使う。 */
+  --ocean-deep-solid: #0f6c8c;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -226,9 +229,31 @@ input.needs-input::placeholder { color:#d08a3a; }
 .res-grid { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; }
 .res-label { font-size:11px; color:var(--gray); font-weight:500; letter-spacing:0.06em; white-space:nowrap; }
 .res-value { font-size:14px; color:var(--ink); }
+/* ── 予約が見つからない場合のエラー ──
+   通常のホテルカラー（青系）と明確に区別できる警告色。アイコン＋見出し＋対処案内。 */
 .res-error {
-  background:#fff0f0; border:1px solid #f0b8b8; border-radius:6px;
-  padding:16px 18px; color:var(--red); font-size:13px; display:none;
+  display:none; align-items:flex-start; gap:14px;
+  background:#fff0f0; border:2px solid #e8a0a0; border-left:6px solid #c0392b;
+  border-radius:12px; padding:18px 20px; margin-top:16px;
+  box-shadow:0 4px 16px rgba(192,57,43,0.15);
+  animation:resErrShake .38s ease;
+}
+.res-error-icon {
+  flex:0 0 30px; width:30px; height:30px; border-radius:50%;
+  background:#c0392b; color:#fff; font-size:19px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  font-family:system-ui,sans-serif;
+}
+.res-error-title { font-size:16px; font-weight:700; color:#a5281b; margin-bottom:4px; line-height:1.5; }
+.res-error-help  { font-size:13.5px; color:#8c4038; line-height:1.7; }
+@keyframes resErrShake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}   60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
+/* エラー時は入力欄自体も強調して、どこを直せばよいか分かるようにする */
+input.input-error {
+  border-color:#c0392b !important;
+  box-shadow:0 0 0 3px rgba(192,57,43,.18) !important;
 }
 
 /* ── ROOM/PIN DISPLAY ── */
@@ -298,14 +323,47 @@ input.needs-input::placeholder { color:#d08a3a; }
   border:1px solid var(--border); border-radius:12px;
   margin-bottom:18px; -webkit-overflow-scrolling:touch;
 }
+/* ── 宿泊約款の同意チェック ──
+   タブレットで「押せているか」が一目で分かるよう、チェック済みは
+   ボックスを塗りつぶし＋白いチェックマーク＋ラベル面も着色して強調する。 */
 .agree-check {
-  display:flex; align-items:flex-start; gap:10px;
-  font-size:14px; font-weight:600; color:var(--ink);
-  cursor:pointer; padding:14px 16px;
-  background:var(--ocean-pale); border:1.5px solid var(--border);
+  display:flex; align-items:center; gap:14px;
+  font-size:15px; font-weight:600; color:var(--ink);
+  cursor:pointer; padding:18px 18px;
+  background:var(--ocean-pale); border:2px solid var(--border);
   border-radius:12px; line-height:1.6;
+  transition:background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  -webkit-tap-highlight-color:transparent;
 }
-.agree-check input { width:22px; height:22px; flex:0 0 22px; margin-top:1px; accent-color:var(--ocean-deep); cursor:pointer; }
+/* ネイティブ描画を止めて自前のボックスを描く（端末差なく確実に着色するため） */
+.agree-check input {
+  -webkit-appearance:none; appearance:none;
+  width:30px; height:30px; flex:0 0 30px; margin:0;
+  border:2.5px solid var(--ocean-mid); border-radius:8px;
+  background:#fff; cursor:pointer; position:relative;
+  transition:background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.agree-check input:checked {
+  background:var(--ocean-deep-solid, #0f6c8c);
+  border-color:var(--ocean-deep-solid, #0f6c8c);
+  box-shadow:0 2px 10px rgba(15,108,140,.45);
+}
+/* 白いチェックマーク（擬似要素で描画） */
+.agree-check input::after {
+  content:''; position:absolute; left:9px; top:3.5px;
+  width:8px; height:15px; box-sizing:border-box;
+  border:solid #fff; border-width:0 3.5px 3.5px 0;
+  transform:rotate(45deg) scale(0); transform-origin:center;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+}
+.agree-check input:checked::after { transform:rotate(45deg) scale(1); }
+.agree-check input:focus-visible { outline:3px solid var(--ocean-mid); outline-offset:2px; }
+/* チェック済みはラベル面にも色を乗せて状態を明確化 */
+.agree-check.checked {
+  background:rgba(15,108,140,.14);
+  border-color:var(--ocean-deep-solid, #0f6c8c);
+  box-shadow:0 2px 12px rgba(15,108,140,.22);
+}
 .agree-sign-hint { font-size:13px; color:var(--gray); margin-bottom:8px; text-align:center; }
 .sign-pad-box {
   border:1.5px dashed var(--ocean-mid); border-radius:12px;
@@ -546,6 +604,13 @@ input.needs-input::placeholder { color:#d08a3a; }
   .guest-block { padding:22px 20px; margin-bottom:20px; }
   .field-group { margin-bottom:18px; }
   .agreement-text { max-height:52vh; font-size:14px; padding:18px 20px; }
+  /* 同意チェックはタブレットでの誤タップを避けるため、より大きな面と箱にする */
+  .agree-check { padding:22px 20px; font-size:16px; gap:16px; }
+  .agree-check input { width:34px; height:34px; flex:0 0 34px; }
+  .agree-check input::after { left:10.5px; top:4px; width:9px; height:17px; border-width:0 4px 4px 0; }
+  .res-error { padding:22px 22px; }
+  .res-error-title { font-size:17px; }
+  .res-error-help { font-size:14.5px; }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -609,6 +674,7 @@ input.needs-input::placeholder { color:#d08a3a; }
   --copper-dk:   #8a5c3a;
   --panel:       rgba(22,52,70,0.72);   /* カード等の面 */
   --panel-solid: #16354a;
+  --ocean-deep-solid: #2f9dc4;          /* 暗い面でも視認できる明るめの青（チェック済みの塗り） */
 }
 body{
   background:#0e2233;
@@ -644,7 +710,12 @@ body::before{ background:linear-gradient(90deg,#7d5433,#d5a877,#f7e4cb,#d5a877,#
 .sign-pad{ background:#f6fafc; }        /* 署名は白地のままでないと書きにくい */
 .sign-clear-btn{ background:rgba(10,28,40,.5); color:var(--gray); border-color:var(--border); }
 .agreement-text{ background:rgba(10,28,40,.55); border-color:var(--border); }
-.res-error{ background:rgba(120,40,40,.35); border-color:#7d4040; color:#ffc9c0; }
+/* エラーはダークテーマでも警告色を保ち、青系のホテルカラーと明確に区別する */
+.res-error{ background:rgba(120,40,40,.38); border-color:#8d4a4a; border-left-color:#ff6b5a; color:#ffc9c0; }
+.res-error-icon{ background:#ff6b5a; color:#3a1410; }
+.res-error-title{ color:#ffd2cb; }
+.res-error-help{ color:#e8b3ab; }
+input.input-error{ border-color:#ff6b5a!important; box-shadow:0 0 0 3px rgba(255,107,90,.28)!important; }
 input.needs-input{ background:rgba(90,60,20,.45)!important; border-color:#a5814a!important; }
 
 /* 入力欄 */
@@ -658,6 +729,22 @@ select option{ background:#16354a; color:#eaf2f6; }
 input:focus,select:focus,textarea:focus{
   border-color:var(--copper)!important;
   box-shadow:0 0 0 3px rgba(213,168,119,.22)!important;
+}
+/* 宿泊約款の同意チェックは上の input 一括指定(!important)の対象外にする。
+   ダークテーマでも「未チェック=白い空箱／チェック済み=青い塗り+白✓」を維持するため。 */
+.agree-check input{
+  background:#f2f8fb!important;
+  border-color:var(--ocean-mid)!important;
+}
+.agree-check input:checked{
+  background:var(--ocean-deep-solid)!important;
+  border-color:var(--ocean-deep-solid)!important;
+  box-shadow:0 2px 10px rgba(47,157,196,.5)!important;
+}
+.agree-check input:focus{ box-shadow:0 0 0 3px rgba(213,168,119,.35)!important; }
+.agree-check.checked{
+  background:rgba(47,157,196,.20);
+  border-color:var(--ocean-deep-solid);
 }
 .confirm-table th{ background:rgba(10,28,40,.5); color:var(--gray); }
 .confirm-table td{ color:var(--ink); }
@@ -1014,7 +1101,7 @@ input:focus,select:focus,textarea:focus{
           <input type="number" id="reservationId" placeholder="例: 91779" inputmode="numeric"
             onkeydown="if(event.key==='Enter') searchReservation()">
         </div>
-        <button class="btn-search" id="btn-search" onclick="searchReservation()">🔍　検索</button>
+        <button class="btn-search" id="btn-search" onclick="searchReservation()">次へ　→</button>
       </div>
       <!-- QRカード：カード全体がボタン。タップで即スキャナへ遷移 -->
       <div class="entry-card entry-card-qr" onclick="openQrScanner()" id="btn-qr-scan" role="button">
@@ -1025,7 +1112,15 @@ input:focus,select:focus,textarea:focus{
         <div class="entry-hint" id="qr-or">タップしてカメラを起動</div>
       </div>
     </div>
-    <div class="res-error" id="resError"></div>
+    <!-- 予約が見つからない場合のエラー。アイコン＋見出し＋対処案内で、
+         「何が起きたか／次に何をすればよいか」が一目で伝わるようにする。 -->
+    <div class="res-error" id="resError" role="alert" aria-live="assertive">
+      <div class="res-error-icon" aria-hidden="true">!</div>
+      <div class="res-error-body">
+        <div class="res-error-title" id="resErrorTitle">予約情報が見つかりません</div>
+        <div class="res-error-help" id="resErrorHelp">予約IDをご確認のうえ、もう一度ご入力ください。</div>
+      </div>
+    </div>
 
     <!-- 予約情報表示 -->
     <div id="resResult" style="display:none;margin-top:20px;">
@@ -1335,7 +1430,10 @@ const T = {
     idvErrDark:'画像が暗すぎます。明るい場所で、もう一度撮影してください。',
     step1: '予約確認', step2: 'お客様情報', step3: '確認',
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
-    searchBtn: '🔍　検索', searchLabel: '予約ID',
+    searchBtn: '次へ　→', searchLabel: '予約ID',
+    checking: '予約情報を確認しています…', checkingShort: '確認中…',
+    notFoundTitle: '予約情報が見つかりません',
+    notFoundHelp: '予約IDをご確認のうえ、もう一度ご入力ください。',
     foundLabel: '予約が見つかりました',
     rlName: 'お名前', rlDates: '宿泊日程', rlGuests: '人数', rlSite: '予約サイト',
     notFound: '予約が見つかりませんでした。予約IDをご確認ください。',
@@ -1383,7 +1481,10 @@ const T = {
     idvErrDark:'The photo is too dark. Please retake it in a brighter place.',
     step1: 'Reservation', step2: 'Guest Info', step3: 'Confirm',
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
-    searchBtn: '🔍　Search', searchLabel: 'Reservation ID',
+    searchBtn: 'Next　→', searchLabel: 'Reservation ID',
+    checking: 'Checking your reservation…', checkingShort: 'Checking…',
+    notFoundTitle: 'Reservation not found',
+    notFoundHelp: 'Please check your reservation ID and try again.',
     foundLabel: 'Reservation found',
     rlName: 'Name', rlDates: 'Stay', rlGuests: 'Guests', rlSite: 'Booked via',
     notFound: 'Reservation not found. Please check your reservation ID.',
@@ -1431,7 +1532,10 @@ const T = {
     idvErrDark:'照片太暗。请在光线充足的地方重新拍摄。',
     step1: '预约确认', step2: '客人信息', step3: '确认',
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
-    searchBtn: '🔍　搜索', searchLabel: '预约ID',
+    searchBtn: '下一步　→', searchLabel: '预约ID',
+    checking: '正在确认预约信息…', checkingShort: '确认中…',
+    notFoundTitle: '未找到预约信息',
+    notFoundHelp: '请确认预约ID后重新输入。',
     foundLabel: '找到预约',
     rlName: '姓名', rlDates: '住宿日期', rlGuests: '人数', rlSite: '预约网站',
     notFound: '未找到预约。请确认您的预约ID。',
@@ -1479,7 +1583,10 @@ const T = {
     idvErrDark:'사진이 너무 어둡습니다. 밝은 곳에서 다시 촬영해 주세요.',
     step1: '예약 확인', step2: '투숙객 정보', step3: '확인',
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
-    searchBtn: '🔍　검색', searchLabel: '예약 ID',
+    searchBtn: '다음　→', searchLabel: '예약 ID',
+    checking: '예약 정보를 확인하고 있습니다…', checkingShort: '확인 중…',
+    notFoundTitle: '예약 정보를 찾을 수 없습니다',
+    notFoundHelp: '예약 ID를 확인하신 후 다시 입력해 주세요.',
     foundLabel: '예약이 확인되었습니다',
     rlName: '이름', rlDates: '숙박 일정', rlGuests: '인원', rlSite: '예약 사이트',
     notFound: '예약을 찾을 수 없습니다. 예약 ID를 확인해 주세요.',
@@ -1674,6 +1781,7 @@ function showAgreementScreen() {
     el('agree-sign-wrap').style.display = 'none';
     el('agree-check-wrap').style.display = '';
     el('agree-checkbox').checked = false;
+    el('agree-check-wrap').classList.remove('checked'); // 着色も初期化
     showScreen('screen-agreement');
     _setupAgreementScroll();
   }
@@ -1713,7 +1821,11 @@ function updateAgreeNext() {
   if (cs.consentType === 'signature') {
     el('btn-agree-next').disabled = !_signatureHasInk;
   } else {
-    el('btn-agree-next').disabled = !el('agree-checkbox').checked;
+    const checked = el('agree-checkbox').checked;
+    el('btn-agree-next').disabled = !checked;
+    // ラベル面の着色でチェック状態を一目で分かるようにする
+    const wrap = el('agree-check-wrap');
+    if (wrap) wrap.classList.toggle('checked', checked);
   }
 }
 
@@ -1956,15 +2068,16 @@ function _qrBeep(){
 }
 
 async function openQrScanner(){
+  if(_searchInFlight)return;              // 予約照会中はカメラを開かない（二重操作防止）
   const t=T[lang]||{};
+  _clearResError();                       // 前回のエラー表示をリセット
   _initQrAudio();                         // ユーザー操作（タップ）の文脈でAudioを初期化
   el('qr-title').textContent=t.qrTitle||'QRコードを枠内に合わせてください';
   el('qr-cancel-btn').textContent=t.camCancel||'キャンセル';
   el('qr-error').textContent='';
   const frame=el('qr-frame'); if(frame)frame.classList.remove('success'); // 前回の成功表示をリセット
   if(typeof jsQR!=='function'){
-    el('resError').textContent=t.qrErrInvalid||'QRを読み取れません。予約IDを手動で入力してください。';
-    el('resError').style.display='block';
+    _showResError(t.qrErrInvalid||'QRを読み取れません。予約IDを手動で入力してください。','');
     el('reservationId').focus();
     return;
   }
@@ -1980,8 +2093,7 @@ async function openQrScanner(){
       catch(e3){
         // 権限拒否・カメラ不可 → アラート表示し手動入力へ誘導
         closeQrScanner();
-        el('resError').textContent=t.qrErrCamera||'カメラを利用できません。予約IDを入力してください。';
-        el('resError').style.display='block';
+        _showResError(t.qrErrCamera||'カメラを利用できません。予約IDを入力してください。','');
         el('reservationId').focus();
         return;
       }
@@ -2044,18 +2156,46 @@ function closeQrScanner(){
   el('qrOverlay').classList.remove('active');
 }
 
+// 予約照会の多重実行ガード。連打・QR読取直後の重複呼び出しを防ぐ。
+let _searchInFlight = false;
+
+// 予約が見つからない場合のエラー表示（見出し＋対処案内＋入力欄の強調）
+// title/help を渡すとカメラ不可・QR読取失敗などの個別メッセージにも使える。
+function _showResError(title, help) {
+  const t = T[lang] || {};
+  const titleEl = el('resErrorTitle'), helpEl = el('resErrorHelp');
+  if (titleEl) titleEl.textContent = title || t.notFoundTitle || t.notFound || '予約情報が見つかりません';
+  if (helpEl)  helpEl.textContent  = (help !== undefined ? help : (t.notFoundHelp || '予約IDをご確認のうえ、もう一度ご入力ください。'));
+  el('resError').style.display = 'flex';
+  // 入力欄を強調し、そのまま入れ直せるようフォーカスと全選択まで行う
+  const input = el('reservationId');
+  if (input) {
+    input.classList.add('input-error');
+    input.focus();
+    try { input.select(); } catch(e) {}
+  }
+}
+function _clearResError() {
+  el('resError').style.display = 'none';
+  const input = el('reservationId');
+  if (input) input.classList.remove('input-error');
+}
+
 async function searchReservation() {
+  if (_searchInFlight) return;               // 取得中の二重操作を無効化
   const inputId = el('reservationId').value.trim();
   if (!inputId) { el('reservationId').focus(); return; }
   const targetId = String(inputId).trim();
 
+  _searchInFlight = true;
   el('btn-search').disabled = true;
-  el('btn-search').textContent = T[lang].searching;
-  el('resError').style.display = 'none';
+  el('btn-search').textContent = (T[lang] && T[lang].checkingShort) || T[lang].searching;
+  el('btn-qr-scan').style.pointerEvents = 'none';   // 取得中はQRカードも押せないように
+  _clearResError();
   el('resResult').style.display = 'none';
   el('btn-to-form').style.display = 'none';
   el('sendingOverlay').classList.add('active');
-  el('sendingText').textContent = T[lang].searching;
+  el('sendingText').textContent = (T[lang] && T[lang].checking) || T[lang].searching;
 
   try {
     // 予約ID検索エンドポイント（type=search）：一致レコードのみ取得しデータ増加の影響を受けない。
@@ -2133,20 +2273,21 @@ async function searchReservation() {
       el('rv-dates').textContent = (r.checkin || '?') + ' → ' + (r.checkout || '?');
       el('rv-guests').textContent = (r.guests || '—') + (lang==='ja'?' 名': lang==='ko'?' 명':' pax');
       el('rv-site').textContent  = r.site || '—';
-      el('resResult').style.display = 'block';
-      el('btn-to-form').style.display = 'block';
       _submissionReg = ''; // 新しい予約を検索したら登録番号をリセット
+      // 予約が取得できたら中間確認画面で止めず、そのままお客様情報へ進む。
+      // （予約ID入力・QR読取のどちらから入っても同じ動線に統一する）
+      goToForm();
     } else {
-      el('resError').textContent = T[lang].notFound;
-      el('resError').style.display = 'block';
+      _showResError();
     }
   } catch(e) {
     console.error('検索エラー:', e);
-    el('resError').textContent = T[lang].notFound;
-    el('resError').style.display = 'block';
+    _showResError();
   } finally {
+    _searchInFlight = false;
     el('btn-search').disabled = false;
     el('btn-search').textContent = T[lang].searchBtn;
+    el('btn-qr-scan').style.pointerEvents = '';
     el('sendingOverlay').classList.remove('active');
   }
 }
@@ -3373,6 +3514,7 @@ function restartApp() {
   if(_signatureCtx){ const c=el('agree-sign-canvas'); if(c)_signatureCtx.clearRect(0,0,c.width,c.height); }
   const agreeNext = el('btn-agree-next'); if(agreeNext) agreeNext.disabled = true;
   const agreeChk = el('agree-checkbox'); if(agreeChk) agreeChk.checked = false;
+  const agreeWrap = el('agree-check-wrap'); if(agreeWrap) agreeWrap.classList.remove('checked');
   el('reservationId').value = '';
   el('resResult').style.display = 'none';
   el('btn-to-form').style.display = 'none';
@@ -3394,6 +3536,41 @@ document.querySelectorAll('input, select').forEach(e => {
     if (e.id==='phone'||e.id==='email') el('contactError').style.display='none';
   });
 });
+
+// ═══════════════════════════════════════
+//  画面外タップでソフトウェアキーボードを閉じる
+// ═══════════════════════════════════════
+// タブレットでキーボードが画面を覆い、スクロールや次へボタンの操作を妨げるのを防ぐ。
+//
+// ★重要（不具合防止）：
+//   ここで preventDefault() を呼んだり、無条件に blur() すると
+//   「国籍のドロップダウンが開かない」「同意チェックが反応しない」「ボタンが押せない」
+//   といった致命的な操作不能を招く。そのため
+//     ・preventDefault() は一切呼ばない（既定のタップ動作を邪魔しない）
+//     ・タップ先が操作対象（input/select/textarea/button/label/a）なら何もしない
+//       → 別の入力欄をタップした場合はブラウザ既定でフォーカスが移るだけ
+//     ・純粋な余白をタップした時だけ blur() する
+//   という判定にしている。
+document.addEventListener('touchend', _blurOnOutsideTap, {passive:true});
+document.addEventListener('mousedown', _blurOnOutsideTap, {passive:true});
+
+function _blurOnOutsideTap(e){
+  const active = document.activeElement;
+  // そもそも入力欄にフォーカスが無ければ何もしない
+  if(!active) return;
+  const tag = (active.tagName||'').toLowerCase();
+  const isTextInput = (tag==='input' || tag==='textarea' || tag==='select');
+  if(!isTextInput) return;
+
+  // タップ先が操作要素・その子孫なら閉じない
+  //  - input/textarea/select : 別の入力欄への移動（既定動作に任せる）
+  //  - button/label/a        : ボタン・チェックボックスのラベル等（クリックを妨げない）
+  const t = e.target;
+  if(t && t.closest && t.closest('input,textarea,select,button,label,a,[role="button"],[onclick]')) return;
+
+  // 余白タップ → フォーカスを外してキーボードを閉じる
+  active.blur();
+}
 
 // 起動時に契約確認設定をプリフェッチしてキャッシュを温めておく。
 // これにより言語選択→約款画面の遷移で毎回ネットワーク待ちが発生しない
