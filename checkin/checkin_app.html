@@ -229,6 +229,28 @@ input.needs-input::placeholder { color:#d08a3a; }
 .res-grid { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; }
 .res-label { font-size:11px; color:var(--gray); font-weight:500; letter-spacing:0.06em; white-space:nowrap; }
 .res-value { font-size:14px; color:var(--ink); }
+/* ── メールアドレス入力（ローカル部＋ドメイン選択） ── */
+.email-split { display:flex; align-items:center; gap:8px; }
+.email-split .email-local  { flex:1 1 auto; min-width:0; }
+.email-split .email-at     { flex:0 0 auto; font-size:17px; font-weight:700; color:var(--gray); padding:0 2px; }
+.email-split .email-domain { flex:0 0 auto; width:auto; max-width:52%; }
+.email-preview {
+  margin-top:8px; padding:8px 12px; border-radius:8px;
+  background:var(--ocean-pale); border:1px solid var(--border);
+  font-size:13px; color:var(--ink); word-break:break-all;
+}
+@media (min-width:768px){
+  .email-split { gap:10px; }
+  .email-split .email-at { font-size:19px; }
+}
+/* 幅の狭い端末では縦積みにして、どちらも十分なタップ領域を確保する */
+@media (max-width:480px){
+  .email-split { flex-wrap:wrap; }
+  .email-split .email-local  { flex:1 1 100%; }
+  .email-split .email-at     { display:none; }
+  .email-split .email-domain { flex:1 1 100%; max-width:100%; margin-top:8px; }
+}
+
 /* ── 予約が見つからない場合のエラー ──
    通常のホテルカラー（青系）と明確に区別できる警告色。アイコン＋見出し＋対処案内。 */
 .res-error {
@@ -1261,14 +1283,47 @@ input:focus,select:focus,textarea:focus{
       <div class="card-title-en">Contact</div>
       <div class="divider"></div>
       <div class="contact-note" id="contact-note">📞 電話番号またはメールアドレスのどちらか一方をご入力ください</div>
+      <!-- 住所：予約データに予約者の住所があれば自動取込。無ければ空欄で手入力できる。 -->
+      <div class="field-group">
+        <label id="lbl-guest-address">住所</label>
+        <input type="text" id="guestAddress" placeholder="神奈川県藤沢市片瀬海岸2-15-15">
+      </div>
       <div class="field-group">
         <label id="lbl-phone">電話番号</label>
         <input type="tel" id="phone" placeholder="090-1234-5678" inputmode="tel" oninput="onContactInput()">
         <span class="field-error" id="err-phone">電話番号を正しく入力してください。</span>
       </div>
+      <!-- メールアドレス：タブレットで入力しやすいよう「ローカル部＋ドメイン選択」に分離。
+           保存時は結合して従来どおり完全なメールアドレス文字列として扱う。 -->
       <div class="field-group">
         <label id="lbl-email">メールアドレス</label>
-        <input type="email" id="email" placeholder="example@email.com" inputmode="email" oninput="onContactInput()">
+        <div class="email-split">
+          <input type="text" id="emailLocal" class="email-local" placeholder="example"
+                 inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 oninput="onEmailPartInput()">
+          <span class="email-at">@</span>
+          <select id="emailDomain" class="email-domain" onchange="onEmailDomainChange()">
+            <option value="gmail.com">gmail.com</option>
+            <option value="yahoo.co.jp">yahoo.co.jp</option>
+            <option value="outlook.com">outlook.com</option>
+            <option value="hotmail.com">hotmail.com</option>
+            <option value="icloud.com">icloud.com</option>
+            <option value="docomo.ne.jp">docomo.ne.jp</option>
+            <option value="ezweb.ne.jp">ezweb.ne.jp</option>
+            <option value="au.com">au.com</option>
+            <option value="softbank.ne.jp">softbank.ne.jp</option>
+            <option value="i.softbank.jp">i.softbank.jp</option>
+            <option value="ymobile.ne.jp">ymobile.ne.jp</option>
+            <option value="rakuten.jp">rakuten.jp</option>
+            <option value="__other__" id="opt-email-other">その他（直接入力）</option>
+          </select>
+        </div>
+        <input type="text" id="emailDomainCustom" class="email-domain-custom" placeholder="example.com"
+               inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false"
+               style="display:none;margin-top:8px;" oninput="onEmailPartInput()">
+        <!-- 結合後のメールアドレスを常に保持する隠しフィールド（既存の v('email') 互換） -->
+        <input type="hidden" id="email">
+        <div class="email-preview" id="emailPreview" style="display:none;"></div>
         <span class="field-error" id="err-email">メールアドレスを正しく入力してください。</span>
       </div>
       <div class="field-error" id="contactError" style="margin-top:-6px;">電話番号またはメールアドレスを入力してください</div>
@@ -1443,6 +1498,10 @@ const T = {
     contactTitle: '連絡先', contactNote: '📞 電話番号またはメールアドレスのどちらか一方をご入力ください',
     lblPhone: '電話番号', lblEmail: 'メールアドレス',
     contactError: '電話番号またはメールアドレスを入力してください',
+    addressLabel: '住所', addressPh: '神奈川県藤沢市片瀬海岸2-15-15',
+    emailLocalPh: 'example', emailDomainOther: 'その他（直接入力）', emailDomainPh: 'example.com',
+    emailHalfWidth: '⚠ メールアドレスは半角英数字で入力してください',
+    emailInvalid: 'メールアドレスを正しく入力してください。',
     errPhone: '電話番号を正しく入力してください。', errEmail: 'メールアドレスを正しく入力してください。', errRequired: '入力してください', errSelect: '選択してください',
     qrScanLabel: 'QRコードをスキャン', qrOr: 'タップしてカメラを起動', qrTitle: 'QRコードを枠内に合わせてください', qrErrCamera: 'カメラを利用できません。予約IDを入力してください。', qrErrInvalid: '無効なQRコードです。予約IDを手動で入力してください。',
     syncing: '同期中…', synced: '同期完了', syncFail: '同期に失敗しました（自動再試行）',
@@ -1456,7 +1515,7 @@ const T = {
     restartBtn: '最初に戻る（次のお客様）',
     backBtn: '← 戻る', nextBtn: '次へ　→',
     sending: '送信中...', searching: '検索中...',
-    voice: (room, pin) => `チェックインのお手続きが完了いたしました。${room}番のお部屋にご案内いたします。ドアの暗証番号は、${pin.split('').join('の、')}です。ごゆっくりお寛ぎください。`,
+    voice: (room, pin) => `チェックインのお手続きが完了いたしました。${room}番のお部屋にご案内いたします。ドアの暗証番号は画面をご確認ください。ごゆっくりお寛ぎください。`,
     cfName: '氏名', cfPref: '都道府県', cfAddress: '住所', cfNat: '国籍', cfPass: '旅券番号',
     cfCheckin: 'チェックイン', cfCheckout: 'チェックアウト', cfPhone: '電話番号', cfEmail: 'メール',
     cfRoom: '部屋番号', cfReservation: '予約ID',
@@ -1494,6 +1553,10 @@ const T = {
     contactTitle: 'Contact', contactNote: '📞 Please enter either your phone number or email address.',
     lblPhone: 'Phone Number', lblEmail: 'Email Address',
     contactError: 'Please enter a phone number or email address.',
+    addressLabel: 'Address', addressPh: 'Street, City, Country',
+    emailLocalPh: 'example', emailDomainOther: 'Other (type it in)', emailDomainPh: 'example.com',
+    emailHalfWidth: '⚠ Please enter your email using single-byte letters and numbers.',
+    emailInvalid: 'Please enter a valid email address.',
     errPhone: 'Please enter a valid phone number.', errEmail: 'Please enter a valid email address.', errRequired: 'Please enter', errSelect: 'Please select',
     qrScanLabel: 'Scan QR Code', qrOr: 'Tap to open camera', qrTitle: 'Please align the QR code within the frame.', qrErrCamera: 'Camera unavailable. Please enter your reservation ID.', qrErrInvalid: 'Invalid QR code. Please enter your reservation ID manually.',
     syncing: 'Syncing…', synced: 'Synced', syncFail: 'Sync failed (retrying)',
@@ -1507,7 +1570,7 @@ const T = {
     restartBtn: 'Back to Start (Next Guest)',
     backBtn: '← Back', nextBtn: 'Next　→',
     sending: 'Sending...', searching: 'Searching...',
-    voice: (room, pin) => `Check-in is complete. Your room number is ${room}. The door PIN is ${pin.split('').join(', ')}. Enjoy your stay!`,
+    voice: (room, pin) => `Check-in is complete. Your room number is ${room}. Please check the screen for your door PIN. Enjoy your stay!`,
     cfName: 'Name', cfPref: 'Prefecture', cfAddress: 'Address', cfNat: 'Nationality', cfPass: 'Passport No.',
     cfCheckin: 'Check-in', cfCheckout: 'Check-out', cfPhone: 'Phone', cfEmail: 'Email',
     cfRoom: 'Room', cfReservation: 'Reservation ID',
@@ -1545,6 +1608,10 @@ const T = {
     contactTitle: '联系方式', contactNote: '📞 请输入电话号码或电子邮件地址之一。',
     lblPhone: '电话号码', lblEmail: '电子邮件',
     contactError: '请输入电话号码或电子邮件地址。',
+    addressLabel: '地址', addressPh: '省/市/区 街道',
+    emailLocalPh: 'example', emailDomainOther: '其他（手动输入）', emailDomainPh: 'example.com',
+    emailHalfWidth: '⚠ 电子邮件地址请使用半角英文和数字输入。',
+    emailInvalid: '请输入正确的电子邮件地址。',
     errPhone: '请输入正确的电话号码。', errEmail: '请输入正确的电子邮箱地址。', errRequired: '请输入', errSelect: '请选择',
     qrScanLabel: '扫描二维码', qrOr: '点击启动相机', qrTitle: '请将二维码对准框内。', qrErrCamera: '无法使用相机。请输入预订ID。', qrErrInvalid: '无效的二维码。请手动输入预订ID。',
     syncing: '同步中…', synced: '同步完成', syncFail: '同步失败（重试中）',
@@ -1558,7 +1625,7 @@ const T = {
     restartBtn: '返回开始（下位客人）',
     backBtn: '← 返回', nextBtn: '下一步　→',
     sending: '发送中...', searching: '搜索中...',
-    voice: (room, pin) => `入住已完成。您的房间号是${room}号。门锁密码是${pin}。祝您住宿愉快！`,
+    voice: (room, pin) => `入住已完成。您的房间号是${room}号。门锁密码请查看屏幕。祝您住宿愉快！`,
     cfName: '姓名', cfPref: '都道府县', cfAddress: '地址', cfNat: '国籍', cfPass: '护照号码',
     cfCheckin: '入住日期', cfCheckout: '退房日期', cfPhone: '电话', cfEmail: '邮箱',
     cfRoom: '房间号', cfReservation: '预约ID',
@@ -1596,6 +1663,10 @@ const T = {
     contactTitle: '연락처', contactNote: '📞 전화번호 또는 이메일 주소 중 하나를 입력해 주세요.',
     lblPhone: '전화번호', lblEmail: '이메일 주소',
     contactError: '전화번호 또는 이메일 주소를 입력해 주세요.',
+    addressLabel: '주소', addressPh: '도/시/구 상세주소',
+    emailLocalPh: 'example', emailDomainOther: '기타(직접 입력)', emailDomainPh: 'example.com',
+    emailHalfWidth: '⚠ 이메일 주소는 반각 영숫자로 입력해 주세요.',
+    emailInvalid: '올바른 이메일 주소를 입력해 주세요.',
     errPhone: '올바른 전화번호를 입력하세요.', errEmail: '올바른 이메일 주소를 입력하세요.', errRequired: '입력해 주세요', errSelect: '선택해 주세요',
     qrScanLabel: 'QR코드 스캔', qrOr: '탭하여 카메라 실행', qrTitle: 'QR 코드를 프레임 안에 맞춰주세요.', qrErrCamera: '카메라를 사용할 수 없습니다. 예약 ID를 입력해 주세요.', qrErrInvalid: '잘못된 QR코드입니다. 예약 ID를 직접 입력해 주세요.',
     syncing: '동기화 중…', synced: '동기화 완료', syncFail: '동기화 실패 (재시도 중)',
@@ -1609,7 +1680,7 @@ const T = {
     restartBtn: '처음으로 돌아가기（다음 손님）',
     backBtn: '← 뒤로', nextBtn: '다음　→',
     sending: '전송 중...', searching: '검색 중...',
-    voice: (room, pin) => `체크인이 완료되었습니다. 객실 번호는 ${room}호입니다. 도어 PIN은 ${pin.split('').join(', ')}입니다. 즐거운 숙박 되세요!`,
+    voice: (room, pin) => `체크인이 완료되었습니다. 객실 번호는 ${room}호입니다. 도어 PIN은 화면에서 확인해 주세요. 즐거운 숙박 되세요!`,
     cfName: '이름', cfPref: '도도부현', cfAddress: '주소', cfNat: '국적', cfPass: '여권 번호',
     cfCheckin: '체크인', cfCheckout: '체크아웃', cfPhone: '전화번호', cfEmail: '이메일',
     cfRoom: '객실 번호', cfReservation: '예약 ID',
@@ -1644,6 +1715,9 @@ async function selectLang(l) {
   lang = l;
   document.body.className = l === 'zh' ? 'lang-zh' : l === 'ko' ? 'lang-ko' : '';
   applyLang();
+  // セッション開始：音声案内のON/OFFを管理画面の既定値へリセット
+  // （前のお客様の操作状態を引きずらない）
+  resetVoiceSetting();
   // 契約確認設定：言語選択画面を表示した時点でプリフェッチ済みのキャッシュがあれば
   // ネットワーク待ちなしで即座に遷移する（タイムラグ短縮）。未取得の初回のみawaitする。
   // キャッシュがTTL切れでも一旦それで遷移し、裏で最新値を取り直す（次回タップ時に反映）。
@@ -1920,6 +1994,15 @@ function applyLang() {
   el('contact-note').textContent = t.contactNote;
   el('lbl-phone').textContent = t.lblPhone;
   el('lbl-email').textContent = t.lblEmail;
+  // 住所・メール分割UIの多言語化
+  if(el('lbl-guest-address')) el('lbl-guest-address').textContent = t.addressLabel || '住所';
+  if(el('guestAddress'))      el('guestAddress').placeholder      = t.addressPh || '';
+  if(el('emailLocal'))        el('emailLocal').placeholder        = t.emailLocalPh || 'example';
+  if(el('emailDomainCustom')) el('emailDomainCustom').placeholder = t.emailDomainPh || 'example.com';
+  if(el('opt-email-other'))   el('opt-email-other').textContent   = t.emailDomainOther || 'その他（直接入力）';
+  // エラー文言の既定値を保持（半角エラーと出し分けるため）
+  const _errEmail = el('err-email');
+  if(_errEmail){ _errEmail.dataset.defaultMsg = t.emailInvalid || _errEmail.textContent; }
   el('contactError').textContent = t.contactError;
   el('btn-back-search').textContent = t.backBtn;
   el('btn-to-confirm').textContent = t.nextBtn;
@@ -2776,6 +2859,113 @@ function _isEmailValid(raw){
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
+// ═══════════════════════════════════════
+//  メールアドレス入力（ローカル部＋ドメイン選択）
+// ═══════════════════════════════════════
+// タブレットでの入力負担を減らすため2分割で入力し、保存時は結合して
+// 従来どおり「完全なメールアドレス文字列」として #email に保持する。
+// （既存の v('email') / _isEmailValid / 送信処理はそのまま使える）
+
+// 全角英数字・記号を半角へ正規化（ａｂｃ＠→abc@、全角スペースは除去）
+function _toHalfWidth(str){
+  return String(str==null?'':str)
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/＠/g,'@').replace(/．/g,'.').replace(/－/g,'-').replace(/＿/g,'_')
+    .replace(/＋/g,'+').replace(/　/g,'');
+}
+// メールに使える半角文字だけか（自動変換後の残存チェック）
+function _emailCharsOk(s){ return /^[A-Za-z0-9._%+\-@]*$/.test(String(s||'')); }
+
+const EMAIL_DOMAIN_OTHER='__other__';
+// 現在のドメイン文字列（プルダウン or 直接入力）
+function _emailDomainValue(){
+  const sel=el('emailDomain'); if(!sel)return '';
+  return sel.value===EMAIL_DOMAIN_OTHER ? _toHalfWidth((el('emailDomainCustom').value||'').trim())
+                                        : sel.value;
+}
+// ローカル部＋ドメインを結合して hidden の #email へ反映（既存処理との互換を保つ）
+function _rebuildEmail(){
+  const localRaw=(el('emailLocal')?el('emailLocal').value:'').trim();
+  const localPart=_toHalfWidth(localRaw);
+  const domain=_emailDomainValue();
+  const full=(localPart && domain) ? (localPart+'@'+domain) : '';
+  const hidden=el('email'); if(hidden)hidden.value=full;
+  // 入力内容のプレビュー（結合結果をその場で確認できるようにする）
+  const pv=el('emailPreview');
+  if(pv){
+    if(full){ pv.textContent=full; pv.style.display='block'; }
+    else { pv.textContent=''; pv.style.display='none'; }
+  }
+  return full;
+}
+// 既存のメールアドレスをローカル部／ドメインへ分解して初期表示する
+function _setEmailFromFull(full){
+  const s=_toHalfWidth(String(full==null?'':full).trim());
+  const localEl=el('emailLocal'), sel=el('emailDomain'), custom=el('emailDomainCustom');
+  if(!localEl||!sel||!custom)return;
+  const at=s.lastIndexOf('@');
+  const localPart = at>0 ? s.slice(0,at) : '';
+  const domain    = at>0 ? s.slice(at+1) : '';
+  localEl.value=localPart;
+  if(domain){
+    const known=Array.from(sel.options).some(o=>o.value===domain);
+    if(known){ sel.value=domain; custom.style.display='none'; custom.value=''; }
+    else { sel.value=EMAIL_DOMAIN_OTHER; custom.style.display='block'; custom.value=domain; }
+  } else {
+    custom.style.display = (sel.value===EMAIL_DOMAIN_OTHER) ? 'block' : 'none';
+  }
+  _rebuildEmail();
+  _updateEmailError();
+}
+// ドメイン選択の切替（「その他」なら直接入力欄を出す）
+function onEmailDomainChange(){
+  const sel=el('emailDomain'), custom=el('emailDomainCustom');
+  const other = sel.value===EMAIL_DOMAIN_OTHER;
+  custom.style.display = other ? 'block' : 'none';
+  if(other) custom.focus();
+  _rebuildEmail();
+  _updateEmailError();
+}
+// 入力中：全角を自動で半角へ変換しつつ結合・エラー判定
+function onEmailPartInput(){
+  ['emailLocal','emailDomainCustom'].forEach(id=>{
+    const e=el(id); if(!e)return;
+    const conv=_toHalfWidth(e.value);
+    if(conv!==e.value){
+      // カーソル位置を保ったまま置換（末尾入力時に位置が飛ぶのを防ぐ）
+      const pos=e.selectionStart;
+      e.value=conv;
+      try{ e.setSelectionRange(pos,pos); }catch(err){}
+    }
+  });
+  _rebuildEmail();
+  _updateEmailError();
+  if(typeof onContactInput==='function')onContactInput();
+}
+// メール欄のエラー表示（半角変換できない文字／形式不正）
+function _updateEmailError(){
+  const t=T[lang]||{};
+  const localEl=el('emailLocal'), custom=el('emailDomainCustom'), errEl=el('err-email');
+  if(!localEl||!errEl)return false;
+  const localVal=localEl.value.trim();
+  const domainVal=_emailDomainValue();
+  const full=(el('email')?el('email').value:'').trim();
+  // 未入力はエラーにしない（電話番号のみの入力も許容されるため）
+  let bad=false, msg='';
+  if(localVal || (custom && custom.style.display!=='none' && custom.value.trim())){
+    if(!_emailCharsOk(localVal) || !_emailCharsOk(domainVal)){
+      bad=true; msg=t.emailHalfWidth || '⚠ メールアドレスは半角英数字で入力してください';
+    } else if(full && !_isEmailValid(full)){
+      bad=true; msg=t.emailInvalid || errEl.dataset.defaultMsg || 'メールアドレスを正しく入力してください。';
+    }
+  }
+  errEl.textContent = msg || (errEl.dataset.defaultMsg || errEl.textContent);
+  const grp=localEl.closest('.field-group');
+  if(grp)grp.classList.toggle('has-error', bad);
+  [localEl, custom].forEach(e=>{ if(e)e.classList.toggle('input-error', bad); });
+  return bad;
+}
+
 // フォーム全体の妥当性チェック。show=trueのときは各項目にエラー表示を反映し、
 // 最初のエラー要素(firstInvalid)を返す（Next押下時のスクロール用）。
 function checkFormValidity(show){
@@ -2807,12 +2997,18 @@ function checkFormValidity(show){
   const phoneRaw=phoneEl.value, emailRaw=emailEl.value;
   const phonePresent=phoneRaw.trim(), emailPresent=emailRaw.trim();
   const phoneBad= !!phonePresent && !_isPhoneValid(phoneRaw);
-  const emailBad= !!emailPresent && !_isEmailValid(emailRaw);
-  setErr(phoneEl, phoneBad); setErr(emailEl, emailBad);
+  // メールは分割入力のため、エラー表示・スクロール対象は見えている「ローカル部」の欄にする
+  const emailVisibleEl = el('emailLocal') || emailEl;
+  const emailBad = _updateEmailError() || (!!emailPresent && !_isEmailValid(emailRaw));
+  setErr(phoneEl, phoneBad);
+  if(show && emailVisibleEl){
+    const g=emailVisibleEl.closest('.field-group');
+    if(g)g.classList.toggle('has-error', emailBad);
+  }
   const nonePresent = !phonePresent && !emailPresent;
   if(el('contactError'))el('contactError').style.display=(show&&nonePresent)?'block':'none';
   if(phoneBad)fail(phoneEl);
-  if(emailBad)fail(emailEl);
+  if(emailBad)fail(emailVisibleEl);
   if(nonePresent)fail(phoneEl);
   return {ok, firstInvalid};
 }
@@ -2826,8 +3022,6 @@ function onContactInput(){
   if(p){ const sv=_sanitizePhone(p.value); if(sv!==p.value)p.value=sv; }
   const pg=el('phone').closest('.field-group');
   if(pg&&pg.classList.contains('has-error') && _isPhoneValid(el('phone').value)) pg.classList.remove('has-error');
-  const eg=el('email').closest('.field-group');
-  if(eg&&eg.classList.contains('has-error') && _isEmailValid(el('email').value)) eg.classList.remove('has-error');
   if((el('phone').value.trim()||el('email').value.trim()) && el('contactError')) el('contactError').style.display='none';
 }
 
@@ -2837,7 +3031,15 @@ function goToForm() {
   // ※戻る→再進入時に入力済みの連絡先を消さないため、両方とも空の初回のみプリフィルする。
   if(!el('phone').value.trim() && !el('email').value.trim()){
     fillField('phone', reservationData?reservationData.phone:'');
-    fillField('email', reservationData?reservationData.email:'');
+    // メールは分割UIのため、完全なアドレスをローカル部＋ドメインへ分解して初期表示する
+    _setEmailFromFull(reservationData?reservationData.email:'');
+  }
+  // 住所：予約データに予約者の住所がある場合のみ自動取込。
+  // 無ければ空欄のままにする（存在しない住所を推測して入れることはしない）。
+  const addrEl=el('guestAddress');
+  if(addrEl && !addrEl.value.trim()){
+    const addr=(reservationData && reservationData.address) ? String(reservationData.address).trim() : '';
+    if(addr){ addrEl.value=addr; addrEl.classList.add('prefilled'); }
   }
   // 連絡先の入力中処理は input欄の oninput="onContactInput()" で実施
   showScreen('screen-form');
@@ -2887,7 +3089,7 @@ function collectUpdatedGuestData(){
     firstName: g0.givenName||'',
     nat: g0.residentType==='jp' ? '日本' : (g0.nationality||''),
     prefecture: '',
-    address: '',          // 新仕様では住所は宿泊者ごとに収集しない
+    address: v('guestAddress'),   // 予約者本人の住所（予約データから自動取込＋手修正可）
     phone: v('phone'),
     email: v('email'),
     passport: '',
@@ -2936,6 +3138,7 @@ function buildConfirmTable() {
     html += row(t.cfCheckin, r.checkin || '');
     html += row(t.cfCheckout, r.checkout || '');
   }
+  if (v('guestAddress')) html += row(t.addressLabel || '住所', v('guestAddress'));
   if (v('phone')) html += row(t.cfPhone, v('phone'));
   if (v('email')) html += row(t.cfEmail, v('email'));
   // 本人確認写真（代表者1枚）：物件設定が「写真撮影」のときのみ表示
@@ -3041,7 +3244,7 @@ function _fireCheckinSends(reg, r){
       action: 'saveRecord', registrationNo: regNo,
       natType:     g.residentType === 'jp' ? '日本在住' : '外国人',
       name:        (g.familyName + ' ' + g.givenName).trim(),
-      prefecture:  '', address: '',
+      prefecture:  '', address: (i===0 ? v('guestAddress') : ''),   // 住所は代表者（予約者本人）のみ
       nationality: g.residentType === 'jp' ? '日本' : (g.nationality || ''),
       passportNo:  g.passportNumber || '',
       phone:       i===0 ? v('phone') : '',
@@ -3123,6 +3326,8 @@ async function _fetchRoomSettings(){
     } else if(!tabletSettings){
       try{ const c=localStorage.getItem('hotel_tabletSettings'); if(c)tabletSettings=JSON.parse(c); }catch(e){}
     }
+    // 完了画面で音声を鳴らす直前に、最新の音声案内ON/OFFを反映する
+    resetVoiceSetting();
     if(data.roomSettings && Object.keys(data.roomSettings).length > 0){
       try{
         // 端末盗難対策：localStorageには暗証番号・Wi-Fiパスワードを保存しない（画面表示用の値はメモリ上のdataにのみ保持）
@@ -3251,9 +3456,13 @@ async function applyRoomGuide(roomId){
       renderRoomMedia(Array.isArray(settings.media)?settings.media:[]);
     }
 
-    // 音声テキスト：guideText を優先、[鍵番号]プレースホルダを置換
+    // 音声テキスト：guideText を優先。
+    // ★防犯：暗証番号は音声で読み上げない。[鍵番号]プレースホルダには実番号ではなく
+    //   「画面をご確認ください」を差し込む（画面表示は別途 #pin-display で行う）。
     const ttsLang = _roomLangToTTS(roomLang);
-    let speakText = guideText.replace(/\[鍵番号\]|\[暗証番号\]/g, pinNo);
+    let speakText = guideText.replace(/\[鍵番号\]|\[暗証番号\]/g, _pinSpokenHint());
+    // 案内文に暗証番号が直接書かれていた場合の保険（3桁以上の数字が完全一致する場合のみ）
+    speakText = _scrubPinFromSpeech(speakText, pinNo);
     if(!speakText){
       // 案内文が空の場合のみデフォルト音声
       speakText = T[lang].voice(roomId, pinNo);
@@ -3442,8 +3651,44 @@ function mediaCarousel(dir){
   _showMedia(ni);
 }
 
+// ═══════════════════════════════════════
+//  音声案内の ON/OFF（物件設定と連動）
+// ═══════════════════════════════════════
+// 管理画面［物件情報＞タブレット表示設定＞施設案内＞音声案内］の値を参照する。
+// 未設定は従来動作を維持するため ON 扱い。
+// OFF の場合は speak / speakLang の入口で止めるため、以降の音声再生は一切行われない。
+// ※音声を止めても画面表示（案内文・暗証番号・Wi-Fi等）には一切影響しない。
+let _voiceEnabled = true;   // セッション単位の実効値
+function _resolveVoiceEnabled(){
+  return !(tabletSettings && tabletSettings.voiceGuide === 'off');
+}
+// セッション開始時に管理画面の既定値へリセット（前のお客様の状態を引きずらない）
+function resetVoiceSetting(){
+  _voiceEnabled = _resolveVoiceEnabled();
+  const btn = el('btn-replay-voice');
+  if(btn) btn.style.display = _voiceEnabled ? '' : 'none';
+  if(!_voiceEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+  return _voiceEnabled;
+}
+
+// 暗証番号を音声で読み上げないための文言（画面表示へ誘導する）
+function _pinSpokenHint(){
+  return lang==='en' ? 'the PIN shown on the screen'
+       : lang==='zh' ? '屏幕上显示的密码'
+       : lang==='ko' ? '화면에 표시된 비밀번호'
+       : '画面に表示された暗証番号';
+}
+// 案内文に暗証番号そのものが書かれていた場合の保険。
+// 誤置換を避けるため「3桁以上の数字のみ」で構成された暗証番号が完全一致する場合に限る。
+function _scrubPinFromSpeech(text, pinNo){
+  const pin = String(pinNo||'').trim();
+  if(!text || !pin || pin==='—' || !/^\d{3,}$/.test(pin)) return text;
+  return text.split(pin).join(_pinSpokenHint());
+}
+
 // 言語コードを明示指定して発話（高品質音声を優先選択）
 function speakLang(text, ttsLang){
+  if(!_voiceEnabled) return;              // 音声案内OFF：一切再生しない
   if(!window.speechSynthesis || !text) return;
   window.speechSynthesis.cancel();
 
@@ -3472,6 +3717,7 @@ function speakLang(text, ttsLang){
 //  音声アナウンス
 // ═══════════════════════════════════════
 function speak(text) {
+  if (!_voiceEnabled) return;             // 音声案内OFF：一切再生しない
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
@@ -3521,8 +3767,16 @@ function restartApp() {
   el('resError').style.display = 'none';
   document.querySelectorAll('input[type="text"],input[type="tel"],input[type="email"],input[type="number"]').forEach(e => e.value='');
   document.querySelectorAll('select').forEach(e => e.selectedIndex=0);
+  // メール分割UI・住所を初期状態へ戻す（hiddenの#emailはtype=text指定に含まれないため個別に）
+  if(el('email')) el('email').value='';
+  if(el('emailDomainCustom')) el('emailDomainCustom').style.display='none';
+  if(el('emailPreview')){ el('emailPreview').textContent=''; el('emailPreview').style.display='none'; }
+  document.querySelectorAll('.input-error').forEach(e => e.classList.remove('input-error'));
+  document.querySelectorAll('.prefilled').forEach(e => e.classList.remove('prefilled'));
   el('contactError').style.display = 'none';
   document.querySelectorAll('.has-error').forEach(e => e.classList.remove('has-error'));
+  // 音声案内を管理画面の既定値へリセット（前のお客様の状態を引きずらない）
+  resetVoiceSetting();
   showScreen('screen-lang');
   loadContractSettings(); // 次のゲストの言語選択に備えてキャッシュを更新（タイムラグ短縮）
 }
