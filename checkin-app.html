@@ -1487,6 +1487,8 @@ const T = {
     searchTitle: '予約IDを入力', searchPlaceholder: '例: 91779',
     searchBtn: '次へ　→', searchLabel: '予約ID',
     checking: '予約情報を確認しています…', checkingShort: '確認中…',
+    alreadyCheckedIn: 'この予約はすでにチェックイン済みです。',
+    preparingRoom: 'お部屋の情報を準備しています…',
     notFoundTitle: '予約情報が見つかりません',
     notFoundHelp: '予約IDをご確認のうえ、もう一度ご入力ください。',
     foundLabel: '予約が見つかりました',
@@ -1542,6 +1544,8 @@ const T = {
     searchTitle: 'Enter Reservation ID', searchPlaceholder: 'e.g. 91779',
     searchBtn: 'Next　→', searchLabel: 'Reservation ID',
     checking: 'Checking your reservation…', checkingShort: 'Checking…',
+    alreadyCheckedIn: 'You have already checked in for this reservation.',
+    preparingRoom: 'Preparing your room information…',
     notFoundTitle: 'Reservation not found',
     notFoundHelp: 'Please check your reservation ID and try again.',
     foundLabel: 'Reservation found',
@@ -1597,6 +1601,8 @@ const T = {
     searchTitle: '输入预约ID', searchPlaceholder: '例: 91779',
     searchBtn: '下一步　→', searchLabel: '预约ID',
     checking: '正在确认预约信息…', checkingShort: '确认中…',
+    alreadyCheckedIn: '该预约已完成入住手续。',
+    preparingRoom: '正在准备您的房间信息…',
     notFoundTitle: '未找到预约信息',
     notFoundHelp: '请确认预约ID后重新输入。',
     foundLabel: '找到预约',
@@ -1652,6 +1658,8 @@ const T = {
     searchTitle: '예약 ID 입력', searchPlaceholder: '예: 91779',
     searchBtn: '다음　→', searchLabel: '예약 ID',
     checking: '예약 정보를 확인하고 있습니다…', checkingShort: '확인 중…',
+    alreadyCheckedIn: '이 예약은 이미 체크인이 완료되었습니다.',
+    preparingRoom: '객실 정보를 준비하고 있습니다…',
     notFoundTitle: '예약 정보를 찾을 수 없습니다',
     notFoundHelp: '예약 ID를 확인하신 후 다시 입력해 주세요.',
     foundLabel: '예약이 확인되었습니다',
@@ -2241,6 +2249,14 @@ function closeQrScanner(){
 
 // 予約照会の多重実行ガード。連打・QR読取直後の重複呼び出しを防ぐ。
 let _searchInFlight = false;
+// 今回の照会が「すでにチェックイン済みの予約」だったか
+let _alreadyCheckedIn = false;
+
+// チェックイン済み判定（宿泊者名簿側の新旧表記に両対応）
+function _isCheckedInStatus(status){
+  const s = String(status||'').trim();
+  return s === 'checked_in' || s === 'checkedin';
+}
 
 // 予約が見つからない場合のエラー表示（見出し＋対処案内＋入力欄の強調）
 // title/help を渡すとカメラ不可・QR読取失敗などの個別メッセージにも使える。
@@ -2328,7 +2344,10 @@ async function searchReservation() {
         phone: best.phone || '',
         address: best.address || '',
         email: best.email || '',
-        passport: best.passport || best.passportNo || ''
+        passport: best.passport || best.passportNo || '',
+        // チェックイン済み判定用（同一予約IDの全泊のいずれかがチェックイン済みなら該当）
+        status: (sameId.find(x => _isCheckedInStatus(x.status)) || best || {}).status || '',
+        checkedInAt: (sameId.find(x => x.checkedInAt) || {}).checkedInAt || ''
       };
 
       // rooms 配列から表示用の部屋番号（no）を逆引き
@@ -2357,6 +2376,18 @@ async function searchReservation() {
       el('rv-guests').textContent = (r.guests || '—') + (lang==='ja'?' 名': lang==='ko'?' 명':' pax');
       el('rv-site').textContent  = r.site || '—';
       _submissionReg = ''; // 新しい予約を検索したら登録番号をリセット
+
+      // ── チェック②：すでにチェックイン済みか ──────────────────────
+      // 済みの場合は入力画面へ進ませず、その予約の最新の部屋情報で完了画面を再表示する。
+      if(_isCheckedInStatus(reservationData.status)){
+        _alreadyCheckedIn = true;
+        showToastMsg((T[lang] && T[lang].alreadyCheckedIn) || 'この予約はすでにチェックイン済みです。', 6000);
+        // 完了画面はクリア→取得完了後に描画（前のお客様の情報を出さない）
+        await renderCompleteScreen(reservationData, {hideBack:true});
+        return;
+      }
+      _alreadyCheckedIn = false;
+
       // 予約が取得できたら中間確認画面で止めず、そのままお客様情報へ進む。
       // （予約ID入力・QR読取のどちらから入っても同じ動線に統一する）
       goToForm();
@@ -3216,22 +3247,12 @@ async function submitCheckin() {
   // 確定済みの宿泊者配列（念のため再収集）
   if(!finalGuests.length) collectGuests();
 
-  // ── 送信はバックグラウンドで実行（完了画面を先に出して体感待ち時間をほぼゼロに）──
+  // ── 送信はバックグラウンドで実行 ──
   _fireCheckinSends(reg, r);
 
-  // ── 完了画面を即時表示 ──
-  const t = T[lang];
-  el('complete-title').textContent = t.completeTitle;
-  el('complete-sub').textContent = t.completeSub;
-  el('room-label').textContent = t.roomLabel;
-  el('pin-label').textContent = t.pinLabel;
-  el('room-note').textContent = t.roomNote;
-  el('btn-restart').textContent = t.restartBtn;
-  el('room-number-display').textContent = r.roomNo || String(r.roomId || '—');
-  showScreen('screen-complete');
-
-  // 部屋別設定（roomSettings：暗証番号・Wi-Fi・案内文）を取得して反映
-  await applyRoomGuide(r.roomId);
+  // ── 完了画面：前のお客様の情報を一瞬も出さないため、
+  //    「クリア → ローディング → データ取得完了 → 描画」の順で表示する ──
+  await renderCompleteScreen(r);
 }
 
 // チェックインの各種送信をバックグラウンドで発火（完了画面の表示はブロックしない）
@@ -3366,6 +3387,97 @@ function _resolveRoomSetting(roomSettings, roomId){
     if(String(k) === sid) return roomSettings[k];
   }
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  完了画面の状態を完全に初期化する（情報漏洩防止：最重要）
+// ═══════════════════════════════════════════════════════════════
+// 前のお客様の「部屋番号・暗証番号・Wi-Fi・案内文」がDOMに残ったままだと、
+// 次のお客様の完了画面が描画される瞬間に一瞬表示されてしまう。
+// 「最初に戻る」時と、次の完了画面を作る直前の両方で必ず呼び、安全な空状態へ戻す。
+function clearCompleteScreen(){
+  const setTxt=(id,v)=>{ const e=el(id); if(e)e.textContent=v; };
+  const hide  =(id)=>{ const e=el(id); if(e)e.style.display='none'; };
+  // 部屋番号・暗証番号は「—」（安全な空状態）へ
+  setTxt('room-number-display','—');
+  setTxt('pin-display','—');
+  // 入室案内・Wi-Fi・外部リンク
+  hide('guide-card');
+  setTxt('guide-roomname','');
+  setTxt('guide-text','');
+  hide('guide-link');
+  hide('wifi-box'); hide('wifi-ssid-row'); hide('wifi-pass-row');
+  setTxt('wifi-ssid',''); setTxt('wifi-pass','');
+  // 部屋案内メディア（動画・画像スライド）
+  if(typeof _clearMediaTimers==='function')_clearMediaTimers();
+  const stage=el('media-stage'); if(stage)stage.innerHTML='';
+  const dots=el('media-dots');   if(dots)dots.innerHTML='';
+  hide('media-container'); hide('media-prev'); hide('media-next');
+  _mediaList=[]; _mediaIdx=0; _mediaMode='none';
+  // 音声の読み上げ内容も破棄（前のお客様の案内を再生させない）
+  _lastGuideText=''; _lastGuideTTSLang='ja-JP';
+  if(window.speechSynthesis) window.speechSynthesis.cancel();
+  // 送信ステータス表示
+  setTxt('sync-status','');
+}
+
+// 画面下部に短時間だけ表示する通知（既存のトーストが無いため軽量に自前描画）
+function showToastMsg(msg, ms){
+  let t=document.getElementById('ci-toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='ci-toast';
+    t.style.cssText='position:fixed;left:50%;bottom:32px;transform:translateX(-50%);'
+      +'background:rgba(10,28,40,.94);color:#eaf2f6;border:1.5px solid #2f5f76;'
+      +'padding:14px 22px;border-radius:12px;font-size:15px;line-height:1.6;'
+      +'max-width:88vw;text-align:center;z-index:99999;box-shadow:0 8px 28px rgba(0,0,0,.45);'
+      +'opacity:0;transition:opacity .25s ease;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  requestAnimationFrame(()=>{ t.style.opacity='1'; });
+  clearTimeout(t._tid);
+  t._tid=setTimeout(()=>{ t.style.opacity='0'; }, ms||4000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  完了画面を「データが揃ってから」描画する
+// ═══════════════════════════════════════════════════════════════
+// ★前のお客様の情報を一瞬でも見せないため、以下の順序を厳守する。
+//   ① 完了画面のDOMを空状態にクリア
+//   ② ローディング表示で画面をマスク
+//   ③ 部屋情報（暗証番号・Wi-Fi等）の取得完了を待つ
+//   ④ ここで初めて完了画面へ遷移する
+async function renderCompleteScreen(r, opts){
+  const t=T[lang]||{};
+  const o=opts||{};
+  clearCompleteScreen();                       // ① 空状態へ
+  // ラベル類（値ではないので先に入れて問題ない）
+  el('complete-title').textContent = t.completeTitle;
+  el('complete-sub').textContent   = t.completeSub;
+  el('room-label').textContent     = t.roomLabel;
+  el('pin-label').textContent      = t.pinLabel;
+  el('room-note').textContent      = t.roomNote;
+  el('btn-restart').textContent    = t.restartBtn;
+  // チェックイン済み予約の再表示時は、入力画面へ遡れないよう「戻る」を隠す
+  const backBtn=el('btn-back-complete');
+  if(backBtn) backBtn.style.display = o.hideBack ? 'none' : '';
+
+  // ② ローディングで画面をマスク
+  el('sendingText').textContent = t.preparingRoom || t.sending || '準備しています…';
+  el('sendingOverlay').classList.add('active');
+  try{
+    // ③ 部屋情報の取得完了を待つ（この間、完了画面はまだ表示しない）
+    el('room-number-display').textContent = (r && (r.roomNo || r.roomId)) ? (r.roomNo || String(r.roomId)) : '—';
+    await applyRoomGuide(r ? r.roomId : null);
+  }catch(e){
+    console.error('部屋情報の取得に失敗:', e);
+    // 失敗しても前のお客様の情報は既にクリア済みなので「—」表示のまま安全に進む
+  }finally{
+    el('sendingOverlay').classList.remove('active');
+  }
+  // ④ データが揃ってから完了画面を表示
+  showScreen('screen-complete');
 }
 
 async function applyRoomGuide(roomId){
@@ -3734,11 +3846,17 @@ function speak(text) {
 // ═══════════════════════════════════════
 function restartApp() {
   window.speechSynthesis && window.speechSynthesis.cancel();
+  // ★情報漏洩防止：前のお客様の完了情報（部屋番号・暗証番号・Wi-Fi・案内文・メディア）を
+  //   この時点でDOMごと完全に破棄する。次のお客様の描画時に一瞬も残らないようにするため。
+  //   ※サーバー側のチェックイン済み情報は削除せず、画面上の一時状態のみをクリアする。
+  clearCompleteScreen();
   _lastGuideText=''; _lastGuideTTSLang='ja-JP';
   if(typeof _clearMediaTimers==='function')_clearMediaTimers();
   reservationData = null;
   passportDataUrl = null;
   currentNat = 'jp';
+  updatedGuestData = {};
+  _alreadyCheckedIn = false;
   // 多客入力ステートをリセット
   if(typeof closeCamera==='function')closeCamera(); // カメラ起動中なら停止
   if(typeof closeQrScanner==='function')closeQrScanner(); // QRスキャナ起動中なら停止
