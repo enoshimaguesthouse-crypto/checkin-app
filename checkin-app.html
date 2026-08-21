@@ -475,6 +475,30 @@ input.input-error {
   width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   background:var(--ocean-pale); color:var(--ocean-deep); margin-bottom:12px; flex-shrink:0;
 }
+/* 操作が一目で伝わる大きめの線画イラスト（円背景は外し、絵そのものを見せる） */
+.entry-icon-lg {
+  width:96px; height:96px; background:transparent; border-radius:0; margin-bottom:14px;
+}
+.entry-icon-lg svg { width:100%; height:100%; }
+@media (min-width:768px){
+  .entry-icon-lg { width:118px; height:118px; }
+}
+/* 「どちらもお持ちでない方はこちら」：2枚のカードの下に横幅いっぱいで置く控えめなボタン */
+.entry-help-btn {
+  width:100%; margin-top:14px; padding:16px 18px;
+  background:rgba(10,28,40,.45); color:var(--ink);
+  border:1.5px solid var(--border); border-radius:14px;
+  font-family:'Shippori Mincho',serif; font-size:15px; letter-spacing:.06em;
+  cursor:pointer; transition:background .18s ease, border-color .18s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.entry-help-btn:hover { background:rgba(10,28,40,.62); border-color:var(--ocean-mid); }
+/* 氏名照会パネル */
+.name-lookup { margin-top:14px; padding:18px 18px 16px; border:1.5px solid var(--border);
+  border-radius:14px; background:rgba(10,28,40,.42); }
+.name-lookup .nl-title { font-family:'Shippori Mincho',serif; font-size:15px; color:var(--ocean-deep);
+  letter-spacing:.06em; margin-bottom:6px; }
+.name-lookup .nl-note { font-size:12px; color:var(--gray); line-height:1.7; margin-bottom:12px; }
 .entry-title {
   font-family:'Shippori Mincho',serif; font-size:15px; font-weight:500;
   letter-spacing:0.1em; color:var(--ocean-deep); margin-bottom:16px;
@@ -613,7 +637,10 @@ input.input-error {
   .entry-grid { gap:24px; margin-bottom:12px; }
   .entry-card { padding:32px 26px; }
   .entry-icon { width:64px; height:64px; margin-bottom:16px; }
+  /* 大きめイラストはタブレットでさらに見やすく（上の .entry-icon 指定を打ち消す） */
+  .entry-icon-lg { width:130px; height:130px; margin-bottom:18px; }
   .entry-title { font-size:17px; margin-bottom:20px; }
+  .entry-help-btn { padding:20px; font-size:17px; }
   /* 入力欄・ボタン：指で押しやすい高さに */
   input[type="text"], input[type="tel"], input[type="email"], input[type="date"], input[type="number"], select {
     font-size:17px; padding:15px 16px;
@@ -1114,8 +1141,17 @@ input:focus,select:focus,textarea:focus{
     <div class="entry-grid">
       <!-- 予約IDカード：アイコン＋入力欄＋検索ボタンを1枚に内包（1ステップで検索まで完結） -->
       <div class="entry-card entry-card-id">
-        <div class="entry-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="7" y1="15" x2="9" y2="15"/><line x1="11" y1="15" x2="15" y2="15"/></svg>
+        <div class="entry-icon entry-icon-lg">
+          <!-- タブレットに数字を入力する様子（指でタップ）。文字がなくても操作が伝わる線画。 -->
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="14" y="6" width="36" height="46" rx="4"/>
+            <line x1="28" y1="11" x2="36" y2="11"/>
+            <rect x="21" y="19" width="22" height="11" rx="2"/>
+            <text x="32" y="28" text-anchor="middle" font-size="9" font-family="ui-monospace,monospace" fill="currentColor" stroke="none" letter-spacing="1">0123</text>
+            <circle cx="25" cy="38" r="2.4"/><circle cx="32" cy="38" r="2.4"/><circle cx="39" cy="38" r="2.4"/>
+            <circle cx="25" cy="46" r="2.4"/>
+            <path d="M36 44c0-1.6 1.3-2.9 2.9-2.9s2.9 1.3 2.9 2.9v6.4l4.6 2.1c1.4.6 2.1 2.2 1.7 3.7l-1.2 4.3c-.4 1.5-1.8 2.5-3.3 2.5h-7.4c-1.1 0-2.1-.5-2.8-1.4l-4.6-6c-.8-1.1-.6-2.6.4-3.4 1-.8 2.4-.7 3.3.2l1.6 1.6z"/>
+          </svg>
         </div>
         <div class="entry-title" id="s1-title">予約IDを入力</div>
         <div class="field-group">
@@ -1127,13 +1163,49 @@ input:focus,select:focus,textarea:focus{
       </div>
       <!-- QRカード：カード全体がボタン。タップで即スキャナへ遷移 -->
       <div class="entry-card entry-card-qr" onclick="openQrScanner()" id="btn-qr-scan" role="button">
-        <div class="entry-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="21" y2="14"/><line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="18" y2="21"/></svg>
+        <div class="entry-icon entry-icon-lg">
+          <!-- スマホのQRをタブレットのカメラにかざす様子。動作がそのまま伝わる線画。 -->
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <!-- 読み取り側の端末 -->
+            <rect x="36" y="16" width="24" height="34" rx="3"/>
+            <circle cx="48" cy="21.5" r="1.4" fill="currentColor" stroke="none"/>
+            <line x1="44" y1="45" x2="52" y2="45"/>
+            <!-- かざしているQRコード -->
+            <rect x="6" y="6" width="24" height="24" rx="2"/>
+            <rect x="10" y="10" width="5.5" height="5.5" rx="1"/>
+            <rect x="20.5" y="10" width="5.5" height="5.5" rx="1"/>
+            <rect x="10" y="20.5" width="5.5" height="5.5" rx="1"/>
+            <line x1="20.5" y1="20.5" x2="20.5" y2="26"/>
+            <line x1="24" y1="23.5" x2="26" y2="23.5"/>
+            <!-- 読み取り中を示す光線 -->
+            <line x1="31.5" y1="15" x2="35" y2="15"/>
+            <line x1="31.5" y1="21" x2="35" y2="21"/>
+            <!-- QRを持つ手 -->
+            <path d="M12 36c0-1.6 1.3-2.9 2.9-2.9s2.9 1.3 2.9 2.9v6.4l4.6 2.1c1.4.6 2.1 2.2 1.7 3.7l-1.2 4.3c-.4 1.5-1.8 2.5-3.3 2.5h-7.4c-1.1 0-2.1-.5-2.8-1.4l-4.6-6c-.8-1.1-.6-2.6.4-3.4 1-.8 2.4-.7 3.3.2l1.6 1.6z"/>
+          </svg>
         </div>
         <div class="entry-title" id="btn-qr-scan-label">QRコードをスキャン</div>
         <div class="entry-hint" id="qr-or">タップしてカメラを起動</div>
       </div>
     </div>
+    <!-- 予約ID・QRのどちらも無いお客様の救済導線 -->
+    <button type="button" class="entry-help-btn" id="btn-name-lookup" onclick="toggleNameLookup()">
+      どちらもお持ちでない方はこちら
+    </button>
+
+    <!-- 氏名からの照会パネル（本日チェックイン予定の予約のみが対象） -->
+    <div class="name-lookup" id="nameLookupPanel" style="display:none;">
+      <div class="nl-title" id="nl-title">お名前で確認する</div>
+      <div class="nl-note" id="nl-note">ご予約時のお名前をご入力ください。本日ご到着のご予約からお探しします。</div>
+      <div class="field-group">
+        <label id="nl-label">お名前</label>
+        <input type="text" id="lookupName" placeholder="山田 太郎"
+               autocapitalize="off" autocorrect="off" spellcheck="false"
+               onkeydown="if(event.key==='Enter') lookupByName()">
+      </div>
+      <button class="btn-search" id="btn-lookup-name" onclick="lookupByName()">次へ　→</button>
+    </div>
+
     <!-- 予約が見つからない場合のエラー。アイコン＋見出し＋対処案内で、
          「何が起きたか／次に何をすればよいか」が一目で伝わるようにする。 -->
     <div class="res-error" id="resError" role="alert" aria-live="assertive">
@@ -1488,6 +1560,13 @@ const T = {
     searchBtn: '次へ　→', searchLabel: '予約ID',
     checking: '予約情報を確認しています…', checkingShort: '確認中…',
     alreadyCheckedIn: 'この予約はすでにチェックイン済みです。',
+    nameHelpBtn: 'どちらもお持ちでない方はこちら', nameLookupTitle: 'お名前で確認する',
+    nameLookupNote: 'ご予約時のお名前をご入力ください。本日ご到着のご予約からお探しします。',
+    nameLabel: 'お名前', namePh: '山田 太郎',
+    nameNotFoundTitle: 'お名前でご予約が見つかりません',
+    nameNotFoundHelp: 'ご予約時のお名前（漢字・ローマ字など）をご確認のうえ、もう一度お試しください。解決しない場合はフロントスタッフへお声がけください。',
+    nameMultiTitle: 'ご本人の確認が必要です',
+    nameMultiHelp: '同じお名前のご予約が複数ございます。恐れ入りますが、フロントスタッフへお声がけください。',
     preparingRoom: 'お部屋の情報を準備しています…',
     notFoundTitle: '予約情報が見つかりません',
     notFoundHelp: '予約IDをご確認のうえ、もう一度ご入力ください。',
@@ -1545,6 +1624,13 @@ const T = {
     searchBtn: 'Next　→', searchLabel: 'Reservation ID',
     checking: 'Checking your reservation…', checkingShort: 'Checking…',
     alreadyCheckedIn: 'You have already checked in for this reservation.',
+    nameHelpBtn: "Don't have either? Tap here", nameLookupTitle: 'Find by name',
+    nameLookupNote: 'Enter the name on your booking. We search reservations arriving today.',
+    nameLabel: 'Full name', namePh: 'TARO YAMADA',
+    nameNotFoundTitle: 'No reservation found for that name',
+    nameNotFoundHelp: 'Please check the name exactly as it appears on your booking and try again. If it still does not work, please ask our front desk staff.',
+    nameMultiTitle: 'We need to verify your identity',
+    nameMultiHelp: 'There are several bookings under the same name. Please ask our front desk staff for assistance.',
     preparingRoom: 'Preparing your room information…',
     notFoundTitle: 'Reservation not found',
     notFoundHelp: 'Please check your reservation ID and try again.',
@@ -1602,6 +1688,13 @@ const T = {
     searchBtn: '下一步　→', searchLabel: '预约ID',
     checking: '正在确认预约信息…', checkingShort: '确认中…',
     alreadyCheckedIn: '该预约已完成入住手续。',
+    nameHelpBtn: '两者都没有的客人请点这里', nameLookupTitle: '用姓名查询',
+    nameLookupNote: '请输入预约时使用的姓名。我们将从今天到达的预约中查找。',
+    nameLabel: '姓名', namePh: '山田 太郎',
+    nameNotFoundTitle: '未找到该姓名的预约',
+    nameNotFoundHelp: '请确认预约时使用的姓名后重试。如仍无法查询，请联系前台工作人员。',
+    nameMultiTitle: '需要确认您的身份',
+    nameMultiHelp: '有多个同名预约。请联系前台工作人员。',
     preparingRoom: '正在准备您的房间信息…',
     notFoundTitle: '未找到预约信息',
     notFoundHelp: '请确认预约ID后重新输入。',
@@ -1659,6 +1752,13 @@ const T = {
     searchBtn: '다음　→', searchLabel: '예약 ID',
     checking: '예약 정보를 확인하고 있습니다…', checkingShort: '확인 중…',
     alreadyCheckedIn: '이 예약은 이미 체크인이 완료되었습니다.',
+    nameHelpBtn: '둘 다 없으신 분은 여기', nameLookupTitle: '이름으로 확인하기',
+    nameLookupNote: '예약하신 이름을 입력해 주세요. 오늘 도착 예정 예약에서 찾습니다.',
+    nameLabel: '이름', namePh: '홍길동',
+    nameNotFoundTitle: '해당 이름의 예약을 찾을 수 없습니다',
+    nameNotFoundHelp: '예약하신 이름을 확인하신 후 다시 시도해 주세요. 해결되지 않으면 프런트 직원에게 문의해 주세요.',
+    nameMultiTitle: '본인 확인이 필요합니다',
+    nameMultiHelp: '같은 이름의 예약이 여러 건 있습니다. 프런트 직원에게 문의해 주세요.',
     preparingRoom: '객실 정보를 준비하고 있습니다…',
     notFoundTitle: '예약 정보를 찾을 수 없습니다',
     notFoundHelp: '예약 ID를 확인하신 후 다시 입력해 주세요.',
@@ -2002,6 +2102,13 @@ function applyLang() {
   el('contact-note').textContent = t.contactNote;
   el('lbl-phone').textContent = t.lblPhone;
   el('lbl-email').textContent = t.lblEmail;
+  // 氏名照会（予約ID・QRのどちらも無い場合）の多言語化
+  if(el('btn-name-lookup'))  el('btn-name-lookup').textContent  = t.nameHelpBtn || 'どちらもお持ちでない方はこちら';
+  if(el('nl-title'))         el('nl-title').textContent         = t.nameLookupTitle || 'お名前で確認する';
+  if(el('nl-note'))          el('nl-note').textContent          = t.nameLookupNote || '';
+  if(el('nl-label'))         el('nl-label').textContent         = t.nameLabel || 'お名前';
+  if(el('lookupName'))       el('lookupName').placeholder       = t.namePh || '';
+  if(el('btn-lookup-name'))  el('btn-lookup-name').textContent  = t.searchBtn;
   // 住所・メール分割UIの多言語化
   if(el('lbl-guest-address')) el('lbl-guest-address').textContent = t.addressLabel || '住所';
   if(el('guestAddress'))      el('guestAddress').placeholder      = t.addressPh || '';
@@ -2276,8 +2383,86 @@ function _showResError(title, help) {
 }
 function _clearResError() {
   el('resError').style.display = 'none';
-  const input = el('reservationId');
-  if (input) input.classList.remove('input-error');
+  ['reservationId','lookupName'].forEach(id=>{
+    const e = el(id); if (e) e.classList.remove('input-error');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  氏名からの予約照会（予約ID・QRのどちらも無い場合の救済導線）
+// ═══════════════════════════════════════════════════════════════
+// 【セキュリティ】氏名だけで他人の予約を引けると、そのままチェックインを完了させて
+//   他人の部屋番号・暗証番号を見られてしまう。そのためGAS側で
+//   ・照合対象は「本日チェックイン予定」の予約のみ
+//   ・返すのは予約IDだけ（氏名・部屋・連絡先は返さない）
+//   ・複数一致時は予約IDを返さない（他のお客様の氏名を候補として晒さない）
+//   という制約を掛けている。ここでは1件に確定した場合のみ既存の予約ID検索へ委譲する。
+function toggleNameLookup(){
+  const panel = el('nameLookupPanel');
+  if(!panel) return;
+  const open = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = open ? 'block' : 'none';
+  _clearResError();
+  if(open){
+    panel.scrollIntoView({block:'nearest', behavior:'smooth'});
+    const inp = el('lookupName'); if(inp) inp.focus();
+  }
+}
+
+async function lookupByName(){
+  if (_searchInFlight) return;                 // 取得中の二重操作を無効化
+  const t = T[lang] || {};
+  const nameEl = el('lookupName');
+  const name = (nameEl.value || '').trim();
+  if(!name){ nameEl.focus(); return; }
+
+  _searchInFlight = true;
+  const btn = el('btn-lookup-name');
+  btn.disabled = true;
+  btn.textContent = t.checkingShort || t.searching;
+  el('btn-qr-scan').style.pointerEvents = 'none';
+  _clearResError();
+  el('sendingOverlay').classList.add('active');
+  el('sendingText').textContent = t.checking || t.searching;
+
+  try{
+    const res = await fetch(_hkUrl(HOTEL_DATA_GAS_URL + '?type=findByName&name='
+      + encodeURIComponent(name) + '&t=' + Date.now()));
+    const data = await res.json();
+
+    if (data && data.count === 1 && data.reservationId){
+      // 1件に確定 → 既存の予約ID検索へ委譲する。
+      // これによりチェックイン済み判定・完了画面の再表示など既存の分岐がそのまま効く。
+      el('reservationId').value = String(data.reservationId);
+      el('nameLookupPanel').style.display = 'none';
+      nameEl.value = '';
+      _searchInFlight = false;                 // searchReservation 側で再度ガードするため解除
+      btn.disabled = false; btn.textContent = t.searchBtn;
+      el('btn-qr-scan').style.pointerEvents = '';
+      el('sendingOverlay').classList.remove('active');
+      await searchReservation();
+      return;
+    }
+    // 複数一致：候補を出すと他のお客様の氏名が漏れるためフロント案内に留める
+    if (data && data.count > 1){
+      _showResError(t.nameMultiTitle, t.nameMultiHelp);
+    } else {
+      _showResError(t.nameNotFoundTitle, t.nameNotFoundHelp);
+    }
+    nameEl.classList.add('input-error');
+    nameEl.focus();
+  }catch(e){
+    console.error('氏名照会エラー:', e);
+    _showResError(t.nameNotFoundTitle, t.nameNotFoundHelp);
+  }finally{
+    if(_searchInFlight){
+      _searchInFlight = false;
+      btn.disabled = false;
+      btn.textContent = t.searchBtn;
+      el('btn-qr-scan').style.pointerEvents = '';
+      el('sendingOverlay').classList.remove('active');
+    }
+  }
 }
 
 async function searchReservation() {
@@ -3883,6 +4068,9 @@ function restartApp() {
   el('resResult').style.display = 'none';
   el('btn-to-form').style.display = 'none';
   el('resError').style.display = 'none';
+  // 氏名照会パネルは閉じた状態に戻す（前のお客様の入力を残さない）
+  if(el('nameLookupPanel')) el('nameLookupPanel').style.display = 'none';
+  if(el('lookupName')) el('lookupName').value = '';
   document.querySelectorAll('input[type="text"],input[type="tel"],input[type="email"],input[type="number"]').forEach(e => e.value='');
   document.querySelectorAll('select').forEach(e => e.selectedIndex=0);
   // メール分割UI・住所を初期状態へ戻す（hiddenの#emailはtype=text指定に含まれないため個別に）
