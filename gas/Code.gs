@@ -216,6 +216,36 @@ function doGet(e) {
       return jsonOut(JSON.stringify({ guestData: matches, rooms: data.rooms || [], mailLangResolved: langResolved }));
     }
 
+    // ── 氏名から予約を特定（チェックインアプリ：予約ID・QRのどちらも無い場合の救済）──
+    // 【セキュリティ設計】氏名だけで他人の予約を引けると、そのままチェックインを完了させて
+    //   他人の部屋番号・暗証番号を閲覧できてしまう。そのため以下の制約を課す：
+    //   ・照合対象は「本日チェックイン予定（＝連泊の初日）」の予約のみ
+    //   ・返すのは予約IDだけ。氏名・部屋・連絡先などの予約内容は一切返さない
+    //   ・複数一致した場合は予約IDを返さない（他のお客様の氏名を候補として晒さないため）
+    if (type === 'findByName') {
+      const qname = _normNameForSearch_(params.name || '');
+      if (!qname) return jsonOut(JSON.stringify({ count: 0 }));
+      const data = JSON.parse(getHotelFile().getBlob().getDataAsString());
+      const guestData = data.guestData || {};
+      const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-M-d');
+      const ids = {};
+      Object.keys(guestData).forEach(function(k){
+        const g = guestData[k];
+        if (!g || g.cont) return;                       // 連泊の後続日は対象外（初日＝チェックイン日のみ）
+        if (String(g.status||'') === 'cancelled') return;
+        const pk = _parseKey_(k);
+        if ((pk.y + '-' + pk.m + '-' + pk.d) !== today) return;
+        if (_normNameForSearch_(g.name) !== qname) return;
+        const gid = g.reservationId || g.id;
+        if (gid) ids[String(gid).trim()] = true;
+      });
+      const list = Object.keys(ids);
+      // 1件に確定した場合のみ予約IDを返す（0件・複数件では何も返さない）
+      return jsonOut(JSON.stringify(
+        list.length === 1 ? { count: 1, reservationId: list[0] } : { count: list.length }
+      ));
+    }
+
     // デフォルト：宿泊データ全体はPMS（管理者キー）専用
     if (auth !== 'admin') return _unauthorized_();
     // 重いパスポート画像は除外して軽量化。画像は type=search（予約編集を開いた時）でのみ取得する。
@@ -838,6 +868,14 @@ function _mailResolveTpl_(cfg, rtKey, lang){
 function _parseKey_(key){
   var p=String(key).split(':').map(function(x){return parseInt(x);});
   return p.length===4 ? {y:p[0],m:p[1],r:p[2],d:p[3]} : {y:2026,m:p[0],r:p[1],d:p[2]};
+}
+// 氏名照合用の正規化：全角英数→半角、空白（半角・全角）除去、小文字化。
+// OTA由来の表記ゆれ（"YAMADA TARO" / "ｙａｍａｄａ　ｔａｒｏ" 等）を吸収する。
+function _normNameForSearch_(s){
+  s = String(s == null ? '' : s);
+  s = s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  s = s.replace(/[\s　]/g, '');
+  return s.toLowerCase();
 }
 // 年・月・日から正しいキー文字列を生成（PMS gk と同一仕様。月末跨ぎはDateで正規化）
 function _gk_(m,r,d,y){
