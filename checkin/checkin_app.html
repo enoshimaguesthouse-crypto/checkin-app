@@ -400,7 +400,9 @@ input.input-error {
 .sign-clear-btn:hover { border-color:var(--ocean-mid); color:var(--ocean-deep); }
 .btn-group { display:flex; gap:12px; margin-top:22px; }
 .btn-back {
-  flex:0 0 88px; padding:14px; background:transparent;
+  /* 固定幅だとタブレットの大きい文字で「← 戻る」が2行になるため、
+     内容に合わせて伸ばしつつ折り返しを禁止する */
+  flex:0 0 auto; min-width:88px; white-space:nowrap; padding:14px 20px; background:transparent;
   border:1.5px solid var(--border); border-radius:12px; font-family:inherit;
   font-size:13px; color:var(--gray); cursor:pointer; transition:all 0.3s;
 }
@@ -502,12 +504,9 @@ input.input-error {
   -webkit-tap-highlight-color:transparent;
 }
 .entry-help-btn:hover { background:rgba(10,28,40,.62); border-color:var(--ocean-mid); }
-/* 氏名照会パネル */
-.name-lookup { margin-top:14px; padding:18px 18px 16px; border:1.5px solid var(--border);
+/* 氏名照会パネル（見出し・説明は省き、入力欄とボタンのみのシンプルな構成） */
+.name-lookup { margin-top:14px; padding:18px; border:1.5px solid var(--border);
   border-radius:14px; background:rgba(10,28,40,.42); }
-.name-lookup .nl-title { font-family:'Shippori Mincho',serif; font-size:15px; color:var(--ocean-deep);
-  letter-spacing:.06em; margin-bottom:6px; }
-.name-lookup .nl-note { font-size:12px; color:var(--gray); line-height:1.7; margin-bottom:12px; }
 .entry-title {
   font-family:'Shippori Mincho',serif; font-size:16px; font-weight:700;
   letter-spacing:0.1em; color:var(--ocean-deep); margin-bottom:6px;
@@ -603,10 +602,13 @@ input.input-error {
 
 /* ── PROGRESS ── */
 .progress-container { margin-bottom:24px; }
-.progress-steps { display:flex; justify-content:center; margin-bottom:7px; }
-.step { display:flex; align-items:center; }
+/* ステップ表示：以前はドット列とラベル列を別々のflexで組んでおり、
+   両者の合計幅が異なるためアイコンと文字の中心がずれていた。
+   1つのflex内に「ドット＋ラベル」を縦積みした列を並べ、確実に中央を揃える。 */
+.progress-steps { display:flex; justify-content:center; align-items:flex-start; margin-bottom:7px; --dot:40px; }
+.step { display:flex; flex-direction:column; align-items:center; width:90px; }
 .step-dot {
-  width:40px; height:40px; border-radius:50%; border:2px solid var(--border);
+  width:var(--dot); height:var(--dot); border-radius:50%; border:2px solid var(--border);
   display:flex; align-items:center; justify-content:center; font-size:16px;
   color:var(--gray); background:white; transition:all 0.4s;
   box-shadow:0 2px 8px rgba(15,108,140,0.07);
@@ -622,10 +624,11 @@ input.input-error {
   background:linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid));
   color:white;
 }
-.step-line { width:44px; height:2px; background:var(--border); transition:background 0.4s; margin:0 2px; }
+/* 連結線はドット中心の高さに合わせる（列の先頭＝ドット上端からドット半径分下げる） */
+.step-line { width:44px; height:2px; background:var(--border); transition:background 0.4s;
+  flex:0 0 auto; align-self:flex-start; margin:calc(var(--dot) / 2 - 1px) 2px 0; }
 .step-line.completed { background:linear-gradient(90deg, var(--ocean-deep), var(--ocean-mid)); }
-.step-labels { display:flex; justify-content:center; gap:0; }
-.step-label { font-size:9px; color:var(--gray); text-align:center; width:84px; letter-spacing:0.04em; }
+.step-label { font-size:9px; color:var(--gray); text-align:center; width:100%; margin-top:6px; letter-spacing:0.04em; }
 .step-label.active { color:var(--ocean-deep); font-weight:600; }
 
 @media(max-width:560px){
@@ -634,9 +637,10 @@ input.input-error {
   .header-ja { font-size:20px; }
   .lang-btn { padding:22px 12px; border-radius:14px; }
   .lang-flag { font-size:28px; }
+  .progress-steps { --dot:34px; }
+  .step { width:66px; }
   .step-line { width:32px; }
-  .step-label { width:60px; }
-  .step-dot { width:34px; height:34px; font-size:14px; }
+  .step-dot { font-size:14px; }
 }
 
 /* ── タブレット最適化（自動チェックイン端末を想定：余白・タッチ領域・文字を拡大） ── */
@@ -644,9 +648,11 @@ input.input-error {
   .header { padding:52px 0 32px; }
   .header-ja { font-size:28px; }
   .progress-container { margin-bottom:32px; }
-  .step-dot { width:46px; height:46px; font-size:18px; }
+  .progress-steps { --dot:46px; }
+  .step { width:104px; }
+  .step-dot { font-size:18px; }
   .step-line { width:56px; }
-  .step-label { font-size:11px; width:96px; }
+  .step-label { font-size:11px; }
   /* カード全般：内側余白と下マージンを拡大して間延びを防ぎつつ視認性UP */
   .card { padding:34px 38px; margin-bottom:24px; }
   .entry-grid { gap:24px; margin-bottom:12px; }
@@ -916,7 +922,10 @@ input:focus,select:focus,textarea:focus{
     touch-action:manipulation; /* ③ ダブルタップズーム防止 */
     word-break:break-word; overflow-wrap:anywhere; line-height:1.3; white-space:normal;
   }
-  .btn-back{ flex:0 0 auto; min-width:150px; padding:14px 18px; }
+  /* 「← 戻る」は短いので折り返さない。上の一括指定(white-space:normal /
+     overflow-wrap:anywhere)がタブレットの大きい文字で2行に割っていたのを打ち消す。 */
+  .btn-back{ flex:0 0 auto; min-width:150px; padding:14px 18px;
+    white-space:nowrap; overflow-wrap:normal; word-break:keep-all; }
   .btn-next, .btn-submit, .btn-search{ flex:1 1 auto; }
   .btn-restart{ padding:16px 40px; }
 
@@ -1142,14 +1151,11 @@ input:focus,select:focus,textarea:focus{
 
     <div class="progress-container">
       <div class="progress-steps">
-        <div class="step"><div class="step-dot active" id="dot1">🔍</div><div class="step-line" id="line1"></div></div>
-        <div class="step"><div class="step-dot" id="dot2">📝</div><div class="step-line" id="line2"></div></div>
-        <div class="step"><div class="step-dot" id="dot3">✅</div></div>
-      </div>
-      <div class="step-labels">
-        <div class="step-label active" id="lbl1" style="width:90px"></div>
-        <div class="step-label" id="lbl2" style="width:90px"></div>
-        <div class="step-label" id="lbl3" style="width:90px"></div>
+        <div class="step"><div class="step-dot active" id="dot1">🔍</div><div class="step-label active" id="lbl1"></div></div>
+        <div class="step-line"></div>
+        <div class="step"><div class="step-dot " id="dot2">📝</div><div class="step-label " id="lbl2"></div></div>
+        <div class="step-line"></div>
+        <div class="step"><div class="step-dot " id="dot3">✅</div><div class="step-label " id="lbl3"></div></div>
       </div>
     </div>
 
@@ -1184,10 +1190,7 @@ input:focus,select:focus,textarea:focus{
 
     <!-- 氏名からの照会パネル（本日チェックイン予定の予約のみが対象） -->
     <div class="name-lookup" id="nameLookupPanel" style="display:none;">
-      <div class="nl-title" id="nl-title">お名前で確認する</div>
-      <div class="nl-note" id="nl-note">ご予約時のお名前をご入力ください。本日ご到着のご予約からお探しします。</div>
       <div class="field-group">
-        <label id="nl-label">お名前</label>
         <input type="text" id="lookupName" placeholder="山田 太郎"
                autocapitalize="off" autocorrect="off" spellcheck="false"
                onkeydown="if(event.key==='Enter') lookupByName()">
@@ -1238,14 +1241,11 @@ input:focus,select:focus,textarea:focus{
 
     <div class="progress-container">
       <div class="progress-steps">
-        <div class="step"><div class="step-dot completed" id="dot1b">🔍</div><div class="step-line completed" id="line1b"></div></div>
-        <div class="step"><div class="step-dot active" id="dot2b">📝</div><div class="step-line" id="line2b"></div></div>
-        <div class="step"><div class="step-dot" id="dot3b">✅</div></div>
-      </div>
-      <div class="step-labels">
-        <div class="step-label" id="lbl1b" style="width:90px"></div>
-        <div class="step-label active" id="lbl2b" style="width:90px"></div>
-        <div class="step-label" id="lbl3b" style="width:90px"></div>
+        <div class="step"><div class="step-dot completed" id="dot1b">🔍</div><div class="step-label " id="lbl1b"></div></div>
+        <div class="step-line completed"></div>
+        <div class="step"><div class="step-dot active" id="dot2b">📝</div><div class="step-label active" id="lbl2b"></div></div>
+        <div class="step-line"></div>
+        <div class="step"><div class="step-dot " id="dot3b">✅</div><div class="step-label " id="lbl3b"></div></div>
       </div>
     </div>
 
@@ -1406,9 +1406,11 @@ input:focus,select:focus,textarea:focus{
     </div>
     <div class="progress-container">
       <div class="progress-steps">
-        <div class="step"><div class="step-dot completed">1</div><div class="step-line completed"></div></div>
-        <div class="step"><div class="step-dot completed">2</div><div class="step-line"></div></div>
-        <div class="step"><div class="step-dot active">3</div></div>
+        <div class="step"><div class="step-dot completed">1</div><div class="step-label "></div></div>
+        <div class="step-line completed"></div>
+        <div class="step"><div class="step-dot completed">2</div><div class="step-label "></div></div>
+        <div class="step-line completed"></div>
+        <div class="step"><div class="step-dot active">3</div><div class="step-label "></div></div>
       </div>
     </div>
     <div class="card">
@@ -1437,9 +1439,11 @@ input:focus,select:focus,textarea:focus{
     </div>
     <div class="progress-container">
       <div class="progress-steps">
-        <div class="step"><div class="step-dot completed">1</div><div class="step-line completed"></div></div>
-        <div class="step"><div class="step-dot completed">2</div><div class="step-line"></div></div>
-        <div class="step"><div class="step-dot active">3</div></div>
+        <div class="step"><div class="step-dot completed">1</div><div class="step-label "></div></div>
+        <div class="step-line completed"></div>
+        <div class="step"><div class="step-dot completed">2</div><div class="step-label "></div></div>
+        <div class="step-line completed"></div>
+        <div class="step"><div class="step-dot active">3</div><div class="step-label "></div></div>
       </div>
     </div>
     <div class="card">
@@ -2101,9 +2105,6 @@ function applyLang() {
   if(el('s1-desc'))     el('s1-desc').innerHTML     = t.idDesc || '';
   if(el('s1-qr-desc'))  el('s1-qr-desc').innerHTML  = t.qrDesc || '';
   if(el('btn-name-lookup'))  el('btn-name-lookup').textContent  = t.nameHelpBtn || 'どちらもお持ちでない方はこちら';
-  if(el('nl-title'))         el('nl-title').textContent         = t.nameLookupTitle || 'お名前で確認する';
-  if(el('nl-note'))          el('nl-note').textContent          = t.nameLookupNote || '';
-  if(el('nl-label'))         el('nl-label').textContent         = t.nameLabel || 'お名前';
   if(el('lookupName'))       el('lookupName').placeholder       = t.namePh || '';
   if(el('btn-lookup-name'))  el('btn-lookup-name').textContent  = t.searchBtn;
   // 住所・メール分割UIの多言語化
