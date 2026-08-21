@@ -522,8 +522,9 @@ input.input-error {
 .entry-card-id label { justify-content:center; }
 .entry-card-id .btn-search { margin-top:2px; }
 /* QRカード：カード全体がボタン（クリックでスキャナへ直接遷移） */
+/* QRカード：カード全体がボタン。上端揃えにして左カードとイラストの高さを合わせる */
 .entry-card-qr {
-  cursor:pointer; background:#fff; transition:all 0.25s ease; justify-content:center;
+  cursor:pointer; background:#fff; transition:all 0.25s ease; justify-content:flex-start;
 }
 .entry-card-qr:hover, .entry-card-qr:active { border-color:var(--ocean-mid); background:var(--ocean-pale); transform:translateY(-2px); }
 .entry-card-qr .entry-hint { font-size:11px; color:var(--gray); margin-top:6px; line-height:1.6; }
@@ -1161,7 +1162,6 @@ input:focus,select:focus,textarea:focus{
         <div class="entry-title" id="s1-title">予約IDを入力</div>
         <div class="entry-desc" id="s1-desc">予約ID（5桁の数字）を<br>入力してください</div>
         <div class="field-group">
-          <label id="lbl-resid">予約ID</label>
           <input type="number" id="reservationId" placeholder="例: 91779" inputmode="numeric"
             onkeydown="if(event.key==='Enter') searchReservation()">
         </div>
@@ -1174,7 +1174,6 @@ input:focus,select:focus,textarea:focus{
         </div>
         <div class="entry-title" id="btn-qr-scan-label">QRコードをスキャン</div>
         <div class="entry-desc" id="s1-qr-desc">メール画面に表示されたQRコードを<br>端末のカメラにかざしてください</div>
-        <div class="entry-hint" id="qr-or">タップしてカメラを起動</div>
       </div>
     </div>
 
@@ -2082,11 +2081,9 @@ function applyLang() {
   });
   // 検索画面
   el('s1-title').textContent = t.searchTitle;
-  el('lbl-resid').textContent = t.searchLabel;
   el('reservationId').placeholder = t.searchPlaceholder;
   el('btn-search').textContent = t.searchBtn;
   if(el('btn-qr-scan-label')) el('btn-qr-scan-label').textContent = t.qrScanLabel;
-  if(el('qr-or')) el('qr-or').innerHTML = '<span>'+t.qrOr+'</span>';
   el('rl-name').textContent = t.rlName;
   el('rl-dates').textContent = t.rlDates;
   el('rl-guests').textContent = t.rlGuests;
