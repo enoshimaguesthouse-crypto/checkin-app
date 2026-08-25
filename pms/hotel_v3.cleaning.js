@@ -355,12 +355,27 @@ function generateCleaningList(){
     }
   });
 
-  // cleaningDataを更新（既存ステータスを保持）
+  // ── cleaningDataを更新（同一の清掃対象である間だけステータスを保持）─────────
+  // 【重要】cleaningDataは部屋ID（またはroomId+'_stay'/'_prep'）のみをキーにしており、
+  // 日付やゲストの情報を一切含んでいなかった。連泊なしで毎日ゲストが入れ替わる部屋では
+  // 「room.id」というキー自体は前日も当日も存在し続けるため、前日の清掃で
+  // status='completed' になった記録がそのまま残り、当日の別のゲストのチェックアウトが
+  // 一度も清掃されていないのに「清掃済み」と表示されてしまっていた（今回の不具合）。
+  // 対象ゲスト＋当日の日付から一意な署名を作り、前回記録した署名と異なる＝
+  // 「別の清掃対象（別ゲスト or 別日）」とみなしてステータスを初期化する。
+  const cleaningSignature=(info)=>{
+    const g = info.type==='nextReservationPreparation' ? info.nextGuest : info.guest;
+    const gid = g ? String(g.reservationId || g.id || g.name || '') : '';
+    return `${info.type}|${gid}|${m}-${d}`;
+  };
   const newIds=new Set([...newMap.keys()].map(String));
   Object.keys(cleaningData).forEach(rid=>{if(!newIds.has(rid))delete cleaningData[rid];});
   newMap.forEach((info,key)=>{
     const rid=String(key);
-    if(!cleaningData[rid])cleaningData[rid]={status:'waiting',assignedTo:'',memo:'',startAt:null,completedAt:null};
+    const sig=cleaningSignature(info);
+    if(!cleaningData[rid] || cleaningData[rid]._sig!==sig){
+      cleaningData[rid]={status:'waiting',assignedTo:'',memo:'',startAt:null,completedAt:null,_sig:sig};
+    }
     cleaningData[rid]._info=info;
   });
 
