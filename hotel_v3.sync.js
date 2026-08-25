@@ -391,6 +391,7 @@ const MERGE_GUARDS = [
   {n:'propertySettings',        g:()=>propertySettings,        s:v=>{propertySettings=v;}},
   {n:'garbageRules',            g:()=>garbageRules,            s:v=>{garbageRules=v;}},
   {n:'planRules',               g:()=>planRules,               s:v=>{planRules=v;}},
+  {n:'rentalSiteRules',         g:()=>rentalSiteRules,         s:v=>{rentalSiteRules=v;}},
   {n:'repeatReminders',         g:()=>repeatReminders,         s:v=>{repeatReminders=v;}},
   {n:'staffNames',              g:()=>staffNames,              s:v=>{staffNames=v;}},
   {n:'snTypes',                 g:()=>snTypes,                 s:v=>{snTypes=v;}},
@@ -649,6 +650,18 @@ function _applyServerDataRaw(data) {
       initPlanRulesIfEmpty();
       propertySettings.planRules = planRules;
     }
+    // レンタルスペース：予約サイトマスター。サーバ値を採用。未設定なら現行4項目＋Yoyappinを初期投入。
+    if (Array.isArray(data.propertySettings.rentalSiteRules) && data.propertySettings.rentalSiteRules.length) {
+      rentalSiteRules = data.propertySettings.rentalSiteRules.map((r,i)=>_normalizeRentalSiteRule(r,i));
+      nextRentalSiteId = rentalSiteRules.reduce((m,r)=>{
+        const n = /^rs(\d+)$/.exec(String(r.id||'')); return n?Math.max(m,Number(n[1])):m;
+      },0)+1;
+    }
+    if (typeof initRentalSiteRulesIfEmpty==='function') {
+      initRentalSiteRulesIfEmpty();
+      propertySettings.rentalSiteRules = rentalSiteRules;
+    }
+    if (typeof renderAllRentalSiteSelects==='function') renderAllRentalSiteSelects();
     // 自動メール配信設定：欠けているメール種別/言語をデフォルトで補完しつつサーバ値を採用
     const dms = data.propertySettings.mailSettings;
     if (dms && typeof dms==='object') {

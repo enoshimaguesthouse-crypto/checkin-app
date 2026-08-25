@@ -1102,11 +1102,9 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
 
 /* ── レンタルスペース ── */
 /* 駐車場カレンダーの.park-entryと同じ1行コンパクト表示（セル高さを揃えるため複数行にしない） */
+/* 予約サイトの色はマスターデータ(rentalSiteRules)からインラインstyleで都度描画するため、
+   固定クラスは廃止した（[レンタルスペース管理 ＞ 予約サイト設定]で編集可能）。 */
 .rs-cell-entry{font-size:12px;font-weight:600;border-radius:4px;padding:3px 6px;margin-top:2px;cursor:pointer;border-left:3px solid #ccc;line-height:1.4;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.rs-site-直接{background:#d1fae5;border-left-color:#10b981;color:#065f46;}
-.rs-site-スペースマーケット{background:#dbeafe;border-left-color:#3b82f6;color:#1e40af;}
-.rs-site-インスタベース{background:#ffedd5;border-left-color:#f97316;color:#9a3412;}
-.rs-site-カシカシ{background:#ede9fe;border-left-color:#8b5cf6;color:#5b21b6;}
 .rs-summary-chip{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;display:flex;flex-direction:column;gap:2px;min-width:96px;}
 .rs-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:6px;}
 .rs-opt-grid label{display:flex;align-items:center;gap:5px;font-size:11px;color:#555;cursor:pointer;}
