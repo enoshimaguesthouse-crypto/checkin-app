@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260821a">
+<link rel="stylesheet" href="hotel_v3.css?v=20260822a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -456,6 +456,7 @@
   <div class="topbar">
     <div><div class="ttl">📷 レンタルスペース管理</div><div class="sub">本館・ANNEX の空き時間貸出</div></div>
     <div class="ctr" style="gap:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="openRentalSiteSettings()">⚙ 予約サイト設定</button>
       <button class="btn btn-blue" onclick="openRentalAdd(null)">＋ 予約追加</button>
       <button class="btn" onclick="exportRentalCSV()">CSV出力</button>
     </div>
@@ -465,8 +466,9 @@
   <!-- 検索・フィルタ -->
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
     <input id="rental-search" placeholder="🔍 予約者名・施設" oninput="renderRental()" style="font-size:12px;padding:5px 10px;border:1px solid var(--sand-border);border-radius:6px;width:160px;">
+    <!-- 予約サイトの選択肢は [予約サイト設定] のマスターデータから動的に描画される -->
     <select id="rental-filter-site" onchange="renderRental()" style="font-size:12px;padding:5px 8px;border:1px solid var(--sand-border);border-radius:6px;">
-      <option value="">全予約サイト</option><option>直接</option><option>スペースマーケット</option><option>インスタベース</option><option>カシカシ</option>
+      <option value="">全予約サイト</option>
     </select>
     <select id="rental-filter-purpose" onchange="renderRental()" style="font-size:12px;padding:5px 8px;border:1px solid var(--sand-border);border-radius:6px;">
       <option value="">全目的</option><option>撮影</option><option>女子会</option><option>パーティー</option><option>ビジネス</option><option>趣味</option><option>勉強</option><option>レッスン</option><option>音楽</option><option>その他</option>
@@ -484,19 +486,15 @@
     <div class="park-day-header" style="color:#c0392b;">日</div><div class="park-day-header">月</div><div class="park-day-header">火</div><div class="park-day-header">水</div><div class="park-day-header">木</div><div class="park-day-header">金</div><div class="park-day-header" style="color:#2980b9;">土</div>
   </div>
   <div class="park-grid" id="rental-grid"></div>
-  <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#d1fae5;border-left:3px solid #10b981;"></div><span style="font-size:11px;color:#888;">直接</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#dbeafe;border-left:3px solid #3b82f6;"></div><span style="font-size:11px;color:#888;">スペースマーケット</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#ffedd5;border-left:3px solid #f97316;"></div><span style="font-size:11px;color:#888;">インスタベース</span></div>
-    <div class="li"><div style="width:10px;height:10px;border-radius:2px;background:#ede9fe;border-left:3px solid #8b5cf6;"></div><span style="font-size:11px;color:#888;">カシカシ</span></div>
-  </div>
+  <!-- 凡例：[予約サイト設定] のマスターデータから動的に描画される -->
+  <div id="rental-site-legend" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;"></div>
 </div>
 
 <!-- レンタルスペース予約モーダル -->
 <div class="mbg" id="rental-modal" onclick="if(event.target===this)closeM('rental-modal')">
 <div class="modal" style="max-width:480px;">
   <h3 id="rsm-title">レンタルスペース予約追加</h3>
-  <div class="mr mr2"><div class="fl"><label>対象施設</label><select id="rsm-facility"><option>本館</option><option>ANNEX</option></select></div><div class="fl"><label>予約サイト</label><select id="rsm-site"><option>直接</option><option>スペースマーケット</option><option>インスタベース</option><option>カシカシ</option></select></div></div>
+  <div class="mr mr2"><div class="fl"><label>対象施設</label><select id="rsm-facility"><option>本館</option><option>ANNEX</option></select></div><div class="fl"><label>予約サイト</label><select id="rsm-site"></select></div></div>
   <div class="mr mr2"><div class="fl"><label>開始日時</label><input id="rsm-start" type="datetime-local"></div><div class="fl"><label>終了日時</label><input id="rsm-end" type="datetime-local"></div></div>
   <div class="mr mr3"><div class="fl"><label>予約者名</label><input id="rsm-name" placeholder="田中 一郎"></div><div class="fl"><label>人数</label><input id="rsm-guests" type="number" min="1" value="1"></div><div class="fl"><label>料金（円）</label><input id="rsm-price" type="number" placeholder="5000"></div></div>
   <div class="mr mr2"><div class="fl"><label>利用目的</label><select id="rsm-purpose"><option>撮影</option><option>女子会</option><option>パーティー</option><option>ビジネス</option><option>趣味</option><option>勉強</option><option>レッスン</option><option>音楽</option><option>その他</option></select></div><div class="fl"><label>利用形態</label><input id="rsm-mode" placeholder="個人利用 / 法人利用 等"></div></div>
@@ -1023,6 +1021,42 @@
     <button class="btn" onclick="resetPlanRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 初期設定に戻す</button>
     <button class="btn" onclick="closeM('planrules-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
     <button class="btn btn-blue" onclick="savePlanRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
+  </div>
+</div>
+</div>
+
+<!-- 予約サイト設定（レンタルスペース管理）：PLAN_RULES設定と同じ編集パターン（名称・色・表示順・有効無効） -->
+<style>
+#rentalsite-modal .modal{width:640px!important;max-width:96vw!important;}
+.rss-row{background:#fff;border:1.5px solid var(--sand-border);border-radius:10px;padding:11px 13px;margin-bottom:9px;}
+.rss-row.off{opacity:.55;background:var(--sand);}
+.rss-grid{display:grid;grid-template-columns:1fr 150px 78px 62px;gap:10px;align-items:end;}
+.rss-grid label{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.02em;}
+.rss-grid input[type=text],.rss-grid input[type=number]{width:100%;border:1.5px solid var(--sand-border);border-radius:7px;padding:7px 8px;font-size:13px;font-family:inherit;box-sizing:border-box;}
+.rss-ord{display:flex;flex-direction:column;gap:2px;}
+.rss-ord button{border:1.5px solid var(--sand-border);background:#fff;border-radius:5px;font-size:10px;line-height:1;padding:3px 0;cursor:pointer;font-family:inherit;}
+.rss-ord button:hover{background:var(--sand-mid);}
+.rss-swatch{display:inline-flex;align-items:center;gap:0;border-radius:6px;overflow:hidden;border:1.5px solid var(--sand-border);cursor:pointer;height:30px;}
+.rss-swatch i{display:block;width:11px;height:100%;}
+.rss-swatch span{flex:1;padding:0 8px;font-size:11px;line-height:28px;white-space:nowrap;}
+.rss-pal{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.rss-pal button{width:26px;height:22px;border-radius:5px;border:1.5px solid var(--sand-border);cursor:pointer;padding:0;position:relative;overflow:hidden;}
+.rss-pal button i{position:absolute;left:0;top:0;bottom:0;width:8px;}
+@media(max-width:560px){ .rss-grid{grid-template-columns:1fr; } }
+</style>
+<div class="mbg" id="rentalsite-modal" onclick="if(event.target===this)closeM('rentalsite-modal')">
+<div class="modal" onclick="event.stopPropagation()" style="width:640px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;padding:22px 24px;">
+  <div style="font-size:16px;font-weight:800;color:#185FA5;margin-bottom:6px;flex-shrink:0;">⚙ 予約サイト設定（レンタルスペース管理）</div>
+  <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px;flex-shrink:0;">
+    レンタルスペースの予約サイト名・セル色をここで管理します。<br>
+    使わなくなったサイトは<b>削除ではなく「有効」のチェックを外して無効化</b>してください。無効にすると新規予約の選択肢からは消えますが、<b>過去の予約の表示色はそのまま残ります</b>。
+  </div>
+  <div style="flex:1;min-height:0;overflow-y:auto;padding-right:2px;" id="rss-list"></div>
+  <div style="display:flex;gap:10px;margin-top:14px;flex-shrink:0;align-items:center;flex-wrap:wrap;">
+    <button class="btn" onclick="addRentalSiteRule()" style="padding:9px 16px;font-size:13px;">＋ 予約サイトを追加</button>
+    <button class="btn" onclick="resetRentalSiteRules()" style="padding:9px 16px;font-size:12px;color:#854F0B;">↺ 初期設定に戻す</button>
+    <button class="btn" onclick="closeM('rentalsite-modal')" style="margin-left:auto;padding:9px 18px;font-size:13px;">キャンセル</button>
+    <button class="btn btn-blue" onclick="saveRentalSiteRules()" style="padding:9px 22px;font-size:13px;font-weight:700;">保存</button>
   </div>
 </div>
 </div>
@@ -1860,11 +1894,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260821a"></script>
-<script src="hotel_v3.calendar.js?v=20260821a"></script>
-<script src="hotel_v3.sync.js?v=20260821a"></script>
-<script src="hotel_v3.pos.js?v=20260821a"></script>
-<script src="hotel_v3.js?v=20260821a"></script>
+<script src="hotel_v3.cleaning.js?v=20260822a"></script>
+<script src="hotel_v3.calendar.js?v=20260822a"></script>
+<script src="hotel_v3.sync.js?v=20260822a"></script>
+<script src="hotel_v3.pos.js?v=20260822a"></script>
+<script src="hotel_v3.js?v=20260822a"></script>
 <div id="notification-container"></div>
 </body>
 </html>

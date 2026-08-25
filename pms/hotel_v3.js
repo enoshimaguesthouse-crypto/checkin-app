@@ -2433,7 +2433,191 @@ async function rentalCloudLoad(silent=false){
 }
 
 
-const RENTAL_SITE_CLASS={'直接':'rs-site-直接','スペースマーケット':'rs-site-スペースマーケット','インスタベース':'rs-site-インスタベース','カシカシ':'rs-site-カシカシ'};
+// ══════════════════════════════════════════════════════════════════════
+// レンタルスペース：予約サイト マスターデータ
+// ──────────────────────────────────────────────────────────────────────
+// 従来は「直接／スペースマーケット／インスタベース／カシカシ」の4件が
+// JS定数・CSSクラス・複数のHTML<select>に固定でハードコードされていた。
+// PLAN_RULES設定と同様に、[レンタルスペース管理 ＞ 予約サイト設定]で
+// 名称・色・表示順・有効無効を編集できるマスターデータへ変更する。
+// 保存先は propertySettings.rentalSiteRules（既存のクラウド保存に相乗り）。
+// ══════════════════════════════════════════════════════════════════════
+const RENTAL_SITE_DEFAULTS=[
+  {id:'direct',  name:'直接',           border:'#10b981', bg:'#d1fae5'},
+  {id:'sm',      name:'スペースマーケット', border:'#3b82f6', bg:'#dbeafe'},
+  {id:'instabase',name:'インスタベース',  border:'#f97316', bg:'#ffedd5'},
+  {id:'kashikashi',name:'カシカシ',       border:'#8b5cf6', bg:'#ede9fe'},
+  {id:'yoyappin',name:'Yoyappin',        border:'#ec4899', bg:'#fce7f3'},
+];
+let rentalSiteRules=[];   // マスターデータ本体
+let nextRentalSiteId=1;   // ユーザー追加分のID採番（'rs1','rs2'…）
+
+function initRentalSiteRulesIfEmpty(){
+  if(rentalSiteRules&&rentalSiteRules.length>0)return;
+  rentalSiteRules=RENTAL_SITE_DEFAULTS.map((r,i)=>Object.assign({},r,{order:i,enabled:true}));
+}
+function _normalizeRentalSiteRule(r,i){
+  return Object.assign({id:r.id||('rs'+(i+1)),name:'',border:'#607D8B',bg:'#ECEFF1',order:i,enabled:true},r);
+}
+function allRentalSiteRules(){
+  if(!rentalSiteRules||!rentalSiteRules.length)initRentalSiteRulesIfEmpty();
+  return rentalSiteRules.slice().sort((a,b)=>(a.order??0)-(b.order??0));
+}
+function activeRentalSiteRules(){ return allRentalSiteRules().filter(r=>r.enabled!==false); }
+// 予約サイト名 → 色（無効化・削除済みサイトの過去データはグレーでフォールバック）
+function rentalSiteColor(site){
+  const r=allRentalSiteRules().find(x=>x.name===site);
+  return r?{border:r.border,bg:r.bg}:{border:'#9ca3af',bg:'#f3f4f6'};
+}
+// 予約サイトの<select>を現在の有効サイトで動的に描画する（既存値は保持）
+function renderRentalSiteOptions(selectEl, currentVal){
+  if(!selectEl)return;
+  const keepVal = currentVal!==undefined ? currentVal : selectEl.value;
+  const opts=activeRentalSiteRules().map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`);
+  // 無効化・削除済みのサイト名が既存予約に残っている場合、選択肢から消えて
+  // 別のサイトへ勝手に変わって見えないよう、現在値を末尾に補って保持する
+  if(keepVal && !activeRentalSiteRules().some(r=>r.name===keepVal)){
+    opts.push(`<option value="${esc(keepVal)}">${esc(keepVal)}（無効）</option>`);
+  }
+  selectEl.innerHTML=opts.join('');
+  if(keepVal) selectEl.value=keepVal;
+}
+function renderAllRentalSiteSelects(){
+  // フィルタは「全予約サイト」の空選択肢を先頭に維持する
+  const filterEl=document.getElementById('rental-filter-site');
+  if(filterEl){
+    const keep=filterEl.value;
+    filterEl.innerHTML=`<option value="">全予約サイト</option>`+activeRentalSiteRules().map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
+    if(keep && [...filterEl.options].some(o=>o.value===keep)) filterEl.value=keep;
+  }
+  renderRentalSiteOptions(document.getElementById('rsm-site'));
+}
+// 凡例（従来はHTML固定4件だった部分）を有効サイトから描画
+function renderRentalSiteLegend(){
+  const el=document.getElementById('rental-site-legend');
+  if(!el)return;
+  el.innerHTML=activeRentalSiteRules().map(r=>
+    `<div class="li"><div style="width:10px;height:10px;border-radius:2px;background:${esc(r.bg)};border-left:3px solid ${esc(r.border)};"></div><span style="font-size:11px;color:#888;">${esc(r.name)}</span></div>`
+  ).join('');
+}
+
+// ── 予約サイト設定 管理画面（レンタルスペース管理 ＞ 予約サイト設定）───────
+// ゴミ回収設定・PLAN_RULES設定と同じ「下書き配列を編集し、保存ボタンで確定」方式。
+let _rssDraft=[];        // 編集中の下書き（キャンセルで破棄）
+let _rssOpenPal=null;    // カラーパレットを開いている行index
+
+function openRentalSiteSettings(){
+  initRentalSiteRulesIfEmpty();
+  _rssDraft=JSON.parse(JSON.stringify(allRentalSiteRules()));
+  _rssOpenPal=null;
+  renderRentalSiteSettings();
+  document.getElementById('rentalsite-modal').classList.add('open');
+}
+function renderRentalSiteSettings(){
+  const el=document.getElementById('rss-list'); if(!el)return;
+  el.innerHTML=_rssDraft.map((r,i)=>{
+    return `<div class="rss-row${r.enabled===false?' off':''}">
+      <div class="rss-grid">
+        <div>
+          <label>予約サイト名</label>
+          <input type="text" value="${esc(r.name||'')}" placeholder="例：じゃらんレンタル"
+                 oninput="rssEdit(${i},'name',this.value)">
+        </div>
+        <div>
+          <label>セルの色</label>
+          <span class="rss-swatch" onclick="rssTogglePal(${i})" title="クリックで色を選択">
+            <i style="background:${esc(r.border||'#ccc')}"></i>
+            <span style="background:${esc(r.bg||'#fff')};">${esc(_rssColorName(r))}</span>
+          </span>
+        </div>
+        <div>
+          <label>表示順</label>
+          <input type="number" value="${i+1}" min="1" max="99" onchange="rssSetOrder(${i},this.value)">
+        </div>
+        <div>
+          <label>有効</label>
+          <input type="checkbox" ${r.enabled===false?'':'checked'} onchange="rssEdit(${i},'enabled',this.checked)"
+                 style="width:17px;height:17px;cursor:pointer;margin-top:6px;">
+        </div>
+      </div>
+      ${_rssOpenPal===i?`<div class="rss-pal">${PLAN_COLOR_PRESETS.map((c,ci)=>
+        `<button onclick="rssPickColor(${i},${ci})" title="${esc(c.name)}" style="background:${c.bg};"><i style="background:${c.border}"></i></button>`).join('')}
+        <span style="display:flex;align-items:center;gap:6px;margin-left:8px;font-size:11px;color:var(--muted);">
+          カスタム:
+          <input type="color" value="${esc(r.border||'#607D8B')}" onchange="rssEdit(${i},'border',this.value)" title="帯の色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+          <input type="color" value="${esc(r.bg||'#ECEFF1')}" onchange="rssEdit(${i},'bg',this.value)" title="背景色" style="width:32px;height:24px;padding:0;border:1px solid var(--sand-border);border-radius:4px;cursor:pointer;">
+        </span></div>`:''}
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-size:11px;color:var(--muted);">
+        <span>並べ替え：
+          <button class="btn btn-xs" onclick="moveRentalSiteRule(${i},-1)" title="上へ"${i===0?' disabled style="opacity:.3;"':''}>▲</button>
+          <button class="btn btn-xs" onclick="moveRentalSiteRule(${i},1)" title="下へ"${i===_rssDraft.length-1?' disabled style="opacity:.3;"':''}>▼</button>
+        </span>
+        <button class="btn btn-xs" onclick="removeRentalSiteRule(${i})" style="margin-left:auto;color:#c0392b;">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function _rssColorName(r){
+  const p=PLAN_COLOR_PRESETS.find(c=>c.border.toLowerCase()===String(r.border||'').toLowerCase());
+  return p?p.name:'カスタム';
+}
+function rssEdit(i,key,val){
+  if(!_rssDraft[i])return;
+  _rssDraft[i][key]=val;
+  if(key==='border'||key==='bg'||key==='enabled')renderRentalSiteSettings();
+}
+function rssPickColor(i,ci){
+  const c=PLAN_COLOR_PRESETS[ci]; if(!_rssDraft[i]||!c)return;
+  _rssDraft[i].border=c.border; _rssDraft[i].bg=c.bg; _rssOpenPal=null; renderRentalSiteSettings();
+}
+function rssTogglePal(i){ _rssOpenPal=(_rssOpenPal===i?null:i); renderRentalSiteSettings(); }
+function moveRentalSiteRule(i,dir){
+  const j=i+dir; if(j<0||j>=_rssDraft.length)return;
+  const t=_rssDraft[i]; _rssDraft[i]=_rssDraft[j]; _rssDraft[j]=t;
+  _rssOpenPal=null; renderRentalSiteSettings();
+}
+function rssSetOrder(i,val){
+  let j=(parseInt(val)||1)-1;
+  j=Math.max(0,Math.min(_rssDraft.length-1,j));
+  if(j===i){ renderRentalSiteSettings(); return; }
+  const [item]=_rssDraft.splice(i,1);
+  _rssDraft.splice(j,0,item);
+  _rssOpenPal=null; renderRentalSiteSettings();
+}
+function addRentalSiteRule(){
+  const id='rs'+(nextRentalSiteId++);
+  _rssDraft.push({id, name:'', border:'#607D8B', bg:'#ECEFF1', enabled:true, order:_rssDraft.length});
+  renderRentalSiteSettings();
+  const el=document.getElementById('rss-list'); if(el)el.scrollTop=el.scrollHeight;
+}
+function removeRentalSiteRule(i){
+  const r=_rssDraft[i]; if(!r)return;
+  if(!confirm(`「${r.name||r.id}」を一覧から削除しますか？\n\n※過去の予約の表示色を残したい場合は、削除ではなく「有効」のチェックを外して無効化してください。`))return;
+  _rssDraft.splice(i,1); _rssOpenPal=null; renderRentalSiteSettings();
+}
+function resetRentalSiteRules(){
+  if(!confirm('予約サイト設定を初期設定（既定の5件）に戻しますか？\n\n※追加したサイトは一覧から消えますが、過去の予約データ自体は消えません。'))return;
+  _rssDraft=RENTAL_SITE_DEFAULTS.map((r,i)=>Object.assign({},r,{order:i,enabled:true}));
+  _rssOpenPal=null; renderRentalSiteSettings();
+}
+function saveRentalSiteRules(){
+  const rows=_rssDraft.filter(r=>String(r.name||'').trim());
+  if(!rows.length){ alert('サイト名が入力された項目がありません。'); return; }
+  rows.forEach((r,i)=>{ r.name=String(r.name).trim(); r.order=i; });
+  // サイト名の重複は予約データとの紐付けが混線するため保存を止める
+  const names=rows.map(r=>r.name);
+  const dup=names.find((n,i)=>names.indexOf(n)!==i);
+  if(dup){ alert(`予約サイト名「${dup}」が重複しています。\n名前を変更してから保存してください。`); return; }
+
+  rentalSiteRules=rows.map((r,i)=>_normalizeRentalSiteRule(r,i));
+  propertySettings.rentalSiteRules=rentalSiteRules;
+  logAudit('設定変更','予約サイト設定',`${rentalSiteRules.length}件を保存（有効 ${rentalSiteRules.filter(r=>r.enabled!==false).length}件）`);
+  closeM('rentalsite-modal');
+  cloudSave();
+  renderAllRentalSiteSelects();
+  if(document.getElementById('page-rental')?.classList.contains('active'))renderRental();
+  showToast('⚙ 予約サイト設定を保存しました');
+}
 
 function rentalDateOf(r){ return (r.start||'').slice(0,10); } // YYYY-MM-DD
 
@@ -2455,6 +2639,7 @@ function getFilteredRentals(){
 }
 
 function renderRental(){
+  renderRentalSiteLegend();
   const y=rentalYear,m=rentalMonth;
   document.getElementById('rental-month-label').textContent=`${y}年${m}月`;
   const firstDay=new Date(y,m-1,1).getDay();
@@ -2477,7 +2662,8 @@ function renderRental(){
     +`<div class="rs-summary-chip" style="background:#f0fdf4;color:#166534;"><span style="font-size:10px;">予約件数</span><span style="font-size:16px;">${cnt}件</span></div>`
     +`<div class="rs-summary-chip" style="background:#fef9c3;color:#854d0e;"><span style="font-size:10px;">平均単価</span><span style="font-size:16px;">¥${avg.toLocaleString()}</span></div>`;
   Object.entries(siteAgg).forEach(([s,a])=>{
-    summaryHtml+=`<div class="rs-summary-chip ${RENTAL_SITE_CLASS[s]||''}"><span style="font-size:10px;">${s}</span><span style="font-size:13px;">${a.count}件 ¥${a.sum.toLocaleString()}</span></div>`;
+    const sc=rentalSiteColor(s);
+    summaryHtml+=`<div class="rs-summary-chip" style="background:${sc.bg};color:${sc.border};"><span style="font-size:10px;">${s}</span><span style="font-size:13px;">${a.count}件 ¥${a.sum.toLocaleString()}</span></div>`;
   });
   document.getElementById('rental-summary').innerHTML=summaryHtml;
 
@@ -2498,7 +2684,8 @@ function renderRental(){
       const t1=(r.start||'').slice(11,16);
       // 駐車場カレンダーと同じ1行コンパクト表示に統一（セル高さを揃えるため）。
       // 詳細（施設・目的・サイト）はtitleツールチップとタップ後の編集画面で確認する。
-      html+=`<div class="rs-cell-entry ${RENTAL_SITE_CLASS[r.site]||''}" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${esc(r.name)} / ${esc(r.facility)} / ${esc(r.purpose)} / ${t1} / ¥${(r.price||0).toLocaleString()}">${t1?t1+' ':''}${esc((r.name||'').split(/\s/)[0])} ¥${(r.price||0).toLocaleString()}</div>`;
+      const sc=rentalSiteColor(r.site);
+      html+=`<div class="rs-cell-entry" style="background:${sc.bg};border-left-color:${sc.border};color:${sc.border};" onclick="event.stopPropagation();openRentalEdit(${r.id})" title="${esc(r.name)} / ${esc(r.facility)} / ${esc(r.purpose)} / ${t1} / ¥${(r.price||0).toLocaleString()}">${t1?t1+' ':''}${esc((r.name||'').split(/\s/)[0])} ¥${(r.price||0).toLocaleString()}</div>`;
     });
     html+=`</div>`;
   }
@@ -2516,7 +2703,7 @@ function openRentalAdd(dk){
   document.getElementById('rsm-title').textContent='レンタルスペース予約追加';
   document.getElementById('rsm-del-btn').style.display='none';
   document.getElementById('rsm-facility').value='本館';
-  document.getElementById('rsm-site').value='直接';
+  renderRentalSiteOptions(document.getElementById('rsm-site'), (activeRentalSiteRules()[0]||{}).name||'直接');
   const base=dk?dk:`${rentalYear}-${String(rentalMonth).padStart(2,'0')}-01`;
   document.getElementById('rsm-start').value=base+'T10:00';
   document.getElementById('rsm-end').value=base+'T14:00';
@@ -2537,7 +2724,7 @@ function openRentalEdit(id){
   document.getElementById('rsm-title').textContent='レンタルスペース予約編集';
   document.getElementById('rsm-del-btn').style.display='block';
   document.getElementById('rsm-facility').value=r.facility||'本館';
-  document.getElementById('rsm-site').value=r.site||'直接';
+  renderRentalSiteOptions(document.getElementById('rsm-site'), r.site||'直接');
   document.getElementById('rsm-start').value=r.start||'';
   document.getElementById('rsm-end').value=r.end||'';
   document.getElementById('rsm-name').value=r.name||'';
