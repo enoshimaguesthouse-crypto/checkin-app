@@ -2394,6 +2394,7 @@ function renderParking(){
 // 読み込み完了を _rentalLoaded で追跡し、完了前の保存を禁止する。
 let _rentalLoaded = false;      // 初回のクラウド読込が一度でも成功したか
 let _rentalLastLoadedCount = null; // 直近に読み込んだ件数（急減時の確認用）
+let _rentalLastLoadedIds = new Set(); // 直近に読み込んだ時点でのID一覧（他端末が後から追加した予約を検出する用）
 
 let _rentalSaveWaitCount=0; // 初回読込待ちで保存を延期した回数（無限待ち防止）
 async function rentalCloudSave(){
@@ -2415,6 +2416,24 @@ async function rentalCloudSave(){
     return;
   }
   _rentalSaveWaitCount=0;
+  // 複数端末・複数タブで同時に操作していると、他端末が保存した直後の最新データを
+  // 自分のタブがまだ知らないまま（読込済みのメモリ上データだけで）上書き保存してしまい、
+  // 他端末が追加した予約が消えてしまうことがあった（実際に発生した消失の原因）。
+  // 保存直前にサーバーの最新データを取得し、自分の読込時点（_rentalLastLoadedIds）には
+  // 無かったのに現在サーバーには存在するID＝他端末が後から追加した予約とみなし、
+  // 保存対象にマージしてから保存する（自分が削除した予約は読込時点のIDに含まれるため対象外）。
+  try{
+    const chk=await fetch(_withKey(GAS_URL+'?type=rental&t='+Date.now()));
+    const chkJson=await chk.json();
+    const serverList=chkJson.rentalSpaceReservations||[];
+    const localIds=new Set(rentalSpaceReservations.map(r=>r.id));
+    const addedElsewhere=serverList.filter(r=>!localIds.has(r.id) && !_rentalLastLoadedIds.has(r.id));
+    if(addedElsewhere.length){
+      rentalSpaceReservations=rentalSpaceReservations.concat(addedElsewhere);
+      nextRentalId=rentalSpaceReservations.reduce((mx,r)=>Math.max(mx,(r.id||0)+1),1);
+      showToast('ℹ 他端末で追加された予約 '+addedElsewhere.length+'件を保持して保存します');
+    }
+  }catch(e){ console.warn('レンタル保存前マージ確認失敗',e); }
   // 直前の読込より大幅に（50%以上）減っている場合は誤操作の可能性があるため確認を求める
   // （guestDataのcloudSaveにある異常検知と同じ考え方）
   if(_rentalLastLoadedCount!=null && _rentalLastLoadedCount>=3 && rentalSpaceReservations.length < _rentalLastLoadedCount*0.5){
@@ -2434,6 +2453,8 @@ async function rentalCloudSave(){
     const json=await res.json();
     if(json.status==='ok'){
       _rentalLastLoadedCount=rentalSpaceReservations.length; // 保存成功＝この件数が新たな基準
+      _rentalLastLoadedIds=new Set(rentalSpaceReservations.map(r=>r.id));
+      renderRental();
       showToast('📷 レンタルデータを保存しました');
     } else if(json.error){
       showToast('⚠ レンタル保存エラー: '+json.error);
@@ -2463,6 +2484,7 @@ async function rentalCloudLoad(silent=false){
     }
     _rentalLoaded=true;                                  // 読込成功：以降の保存を許可する
     _rentalLastLoadedCount=rentalSpaceReservations.length;
+    _rentalLastLoadedIds=new Set(rentalSpaceReservations.map(r=>r.id));
     if(document.getElementById('page-rental')?.classList.contains('active'))renderRental();
   }catch(e){
     console.warn('rentalCloudLoad失敗',e);
