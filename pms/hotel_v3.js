@@ -2384,8 +2384,43 @@ function renderParking(){
 // ============================================================
 // レンタルスペース専用 クラウド保存・読込
 // ============================================================
+// ╔════════════════════════════════════════════════════╗
+// ║ 【重要】空データ保存防止（guestDataのcloudSaveと同じ考え方）║
+// ╚════════════════════════════════════════════════════╝
+// rentalCloudLoad はBOOT時に await せず発火するだけのため、初回読み込みが
+// 完了する前にスタッフが「＋予約追加」等を保存すると、rentalSpaceReservations が
+// まだ空配列[]のままそのクラウド側ファイル全体を上書きし、過去の予約を
+// 全消去してしまう事故が起こり得た（実際に発生した消失の原因）。
+// 読み込み完了を _rentalLoaded で追跡し、完了前の保存を禁止する。
+let _rentalLoaded = false;      // 初回のクラウド読込が一度でも成功したか
+let _rentalLastLoadedCount = null; // 直近に読み込んだ件数（急減時の確認用）
+
+let _rentalSaveWaitCount=0; // 初回読込待ちで保存を延期した回数（無限待ち防止）
 async function rentalCloudSave(){
   if(!GAS_URL)return;
+  // 初回読込が完了していない状態での保存は、空配列での上書き事故につながるため禁止する。
+  // ここで rentalCloudLoad を呼び直すと、ちょうど今スタッフが追加した内容（メモリ上の
+  // rentalSpaceReservations）がサーバーの旧データで上書きされて消えてしまうため、
+  // 呼び直さずBOOT時に既に走っている読込の完了を少し待ってから、
+  // 現在のメモリ上のデータ（＝スタッフの入力を含む）でそのまま保存する。
+  if(!_rentalLoaded){
+    if(_rentalSaveWaitCount>=10){ // 8秒待っても読込が終わらない場合は保存自体を中止する
+      _rentalSaveWaitCount=0;
+      showToast('⚠ レンタルデータの読込に失敗しているため保存を中止しました。画面を再読込してからお試しください。', 6000);
+      return;
+    }
+    _rentalSaveWaitCount++;
+    showToast('⏳ 読込完了を待って保存します…', 1500);
+    setTimeout(()=>rentalCloudSave(), 800);
+    return;
+  }
+  _rentalSaveWaitCount=0;
+  // 直前の読込より大幅に（50%以上）減っている場合は誤操作の可能性があるため確認を求める
+  // （guestDataのcloudSaveにある異常検知と同じ考え方）
+  if(_rentalLastLoadedCount!=null && _rentalLastLoadedCount>=3 && rentalSpaceReservations.length < _rentalLastLoadedCount*0.5){
+    const ok=confirm(`⚠ レンタル予約データが大幅に減少しています（${_rentalLastLoadedCount}件 → ${rentalSpaceReservations.length}件）。\nこのままクラウドに保存しますか？\n\n意図しない削除の場合は「キャンセル」してください。`);
+    if(!ok){ showToast('⚠ レンタル保存を中止しました'); return; }
+  }
   try{
     const res=await fetch(_withKey(GAS_URL),{
       method:'POST',
@@ -2398,6 +2433,7 @@ async function rentalCloudSave(){
     });
     const json=await res.json();
     if(json.status==='ok'){
+      _rentalLastLoadedCount=rentalSpaceReservations.length; // 保存成功＝この件数が新たな基準
       showToast('📷 レンタルデータを保存しました');
     } else if(json.error){
       showToast('⚠ レンタル保存エラー: '+json.error);
@@ -2425,10 +2461,15 @@ async function rentalCloudLoad(silent=false){
     } else {
       if(!silent)showToast('📷 レンタルデータなし（新規）');
     }
+    _rentalLoaded=true;                                  // 読込成功：以降の保存を許可する
+    _rentalLastLoadedCount=rentalSpaceReservations.length;
     if(document.getElementById('page-rental')?.classList.contains('active'))renderRental();
   }catch(e){
     console.warn('rentalCloudLoad失敗',e);
+    // silent時も含め、読込に失敗したままだと保存が延々とブロックされ続けるため、
+    // 一定間隔で自動的に再試行する（画面表示は邪魔しないよう静かに行う）
     if(!silent)showToast('⚠ レンタル読込失敗: '+e.message);
+    if(!_rentalLoaded)setTimeout(()=>rentalCloudLoad(true), 8000);
   }
 }
 
