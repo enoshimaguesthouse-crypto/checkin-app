@@ -1333,27 +1333,37 @@ function _getBackupFolder_(){
 }
 
 // バックアップ本体（トリガーから毎日実行。手動実行も可）
+// 宿泊データ（hotel134_data_）とレンタルスペースデータ（rental_space_data_）の
+// 両方をバックアップする（レンタル側は以前バックアップ対象に含まれておらず、
+// 復旧手段がGoogleドライブの「版の管理」しかない状態だったため追加）。
 function backupHotelData(){
   const bf = _getBackupFolder_();
   const stamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
-  const name = 'hotel134_data_' + stamp + '.json';
+  const msgs = [];
+  msgs.push(_backupOneFile_(getHotelFile(), 'hotel134_data_', stamp, bf));
+  msgs.push(_backupOneFile_(getRentalFile(), 'rental_space_data_', stamp, bf));
+  const msg = msgs.join(' / ');
+  Logger.log(msg);
+  return msg;
+}
+
+function _backupOneFile_(sourceFile, prefix, stamp, bf){
+  const name = prefix + stamp + '.json';
   // 同日分が既にあれば置き換え（多重トリガー・手動再実行対策）
   const dup = bf.getFilesByName(name);
   while(dup.hasNext()) dup.next().setTrashed(true);
-  getHotelFile().makeCopy(name, bf);
+  sourceFile.makeCopy(name, bf);
   // 保持期間を過ぎた古いバックアップをゴミ箱へ（誤削除してもゴミ箱から30日は戻せる）
   const cutoff = Date.now() - BACKUP_KEEP_DAYS * 86400000;
   const files = bf.getFiles();
   let removed = 0;
   while(files.hasNext()){
     const f = files.next();
-    if(f.getName().indexOf('hotel134_data_') === 0 && f.getDateCreated().getTime() < cutoff){
+    if(f.getName().indexOf(prefix) === 0 && f.getDateCreated().getTime() < cutoff){
       f.setTrashed(true); removed++;
     }
   }
-  const msg = 'バックアップ完了: ' + name + (removed ? '（古いもの' + removed + '件を整理）' : '');
-  Logger.log(msg);
-  return msg;
+  return 'バックアップ完了: ' + name + (removed ? '（古いもの' + removed + '件を整理）' : '');
 }
 
 // 毎日午前4時（日本時間）にバックアップを実行するトリガーを設置（1回だけ実行）
@@ -1390,9 +1400,13 @@ function listBackups(){
 
 // 緊急復旧：指定したバックアップの内容で本体を上書きする
 // 例）restoreFromBackup('hotel134_data_2026-07-10.json')
+//    restoreFromBackup('rental_space_data_2026-07-10.json')  ←レンタルスペースデータの復旧
 // ※実行前に自動で「復旧直前」のバックアップを取るので、間違えてももう一度戻せる
 function restoreFromBackup(fileName){
   if(!fileName) return '復旧するファイル名を指定してください（listBackups()で確認できます）';
+  const isRental = fileName.indexOf('rental_space_data_') === 0;
+  const targetFile = isRental ? getRentalFile() : getHotelFile();
+  const restorePrefix = isRental ? 'rental_space_data_restore前_' : 'hotel134_data_restore前_';
   const bf = _getBackupFolder_();
   const it = bf.getFilesByName(fileName);
   if(!it.hasNext()) return 'バックアップが見つかりません: ' + fileName;
@@ -1401,12 +1415,12 @@ function restoreFromBackup(fileName){
   try { JSON.parse(content); } catch(e){ return '中止：バックアップのJSONが壊れています（' + e.message + '）'; }
   // 復旧直前の状態も退避（やり直し可能に）
   const stamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd_HHmm");
-  getHotelFile().makeCopy('hotel134_data_restore前_' + stamp + '.json', bf);
+  targetFile.makeCopy(restorePrefix + stamp + '.json', bf);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
-  try { getHotelFile().setContent(content); }
+  try { targetFile.setContent(content); }
   finally { lock.releaseLock(); }
-  const msg = '復旧完了: ' + fileName + ' の内容で本体を上書きしました（直前の状態も退避済み）';
+  const msg = '復旧完了: ' + fileName + ' の内容で' + (isRental?'レンタルスペースデータ':'本体') + 'を上書きしました（直前の状態も退避済み）';
   Logger.log(msg);
   return msg;
 }
