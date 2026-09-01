@@ -32,6 +32,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // リリースAPK生成時に走る lint（コード品質の自動チェック）を無効化する。
+    // Android Studio 同梱のJDKが 25 系のため lint 側が
+    //   :app:lintVitalAnalyzeRelease / java.lang.IllegalArgumentException: 25.0.2
+    // で落ちてAPKを出力できない。lintはアプリの動作には無関係な静的チェックで、
+    // 本アプリはWebViewを1枚表示するだけの薄い外殻のため、無効化して支障はない。
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 // Kotlin 2.x の書き方（旧 kotlinOptions は非推奨）
