@@ -1004,10 +1004,6 @@ function getRoomIdByType(typeName, month, day, nights, year){
     }
     return true;
   };
-  // 完全一致（空いている場合のみ）
-  const exact=rooms.find(r=>r.type===typeName);
-  if(exact&&_isFree(exact.id))return exact.id;
-
   // 本館ダブル・ツインは固定割当（空いている場合のみ）
   if(/本館.*ダブル|本館.*クイーン/i.test(typeName)) return _isFree(0)?0:null;
   if(/本館.*ツイン/i.test(typeName))                return _isFree(1)?1:null;
@@ -1031,6 +1027,16 @@ function getRoomIdByType(typeName, month, day, nights, year){
     // 全部埋まっていたら null を返す（既存予約の上書きを防止）
     return null;
   }
+
+  // グループが特定できなかった場合のみ、部屋タイプ名の完全一致で割り当てる。
+  // 【重要】以前はこの完全一致判定をグループ判定より先に行っていたため、
+  // 予約サイトが送ってくる「部屋タイプ名称」が部屋マスターの type と
+  // 完全一致する部屋（例: "Sea Breeze 鎌倉 102"）では、その部屋に直接
+  // 固定されてしまい、自動部屋割りの優先順位が一度も適用されなかった。
+  // 優先順位はグループ内のどの部屋から埋めるかを決める設定であるため、
+  // グループが特定できる場合は優先順位を優先する。
+  const exact=rooms.find(r=>r.type===typeName);
+  if(exact&&_isFree(exact.id))return exact.id;
 
   // 未知タイプ→新規作成
   const newId=nextRoomId++;
