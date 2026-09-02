@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- アプリアイコン：江ノ島ゲストハウス134 のエンブレム（波＋134）を
-     チェックインアプリと同じ濃紺の下地に配置したもの。
-     元画像は checkin/emblem.png（アプリ画面上部で使っているブランドマーク）。
-     各解像度のPNGは checkin/emblem.png から生成している。 -->
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-</adaptive-icon>
