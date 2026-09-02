@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.enoshima.checkin.app-mergeReleaseResources-19:/values-es/values-es.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\taito\\.gradle\\caches\\9.3.0\\transforms\\b6b7373601f2822a3bc08b8641d1c0e8\\workspace\\transformed\\core-1.13.1\\res\\values-es\\values-es.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,154,256,356,454,561,667,787",
+                        "endColumns": "98,101,99,97,106,105,119,100",
+                        "endOffsets": "149,251,351,449,556,662,782,883"
+                    }
+                }
+            ]
+        }
+    ]
+}
