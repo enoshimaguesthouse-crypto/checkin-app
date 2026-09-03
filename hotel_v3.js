@@ -1281,7 +1281,28 @@ function findExistingReservationInfo(resId){
     _days.add((pk.y||DISP_YEAR)+'-'+pk.m+'-'+pk.d);
   });
   const nights=_days.size;
-  return {key:anchorKey,data:anchorG,month,roomId,day,nights};
+  // ドミトリーで大人2名以上の予約は人数分のベッドへ展開され、各セルには
+  // guests:1 が入る（例: 大人2名 → 2ベッド × guests:1）。そのため
+  // アンカーセルの guests（=1）をCSVの大人人数計（=2）と比較すると、
+  // 実際には何も変わっていないのに毎回「人数変更」と誤検知され、
+  // 重複スキップされずに取込のたび予約が作り直されてしまっていた。
+  // 判定は「チェックイン日に同一予約のセルが複数あり、そのすべてが
+  // guests:1」＝人数展開された状態のときだけ、セル数を人数とみなす。
+  // 貸切（全部屋に同じ人数を書き込む）や、1部屋に複数名が入る通常予約を
+  // 巻き込んで人数を水増ししないための条件。
+  const _ak=parseKey(anchorKey);
+  let cellsOnCheckin=0,allSingle=true;
+  Object.keys(guestData).forEach(k=>{
+    const g=guestData[k];
+    if(!g||g.cont||String(g.reservationId)!==String(resId))return;
+    const pk=parseKey(k);
+    if(pk.m!==_ak.m||pk.d!==_ak.d)return;
+    if((pk.y||DISP_YEAR)!==(_ak.y||DISP_YEAR))return;
+    cellsOnCheckin++;
+    if(Number(g.guests)!==1)allSingle=false;
+  });
+  const guestsTotal=(cellsOnCheckin>1&&allSingle)?cellsOnCheckin:null;
+  return {key:anchorKey,data:anchorG,month,roomId,day,nights,guestsTotal};
 }
 // 予約IDを持たない既存の貸切を「貸切グループ＋チェックイン日」で探す。
 // （貸切モーダルで保存された貸切は予約IDが失われている場合があるため、CSV取込の救済に使う）
@@ -1322,7 +1343,10 @@ function detectReservationChanges(ex,incoming){
   const changes=[];
   if(ex.month!==incoming.checkinMonth || ex.day!==incoming.checkinDay) changes.push('\u65e5\u7a0b\u5909\u66f4');
   else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights) changes.push('\u6cca\u6570\u5909\u66f4');
-  if(ex.data.guests!=null && incoming.guests!=null && Number(ex.data.guests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
+  // \u4eba\u6570\u306f\u30c9\u30df\u30c8\u30ea\u30fc\u306e\u4eba\u6570\u5c55\u958b\u3092\u8003\u616e\u3057\u305f\u5408\u8a08\u5024\uff08guestsTotal\uff09\u3067\u6bd4\u8f03\u3059\u308b\u3002
+  // guestsTotal \u304c\u53d6\u308c\u306a\u3044\u5834\u5408\u306e\u307f\u30a2\u30f3\u30ab\u30fc\u30bb\u30eb\u306e\u5024\u306b\u30d5\u30a9\u30fc\u30eb\u30d0\u30c3\u30af\u3059\u308b\u3002
+  const exGuests=(ex.guestsTotal!=null)?ex.guestsTotal:ex.data.guests;
+  if(exGuests!=null && incoming.guests!=null && Number(exGuests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
   if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) changes.push('\u6599\u91d1\u5909\u66f4');
   if(_normPhoneForCompare(ex.data.phone)!==_normPhoneForCompare(incoming.phone)) changes.push('\u96fb\u8a71\u5909\u66f4');
   if(String(ex.data.email||'').trim().toLowerCase()!==String(incoming.email||'').trim().toLowerCase()) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
