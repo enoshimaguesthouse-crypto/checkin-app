@@ -1009,23 +1009,60 @@ function loadFromLS(){
     }
   }catch(e){}
 }
+// 種別の丸アイコン用パレット。絵文字を直接入力しなくても、
+// 一覧から選ぶだけで丸の色を変えられるようにする。
+const SN_DOT_PALETTE=['🔴','🟠','🟡','🟢','🔵','🟣','🟤','⚫','⚪','🩷','🩵','🟥','🟧','🟨','🟩','🟦','🟪','⭐','❗','📌'];
+let _sntOpenPal=null; // パレットを開いている行（null=すべて閉じている）
+
+// 画面の入力値を snTypes へ書き戻す。
+// パレットの開閉・追加・削除で再描画する際、入力途中の内容が
+// 消えてしまうのを防ぐ（従来は追加・削除で入力が巻き戻っていた）。
+function _sntSyncFromInputs(){
+  if(!document.getElementById('snt-icon-0'))return;
+  snTypes=snTypes.map((t,i)=>{
+    const ic=document.getElementById(`snt-icon-${i}`);
+    const lb=document.getElementById(`snt-label-${i}`);
+    const co=document.getElementById(`snt-color-${i}`);
+    const icon=String(ic?ic.value:t.icon||'').trim()||'⚪';
+    const label=String(lb?lb.value:t.label||'').trim();
+    const border=(co?co.value:t.border)||'#aaa';
+    return {...t,icon,label,color:border,bg:border+'22',border};
+  });
+}
+function snTogglePal(i){ _sntSyncFromInputs(); _sntOpenPal=(_sntOpenPal===i?null:i); openSNTypeEdit(); }
+function snPickDot(i,emo){ _sntSyncFromInputs(); if(snTypes[i])snTypes[i].icon=emo; _sntOpenPal=null; openSNTypeEdit(); }
+
 function openSNTypeEdit(){
+  const modal=document.getElementById('sn-type-modal');
+  // 新しく開いたときはパレットを閉じた状態から始める
+  if(!modal.classList.contains('open'))_sntOpenPal=null;
   document.getElementById('sn-type-inputs').innerHTML=snTypes.map((t,i)=>`
-    <div style="display:flex;gap:6px;align-items:center;">
-      <input type="text" value="${t.icon}" id="snt-icon-${i}" style="width:52px;text-align:center;font-size:16px;" placeholder="絵文字">
-      <input type="text" value="${t.label}" id="snt-label-${i}" style="flex:1;" placeholder="種別名">
-      <input type="color" value="${t.border}" id="snt-color-${i}" style="width:36px;height:36px;padding:2px;border-radius:6px;cursor:pointer;" title="ボーダー色">
-      <button class="btn btn-xs btn-red" onclick="removeSNType(${i})">削除</button>
+    <div style="padding:3px 0;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" value="${t.icon}" id="snt-icon-${i}" style="width:52px;text-align:center;font-size:16px;" placeholder="絵文字">
+        <button type="button" onclick="snTogglePal(${i})" title="丸の色を選ぶ"
+          style="width:30px;height:32px;flex:none;background:${_sntOpenPal===i?'#E6F1FB':'#fff'};border:1px solid ${_sntOpenPal===i?'#185FA5':'var(--sand-border)'};border-radius:6px;cursor:pointer;font-size:13px;line-height:1;">🎨</button>
+        <input type="text" value="${t.label}" id="snt-label-${i}" style="flex:1;" placeholder="種別名">
+        <input type="color" value="${t.border}" id="snt-color-${i}" style="width:36px;height:36px;padding:2px;border-radius:6px;cursor:pointer;" title="バッジの色">
+        <button class="btn btn-xs btn-red" onclick="removeSNType(${i})">削除</button>
+      </div>
+      ${_sntOpenPal===i?`<div style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 0 2px 58px;">
+        ${SN_DOT_PALETTE.map(e=>`<button type="button" onclick="snPickDot(${i},'${e}')"
+          style="width:30px;height:30px;font-size:15px;line-height:1;padding:0;cursor:pointer;border-radius:6px;background:${e===t.icon?'#E6F1FB':'#fff'};border:1px solid ${e===t.icon?'#185FA5':'var(--sand-border)'};">${e}</button>`).join('')}
+      </div>`:''}
     </div>`).join('');
-  document.getElementById('sn-type-modal').classList.add('open');
+  modal.classList.add('open');
 }
 function addSNType(){
+  _sntSyncFromInputs();
   snTypes.push({label:'新しい種別',icon:'🔵',color:'#0C447C',bg:'#E6F1FB',border:'#185FA5'});
+  _sntOpenPal=null;
   openSNTypeEdit();
 }
 function removeSNType(i){
   if(snTypes.length<=1){alert('種別は最低1つ必要です');return;}
-  snTypes.splice(i,1);openSNTypeEdit();
+  _sntSyncFromInputs();
+  snTypes.splice(i,1);_sntOpenPal=null;openSNTypeEdit();
 }
 function saveSNType(){
   snTypes=snTypes.map((_,i)=>{
