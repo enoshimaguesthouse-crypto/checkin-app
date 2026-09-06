@@ -47,16 +47,21 @@ Build → Generate Signed Bundle / APK → APK → 新しいキーストアを�
 | ランタイム権限要求 | `requestRuntimePermissions()`（起動時） |
 | ファイル選択・撮影フォールバック | `onShowFileChooser()` + FileProvider |
 | 没入モード（バー完全非表示） | `setupImmersiveMode()` |
-| 横向き固定 | Manifest `screenOrientation="sensorLandscape"` |
+| 縦向き固定 | Manifest `screenOrientation="portrait"` |
 | 戻るキーで `goBack()` | `setupBackHandling()` |
 | 外部ブラウザ起動の抑止 | `shouldOverrideUrlLoading()` |
 
 ## 運用上の注意
 
 ### 画面の向きについて
-`sensorLandscape` にしてあります。「横向き固定」ですが、タブレットを
-180度ひっくり返した場合だけ追従します（スタンドの向きに関係なく正しく表示されるため）。
-完全に一方向へ固定したい場合は Manifest を `landscape` に変更してください。
+`portrait`（縦向き固定）にしてあります。10インチタブレットを縦置きで
+運用する前提です。タブレットを回転させても画面は縦のまま固定されます。
+
+180度ひっくり返した向き（スタンドに上下逆に挿した場合）にも追従させたい
+なら、Manifest を `sensorPortrait` に変更してください。
+
+チェックインアプリのHTML側は `@media (orientation:portrait)` で
+1カラム表示・言語選択2×2に切り替わるため、縦向きでも崩れません。
 
 ### 「戻る」キーの挙動
 履歴が無い状態で戻るキーを押しても**アプリは終了しません**（キオスク運用のため）。
