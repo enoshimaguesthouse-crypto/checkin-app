@@ -1484,7 +1484,10 @@ function deleteGuest(){
 function exportCSV(){
   const month=parseInt(document.getElementById('sel-month').value);let csv='部屋,日,氏名,予約サイト,支払,料金,国籍,性別,区分,ステータス,備考\n';
   const year=parseInt(document.getElementById('sel-year').value)||2026;
-  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);csv+=`${r?r.type:''},${g.day}日,${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}"\n`;});
-  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`宿泊者名簿_2026_${month}月.csv`;a.click();
+  // 日付列は「10日」ではなく「2026/08/13」形式で出力する。
+  // 表計算ソフト側で日付として認識され、並べ替えや期間での集計ができるようにするため。
+  const _p2=n=>String(n).padStart(2,'0');
+  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);const dateStr=`${pk.y}/${_p2(pk.m)}/${_p2(pk.d!=null?pk.d:g.day)}`;csv+=`${r?r.type:''},${dateStr},${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}"\n`;});
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`宿泊者名簿_${year}_${month}月.csv`;a.click();
 }
 
