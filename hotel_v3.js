@@ -3032,8 +3032,17 @@ function renderCancel(){
 }
 function exportCancelCSV(){
   let csv='\uFEFF支払済み,日程,氏名,予約サイト,支払方法,キャンセル料,国籍,性別,区分,部屋,備考\n';
+  // 日程は「2026/09/07」形式で出力する（宿泊者名簿のCSV出力と統一）。
+  // 保存値は "2026-09-07" のようなハイフン区切りのため、スラッシュ区切りへ変換する。
+  // 想定外の形式はそのまま出力し、値を壊さないようにする。
+  const _p2=n=>String(n).padStart(2,'0');
+  const _fmtCancelDate=v=>{
+    const s=String(v||'').trim();
+    const m=s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    return m?`${m[1]}/${_p2(m[2])}/${_p2(m[3])}`:s;
+  };
   cancelList.forEach(c=>{
-    csv+=[c.payDone?'済み':'未収',c.date||'',c.name||'',c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.room||'','"'+(c.note||'').replace(/"/g,'""')+'"'].join(',')+'\n';
+    csv+=[c.payDone?'済み':'未収',_fmtCancelDate(c.date),c.name||'',c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.room||'','"'+(c.note||'').replace(/"/g,'""')+'"'].join(',')+'\n';
   });
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='キャンセルリスト.csv';a.click();
