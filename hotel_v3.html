@@ -768,7 +768,7 @@
       <div style="margin-top:16px;">
         <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">写真（任意・1枚）</label>
         <div style="display:flex;align-items:center;gap:10px;">
-          <input type="file" id="sn-edit-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="snPickPhoto('edit',this)">
+          <input type="file" id="sn-edit-photo-input" accept="image/*" style="display:none;" onchange="snPickPhoto('edit',this)">
           <button class="btn" type="button" onclick="document.getElementById('sn-edit-photo-input').click()" style="padding:7px 14px;font-size:13px;">📷 写真を添付</button>
           <div id="sn-edit-photo-preview"></div>
         </div>
@@ -1257,7 +1257,7 @@
       <textarea id="sn-detail" placeholder="詳細（任意）" style="flex:1;resize:vertical;min-height:56px;font-family:inherit;font-size:13px;padding:7px 11px;border:1.5px solid var(--sand-border);border-radius:var(--radius-sm);outline:none;line-height:1.55;" onkeydown="if(event.key==='Enter'&&event.ctrlKey)addStaffNote()"></textarea>
       <!-- 写真添付（1TODOにつき1枚） -->
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <input type="file" id="sn-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="snPickPhoto('add',this)">
+        <input type="file" id="sn-photo-input" accept="image/*" style="display:none;" onchange="snPickPhoto('add',this)">
         <button class="btn" type="button" onclick="document.getElementById('sn-photo-input').click()" style="white-space:nowrap;">📷 写真を添付</button>
         <div id="sn-photo-preview"></div>
       </div>
