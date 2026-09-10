@@ -3587,6 +3587,161 @@ function setSNFilter(f){
   document.querySelectorAll('.sn-filter').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
   renderStaffNotes();
 }
+// ══════════════════════════════════════════════════════════
+//  TODO写真添付
+// ══════════════════════════════════════════════════════════
+// 写真は staffNotes の各要素に photo プロパティ（dataURL文字列）として持たせる。
+// 保存経路は既存のまま（staffNotes → collectAllData() → cloudSave()）で、
+// 写真専用の保存先やファイルは作らない。
+// 写真なしのTODOは photo キー自体を持たない（既存データも同じ状態）。
+// 参照側は必ず n.photo の falsy 判定で扱い、undefined でも壊れないようにする。
+const SN_PHOTO_TARGET_BYTES=150*1024; // dataURL長の上限（保存されるのはこの文字列）
+const SN_PHOTO_EDGES=[1024,800,640];  // 長辺の候補（大きい順に試す）
+const SN_PHOTO_QUALITIES=[0.6,0.5,0.42,0.35];
+
+// JPEGのEXIFからOrientationを読む。取得できなければ1（回転なし）を返す。
+function _snReadExifOrientation(buf){
+  try{
+    const v=new DataView(buf);
+    if(v.getUint16(0,false)!==0xFFD8)return 1;          // JPEGではない
+    let off=2;
+    while(off+4<=v.byteLength){
+      const marker=v.getUint16(off,false); off+=2;
+      if(marker===0xFFE1){                               // APP1（EXIF）
+        if(v.getUint32(off+2,false)!==0x45786966)return 1; // "Exif"
+        const tiff=off+8;
+        const little=v.getUint16(tiff,false)===0x4949;
+        const ifd=tiff+v.getUint32(tiff+4,little);
+        const n=v.getUint16(ifd,little);
+        for(let i=0;i<n;i++){
+          const ent=ifd+2+i*12;
+          if(v.getUint16(ent,little)===0x0112)return v.getUint16(ent+8,little)||1;
+        }
+        return 1;
+      }
+      if((marker&0xFF00)!==0xFF00)break;
+      off+=v.getUint16(off,false);
+    }
+  }catch(e){}
+  return 1;
+}
+// Orientationに応じて正しい向きでcanvasへ描画する。
+// これを行わないと、スマホで縦に撮った写真が横に寝たまま保存される。
+function _snDrawOriented(src,dw,dh,orientation){
+  const swap=orientation>=5&&orientation<=8; // 5〜8は縦横が入れ替わる
+  const cv=document.createElement('canvas');
+  cv.width =swap?dh:dw;
+  cv.height=swap?dw:dh;
+  const cx=cv.getContext('2d');
+  switch(orientation){
+    case 2: cx.transform(-1,0,0,1,dw,0);   break;
+    case 3: cx.transform(-1,0,0,-1,dw,dh); break;
+    case 4: cx.transform(1,0,0,-1,0,dh);   break;
+    case 5: cx.transform(0,1,1,0,0,0);     break;
+    case 6: cx.transform(0,1,-1,0,dh,0);   break;
+    case 7: cx.transform(0,-1,-1,0,dh,dw); break;
+    case 8: cx.transform(0,-1,1,0,0,dw);   break;
+    default: cx.transform(1,0,0,1,0,0);
+  }
+  cx.drawImage(src,0,0,dw,dh);
+  return cv;
+}
+// 画像をリサイズ・圧縮してdataURL（JPEG）にする。
+// 目標サイズに収まるまで「長辺を落とす × 画質を落とす」を順に試す。
+async function _snCompressPhoto(file){
+  const buf=await file.arrayBuffer();
+  const type=file.type||'image/jpeg';
+  let bmp=null,nativeOriented=false;
+  // createImageBitmap の imageOrientation:'from-image' が使える環境では
+  // ブラウザ側がEXIFの向きを補正してくれるため、それを優先する。
+  if(typeof createImageBitmap==='function'){
+    try{
+      bmp=await createImageBitmap(new Blob([buf],{type}),{imageOrientation:'from-image'});
+      nativeOriented=true;
+    }catch(e){ bmp=null; }
+  }
+  if(!bmp){ // 非対応環境はImageで読み込み、EXIFを自前で補正する
+    bmp=await new Promise((res,rej)=>{
+      const url=URL.createObjectURL(new Blob([buf],{type}));
+      const img=new Image();
+      img.onload =()=>{URL.revokeObjectURL(url);res(img);};
+      img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('画像を読み込めませんでした'));};
+      img.src=url;
+    });
+  }
+  const ow=bmp.width,oh=bmp.height;
+  if(!ow||!oh)throw new Error('画像サイズを取得できませんでした');
+  const orientation=nativeOriented?1:(/jpe?g/i.test(type)?_snReadExifOrientation(buf):1);
+  let best=null;
+  try{
+    for(const edge of SN_PHOTO_EDGES){
+      const sc=Math.min(1,edge/Math.max(ow,oh));
+      const dw=Math.max(1,Math.round(ow*sc)),dh=Math.max(1,Math.round(oh*sc));
+      const cv=_snDrawOriented(bmp,dw,dh,orientation);
+      for(const q of SN_PHOTO_QUALITIES){
+        const url=cv.toDataURL('image/jpeg',q);
+        if(!best||url.length<best.length)best=url;
+        if(url.length<=SN_PHOTO_TARGET_BYTES)return url;
+      }
+    }
+  } finally {
+    if(bmp&&typeof bmp.close==='function')bmp.close();
+  }
+  if(!best)throw new Error('画像を圧縮できませんでした');
+  return best; // 目標に届かなくても最小のものを返す（投稿は継続できる）
+}
+
+let _snPendingPhoto=null; // 新規投稿フォームに添付中の写真
+let _snEditPhoto=null;    // 編集モーダルで編集中の写真
+
+// ファイル選択・撮影後の処理。失敗しても投稿自体は続けられるようにする。
+async function snPickPhoto(which,input){
+  const file=input&&input.files&&input.files[0];
+  if(input)input.value=''; // 同じ写真を続けて選べるよう毎回クリアする
+  if(!file)return;
+  try{
+    showToast('📷 写真を処理中…');
+    const url=await _snCompressPhoto(file);
+    if(which==='add')_snPendingPhoto=url; else _snEditPhoto=url; // 差し替え時は旧データを破棄
+    renderSNPhotoPreview(which);
+    showToast(`📷 写真を添付しました（約${Math.round(url.length/1024)}KB）`);
+  }catch(e){
+    console.warn('TODO写真の処理に失敗',e);
+    showToast('⚠ この写真は使用できませんでした（HEIC等の可能性）。写真なしで投稿できます。',6000);
+  }
+}
+function renderSNPhotoPreview(which){
+  const box=document.getElementById(which==='add'?'sn-photo-preview':'sn-edit-photo-preview');
+  if(!box)return;
+  const url=which==='add'?_snPendingPhoto:_snEditPhoto;
+  box.innerHTML=url?`<div style="position:relative;display:inline-block;">
+    <img src="${url}" onclick="openSNPhoto('${which}')" alt="添付写真"
+      style="height:52px;width:52px;object-fit:cover;border-radius:6px;border:1px solid var(--sand-border);cursor:zoom-in;display:block;">
+    <button type="button" onclick="clearSNPhoto('${which}')" title="写真を削除"
+      style="position:absolute;top:-7px;right:-7px;width:20px;height:20px;line-height:1;padding:0;border-radius:50%;border:1px solid var(--sand-border);background:#fff;color:#c0392b;font-size:12px;cursor:pointer;">×</button>
+  </div>`:'';
+}
+function clearSNPhoto(which){
+  if(which==='add')_snPendingPhoto=null; else _snEditPhoto=null;
+  renderSNPhotoPreview(which);
+}
+function openSNPhoto(which){ _snShowPhotoModal(which==='add'?_snPendingPhoto:_snEditPhoto); }
+function openSNPhotoById(id){
+  const n=staffNotes.find(x=>x.id===id);
+  if(n&&n.photo)_snShowPhotoModal(n.photo);
+}
+function _snShowPhotoModal(url){
+  if(!url)return;
+  const m=document.getElementById('sn-photo-modal'),img=document.getElementById('sn-photo-modal-img');
+  if(!m||!img)return;
+  img.src=url;m.classList.add('open');
+}
+function closeSNPhotoModal(){
+  const m=document.getElementById('sn-photo-modal'),img=document.getElementById('sn-photo-modal-img');
+  if(m)m.classList.remove('open');
+  if(img)img.src=''; // 画像参照を解放
+}
+
 function renderStaffNotes(){
   populateSNAuthor();populateSNType();
   const el=document.getElementById('sn-list');if(!el)return;
@@ -3639,6 +3794,8 @@ function renderStaffNotes(){
           <div class="sn-ce" contenteditable="true" data-ph="詳細を入力（任意）"
             onblur="snInlineText(${n.id},'detail',this)"
             style="font-size:12px;color:${n.done?'var(--light)':'var(--text)'};line-height:1.65;white-space:pre-wrap;padding:2px 4px;min-height:1.2em;">${esc(n.detail||'')}</div>
+          ${n.photo?`<img src="${n.photo}" onclick="openSNPhotoById(${n.id})" alt="添付写真" title="タップで拡大"
+            style="margin:6px 0 0 4px;height:48px;width:48px;object-fit:cover;border-radius:6px;border:1px solid var(--sand-border);cursor:zoom-in;display:block;">`:''}
         </div>
         <button onclick="deleteSN(${n.id})" class="btn btn-xs" style="flex-shrink:0;color:var(--muted);">✕</button>
       </div>
@@ -3656,12 +3813,25 @@ function addStaffNote(){
     type:document.getElementById('sn-type').value,
     rank:document.getElementById('sn-rank').value,
     author:document.getElementById('sn-author').value,
-    title,detail,done:false,created
+    title,detail,done:false,created,
+    ...( _snPendingPhoto?{photo:_snPendingPhoto}:{} ) // 写真なしならキー自体を持たせない
   });
   titleEl.value='';document.getElementById('sn-detail').value='';
+  _snPendingPhoto=null;renderSNPhotoPreview('add');
   renderStaffNotes();renderRankAPanel();saveToLS();autoSave();
 }
-function toggleSN(id){const n=staffNotes.find(x=>x.id===id);if(n)n.done=!n.done;renderStaffNotes();renderRankAPanel();saveToLS();autoSave();}
+function toggleSN(id){
+  const n=staffNotes.find(x=>x.id===id);
+  if(n){
+    n.done=!n.done;
+    // 【重要】完了にした時点で、添付写真のBase64を完全に破棄する。
+    // 写真データが蓄積するとクラウド保存データが肥大化するため、
+    // キーごと削除して保存内容に一切残らないようにする。
+    // この直後の autoSave() → cloudSave() で、写真が消えた状態が同期される。
+    if(n.done&&n.photo)delete n.photo;
+  }
+  renderStaffNotes();renderRankAPanel();saveToLS();autoSave();
+}
 function deleteSN(id){if(!confirm('このTODOを削除しますか？'))return;staffNotes=staffNotes.filter(x=>x.id!==id);renderStaffNotes();renderRankAPanel();saveToLS();autoSave();}
 
 // ── TODO編集 ─────────────────────────────────────────────
@@ -3674,6 +3844,7 @@ function editSN(id){
   document.getElementById('sn-edit-rank').value=n.rank||'C';
   document.getElementById('sn-edit-title').value=n.title||n.text||'';
   document.getElementById('sn-edit-detail').value=n.detail||'';
+  _snEditPhoto=n.photo||null;renderSNPhotoPreview('edit');
   document.getElementById('sn-edit-modal').classList.add('open');
   setTimeout(()=>document.getElementById('sn-edit-title').focus(),80);
 }
@@ -3685,8 +3856,10 @@ function saveSN(){
   const t=document.getElementById('sn-edit-title').value.trim();
   if(t)n.title=t;
   n.detail=document.getElementById('sn-edit-detail').value.trim();
+  // 写真の追加・削除・差し替え。削除時はキーごと消して旧Base64を残さない。
+  if(_snEditPhoto)n.photo=_snEditPhoto; else delete n.photo;
   document.getElementById('sn-edit-modal').classList.remove('open');
-  _snEditId=null;
+  _snEditId=null;_snEditPhoto=null;
   renderStaffNotes();renderRankAPanel();saveToLS();autoSave();
   showToast('✏ TODOを更新しました');
 }

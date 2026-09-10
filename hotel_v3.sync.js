@@ -985,15 +985,27 @@ function toggleRankAPanel(){
 }
 // localStorage 保存・復元
 function saveToLS(){
-  try{localStorage.setItem('hotel_staffNotes',JSON.stringify(staffNotes));
-      localStorage.setItem('hotel_staffNames',JSON.stringify(staffNames));
-      localStorage.setItem('hotel_snTypes',JSON.stringify(snTypes));
-      localStorage.setItem('hotel_repeatReminders',JSON.stringify(repeatReminders));
-      localStorage.setItem('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
-      localStorage.setItem('hotel_roomFilter',JSON.stringify(roomFilter));
-      localStorage.setItem('hotel_rooms',JSON.stringify(rooms));
-      localStorage.setItem('hotel_budgets',JSON.stringify(budgets));}
-  catch(e){}
+  // 1キーずつ独立して書き込む。従来は1つのtryで全キーを書いていたため、
+  // 途中でQuotaExceededErrorが起きると以降のキー（部屋・予算など）が
+  // まとめて保存されなくなっていた。
+  const put=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+  // TODOの添付写真（Base64）はlocalStorageには入れない。
+  // 数枚で容量上限に達し、他の設定の保存まで巻き添えで失敗するため。
+  // 写真の保存先は既存のクラウド保存（staffNotes→cloudSave）のみとする。
+  let notesForLS=staffNotes;
+  try{
+    if(Array.isArray(staffNotes)&&staffNotes.some(n=>n&&n.photo)){
+      notesForLS=staffNotes.map(n=>{ if(!n||!n.photo)return n; const c={...n}; delete c.photo; return c; });
+    }
+  }catch(e){ notesForLS=staffNotes; }
+  put('hotel_staffNotes',JSON.stringify(notesForLS));
+  put('hotel_staffNames',JSON.stringify(staffNames));
+  put('hotel_snTypes',JSON.stringify(snTypes));
+  put('hotel_repeatReminders',JSON.stringify(repeatReminders));
+  put('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
+  put('hotel_roomFilter',JSON.stringify(roomFilter));
+  put('hotel_rooms',JSON.stringify(rooms));
+  put('hotel_budgets',JSON.stringify(budgets));
 }
 function loadFromLS(){
   try{
