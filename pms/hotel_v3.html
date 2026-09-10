@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20260909b">
+<link rel="stylesheet" href="hotel_v3.css?v=20260910a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -727,6 +727,14 @@
   </div>
 </div>
 
+<!-- TODO添付写真の拡大表示 -->
+<div class="mbg" id="sn-photo-modal" onclick="closeSNPhotoModal()">
+  <div style="max-width:92vw;max-height:88vh;display:flex;flex-direction:column;align-items:center;gap:10px;">
+    <img id="sn-photo-modal-img" alt="添付写真" style="max-width:92vw;max-height:78vh;object-fit:contain;border-radius:8px;background:#fff;">
+    <button class="btn" type="button" onclick="closeSNPhotoModal()" style="padding:8px 22px;font-size:13px;">閉じる</button>
+  </div>
+</div>
+
 <div class="mbg" id="sn-edit-modal" onclick="if(event.target===this)document.getElementById('sn-edit-modal').classList.remove('open')">
   <div class="mbox" style="max-width:500px;padding:0;border-radius:6px;overflow:hidden;border-top:5px solid #0f6c8c;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.3);">
     <div style="background:#f0f7fa;padding:14px 22px;font-size:14px;font-weight:800;color:#0f6c8c;border-bottom:1px solid #d0e8f0;display:flex;align-items:center;gap:8px;">✏ TODO 編集</div>
@@ -756,6 +764,15 @@
       <div style="margin-top:16px;">
         <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">詳細（任意）</label>
         <textarea id="sn-edit-detail" rows="4" placeholder="詳細を入力（任意）" style="width:100%;border:1px solid #d0dce6;border-radius:4px;padding:8px;font-size:13px;color:#1a2b3a;background:#fff;font-family:inherit;box-sizing:border-box;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-top:16px;">
+        <label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">写真（任意・1枚）</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="file" id="sn-edit-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="snPickPhoto('edit',this)">
+          <button class="btn" type="button" onclick="document.getElementById('sn-edit-photo-input').click()" style="padding:7px 14px;font-size:13px;">📷 写真を添付</button>
+          <div id="sn-edit-photo-preview"></div>
+        </div>
+        <div style="font-size:10.5px;color:#999;margin-top:6px;">※ TODOを完了にすると写真は自動的に削除されます</div>
       </div>
     </div>
     <div style="display:flex;gap:10px;padding:14px 22px;background:#f8f8f8;border-top:1px solid #eee;align-items:center;">
@@ -1238,6 +1255,12 @@
     </div>
     <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px;">
       <textarea id="sn-detail" placeholder="詳細（任意）" style="flex:1;resize:vertical;min-height:56px;font-family:inherit;font-size:13px;padding:7px 11px;border:1.5px solid var(--sand-border);border-radius:var(--radius-sm);outline:none;line-height:1.55;" onkeydown="if(event.key==='Enter'&&event.ctrlKey)addStaffNote()"></textarea>
+      <!-- 写真添付（1TODOにつき1枚） -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <input type="file" id="sn-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="snPickPhoto('add',this)">
+        <button class="btn" type="button" onclick="document.getElementById('sn-photo-input').click()" style="white-space:nowrap;">📷 写真を添付</button>
+        <div id="sn-photo-preview"></div>
+      </div>
       <button class="btn btn-blue" onclick="addStaffNote()" style="height:56px;white-space:nowrap;">投稿<br><span style="font-size:10px;font-weight:400;">Ctrl+Enter</span></button>
     </div>
     <!-- フィルタ -->
@@ -1894,11 +1917,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20260909b"></script>
-<script src="hotel_v3.calendar.js?v=20260909b"></script>
-<script src="hotel_v3.sync.js?v=20260909b"></script>
-<script src="hotel_v3.pos.js?v=20260909b"></script>
-<script src="hotel_v3.js?v=20260909b"></script>
+<script src="hotel_v3.cleaning.js?v=20260910a"></script>
+<script src="hotel_v3.calendar.js?v=20260910a"></script>
+<script src="hotel_v3.sync.js?v=20260910a"></script>
+<script src="hotel_v3.pos.js?v=20260910a"></script>
+<script src="hotel_v3.js?v=20260910a"></script>
 <div id="notification-container"></div>
 </body>
 </html>
