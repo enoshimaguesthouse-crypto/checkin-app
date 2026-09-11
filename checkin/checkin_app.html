@@ -998,10 +998,13 @@ input:focus,select:focus,textarea:focus{
     #screen-complete.active > .card,
     #screen-complete.active > #guide-card{ min-width:0; }
   }
-  /* ⑦ 縦向き（Portrait）＝1カラム */
+  /* ⑦ 縦向き（Portrait） */
   @media (orientation:portrait){
     .lang-grid{ grid-template-columns:1fr 1fr; }
-    .entry-grid{ grid-template-columns:1fr; }
+    /* 予約ID入力とQRスキャンは縦向きでも左右に並べる。
+       タブレット（幅768px以上）では横幅に余裕があり、1カラムにすると
+       QRコードのカードが画面下へ押し出されて見つけにくくなるため。 */
+    .entry-grid{ grid-template-columns:1fr 1fr; }
   }
 }
 </style>
