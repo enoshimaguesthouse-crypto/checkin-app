@@ -578,6 +578,43 @@ function doPost(e) {
 const MAIL_KEYS = ['reservationCreated','checkinCode','checkin','checkout'];
 const MAIL_SEND_CAP = 40;
 
+// ── 自動配信の再開日ガード（2026/10/06 再開）─────────────────
+// この2つの定数だけで「いつから」「どの予約まで」を制御する。
+//  MAIL_START_YMD        : この日より前は自動送信を一切行わない（日本時間）
+//  MAIL_MIN_CHECKOUT_YMD : チェックアウト日がこの日より前の予約は全種別で除外する
+// 10/6チェックアウトの宿泊者へ送らないため、下限は 10/07 とする。
+const MAIL_START_YMD        = '2026-10-06';
+const MAIL_MIN_CHECKOUT_YMD = '2026-10-07';
+
+// 日本時間での「YYYY-MM-DD」を返す。
+// GASプロジェクトのタイムゾーン設定に依存すると、UTC設定のときに
+// 「日本時間では10/6なのに10/5扱い」になり得るため、常にAsia/Tokyoで判定する。
+function _jstYmd_(dt){ return Utilities.formatDate(dt||new Date(), 'Asia/Tokyo', 'yyyy-MM-dd'); }
+// 「日本時間の壁掛け時計」をそのまま各要素に持つDateを返す。
+// 予約データ側の日付は new Date(y, m-1, d) というタイムゾーンを持たない値なので、
+// 現在日時もJSTの年月日時分に揃えてから比較する必要がある。
+// （GASプロジェクトのタイムゾーンがUTC等でも判定がズレないようにするため）
+function _jstNow_(){
+  var s=Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd/HH/mm').split('/');
+  return new Date(+s[0], (+s[1])-1, +s[2], +s[3], +s[4]);
+}
+// 予約データ由来の日付（GAS内でnew Date(y,m,d)として作られる素の日付）を
+// カレンダー上の日付文字列として扱う。時差変換は行わない。
+function _ymdOf_(dt){
+  if(!dt)return '';
+  var p=function(n){return String(n).padStart(2,'0');};
+  return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());
+}
+// 自動送信を開始してよい日か（日本時間で MAIL_START_YMD 以降か）
+function _mailStartReached_(now){ return _jstYmd_(now) >= MAIL_START_YMD; }
+// この予約が自動送信の対象範囲か（チェックアウト日が下限以降か）
+// チェックアウト日が取れない場合は安全側に倒して対象外にする。
+function _mailCheckoutEligible_(gd, key, g){
+  var co=_checkoutDate_(gd, key, g);
+  if(!co)return false;
+  return _ymdOf_(co) >= MAIL_MIN_CHECKOUT_YMD;
+}
+
 function _mailOwner_(){ try { return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail(); } catch(e){ return Session.getEffectiveUser().getEmail(); } }
 function _mailLoad_(){ return JSON.parse(getHotelFile().getBlob().getDataAsString()); }
 function _mailSave_(data){ data.updatedAt=new Date().toISOString(); getHotelFile().setContent(JSON.stringify(data)); _setUpdatedAtProp_(data.updatedAt); }
@@ -1104,15 +1141,26 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
 }
 
 // 既存予約を「送信済み」として記録（過去分の一斉送信を防止）。有効化の直前に1回実行。
+// 既存予約へ「予約作成時メール」が遡って一斉送信されるのを防ぐ。
+// 【重要】封じるのは reservationCreated だけにする。
+//   予約作成時メールは「実際に予約が作られた瞬間」に送るべきもので、
+//   既存予約に対して再開日を理由に送ってはいけない。予約データには作成日時が
+//   無いため、既存予約へ送信済みフラグを立てて恒久的に対象外にする。
+//   一方 checkinCode / checkin / checkout は、既存予約でも設定された
+//   送信タイミングが到来すれば送る必要があるためフラグを立てない
+//   （これらはチェックアウト日ガードと各種別の条件で保護される）。
 function primeMailFlags(){
   var data=_mailLoad_(); var gd=data.guestData||{}; var n=0; var stamp='primed:'+new Date().toISOString();
   Object.keys(gd).forEach(function(k){
     var g=gd[k]; if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
-    g.mailSent=g.mailSent||{}; MAIL_KEYS.forEach(function(mk){ if(!g.mailSent[mk])g.mailSent[mk]=stamp; }); n++;
+    g.mailSent=g.mailSent||{};
+    if(!g.mailSent.reservationCreated)g.mailSent.reservationCreated=stamp;
+    n++;
   });
   _mailSave_(data);
   PropertiesService.getScriptProperties().setProperty('MAIL_PRIMED','yes'); // 安全ロック解除
-  return '既存予約 '+n+' 件に送信済みフラグを付与しました（安全ロック解除。今後の新規・期日到来分のみ送信されます）';
+  return '既存予約 '+n+' 件の「予約作成時メール」を送信済み扱いにしました'
+       + '（安全ロック解除。今後作成される新規予約のみ予約作成時メールの対象になります）';
 }
 
 // ── テスト用ラッパー（GASエディタの「実行」から選んで実行。引数不要）──
@@ -1173,6 +1221,68 @@ function diagnoseMail(){
 
 // 手動で今すぐ自動送信を1回実行（MAIL_AUTOSEND=on のときのみ送信）
 function runAutoMailsNow(){ var n=runAutoMails(); Logger.log('runAutoMailsNow: '+n+' 通'); return n; }
+
+// ── 送信対象の事前確認（ドライラン：1通も送らない）───────────────
+// 本番前・本番直前に GASエディタから実行して、実際に送られる予定の
+// 予約だけが並ぶかを目視確認するための関数。
+// runAutoMails() と同じ判定条件を使うので、ここに出ないものは送られない。
+function previewAutoMails(){
+  var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
+  var now=new Date(); var jnow=_jstNow_();
+  var todayMs=_dayStart_(jnow); var nowMin=jnow.getHours()*60+jnow.getMinutes();
+  var rows=[], excluded=0;
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k];
+    if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
+    if(!(g.email||'').trim())return;
+    if(!_mailCheckoutEligible_(gd,k,g)){ excluded++; return; }
+    var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
+    var co=_checkoutDate_(gd,k,g);
+    MAIL_KEYS.forEach(function(mk){
+      var cfg=ms[mk];
+      if(!cfg||!cfg.enabled)return;
+      if(g.mailSent&&g.mailSent[mk])return;
+      var due=false, when='';
+      if(mk==='reservationCreated'){ if(ciMs!==null&&ciMs>=todayMs){due=true;when='即時';} }
+      else if(mk==='checkinCode'){
+        if(ciMs!==null){
+          var daysUntil=Math.round((ciMs-todayMs)/86400000);
+          var nb=(parseInt(cfg.sendDaysBefore)||3);
+          var st=(cfg.sendTime||'09:00');
+          var stMin=(parseInt(st.split(':')[0])||0)*60+(parseInt(st.split(':')[1])||0);
+          if(daysUntil===nb&&nowMin>=stMin){due=true;when='今すぐ（'+nb+'日前 '+st+'）';}
+          else if(daysUntil>nb||(daysUntil===nb&&nowMin<stMin)){
+            var d=new Date(ci.getFullYear(),ci.getMonth(),ci.getDate()-nb);
+            due=true; when=_ymdOf_(d)+' '+st+'（予定）';
+          }
+        }
+      }
+      else if(mk==='checkin'){ if(g.status==='checked_in'||g.status==='checkedin'){
+        var cinAt=g.checkedInAt?_jstYmd_(new Date(g.checkedInAt)):'';
+        if(!cinAt||cinAt>=MAIL_START_YMD){due=true;when='即時';} } }
+      else if(mk==='checkout'){ if(co){ due=true; when=_ymdOf_(co)+'（チェックアウト日）'; } }
+      if(!due)return;
+      rows.push({
+        予約ID:g.reservationId||'', 氏名:g.name||'',
+        チェックイン:_ymdOf_(ci), チェックアウト:_ymdOf_(co),
+        メール種類:mk, 送信予定:when, 言語:_mailLang_(g)
+      });
+    });
+  });
+  rows.sort(function(a,b){ return a.チェックアウト<b.チェックアウト?-1:1; });
+  var L=['── 自動メール送信対象（ドライラン／1通も送信していません）──',
+    '判定日時: '+_jstYmd_(now)+' '+Utilities.formatDate(now,'Asia/Tokyo','HH:mm')+' (JST)',
+    '配信開始日: '+MAIL_START_YMD+' / チェックアウト下限: '+MAIL_MIN_CHECKOUT_YMD,
+    '開始日に到達しているか: '+(_mailStartReached_(now)?'はい':'いいえ（この時点では0通）'),
+    'チェックアウト日で除外した予約: '+excluded+' 件',
+    '対象: '+rows.length+' 件',''];
+  rows.forEach(function(r){
+    L.push([r.チェックアウト,r.メール種類,r.予約ID,r.氏名,'IN '+r.チェックイン,r.言語,r.送信予定].join(' | '));
+  });
+  var text=L.join('\n');
+  Logger.log(text);
+  return text;
+}
 
 // 実際に送信された予約の一覧（mailSentがISO日時=実送信。primed:は除外）。お詫び対応用。
 function listSentMails(){
@@ -1255,15 +1365,20 @@ function exportSentMailsToSheet(){
 
 // トリガー本体：自動送信（現在は手動再開指示があるまで完全停止）
 function runAutoMails(){
-  // ★ 自動送信を完全停止。再開時はこの return 0 を削除し、primeMailFlags()→autosend_ON()→installMailTrigger() の順で実施。
-  Logger.log('runAutoMails: 自動送信は停止中です（手動再開まで無効）');
-  return 0;
-  /* eslint-disable no-unreachable */
   var props=PropertiesService.getScriptProperties();
-  if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return; }
+  if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return 0; }
   if(props.getProperty('MAIL_PRIMED')!=='yes'){ Logger.log('runAutoMails: 中止（先に primeMailFlags() を実行してください）'); return 0; }
+  // ★ 再開日ガード：日本時間で 2026/10/06 になるまでは何があっても送らない。
+  //   （誤ってautosend_ON()やトリガー設置を先に行っても送信されない）
+  var now=new Date();
+  if(!_mailStartReached_(now)){
+    Logger.log('runAutoMails: 自動配信の開始日('+MAIL_START_YMD+')前のため送信しません（現在 '+_jstYmd_(now)+'）');
+    return 0;
+  }
   var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
-  var now=new Date(); var todayMs=_dayStart_(now); var nowMin=now.getHours()*60+now.getMinutes();
+  // 日付・時刻の判定はすべて日本時間で行う
+  var jnow=_jstNow_();
+  var todayMs=_dayStart_(jnow); var nowMin=jnow.getHours()*60+jnow.getMinutes();
   var sent=0;
   var keys=Object.keys(gd);
   for(var i=0;i<keys.length;i++){
@@ -1271,6 +1386,9 @@ function runAutoMails(){
     var k=keys[i], g=gd[k];
     if(!g||g.cont)continue; if(g.charter&&!g.charterAnchor)continue;
     if(!(g.email||'').trim())continue;
+    // ★ チェックアウト日ガード：10/06以前にチェックアウトする予約は全種別で対象外。
+    //   すでにチェックアウト済みの予約へ再開に伴うメールが飛ぶのも同時に防げる。
+    if(!_mailCheckoutEligible_(gd, k, g))continue;
     g.mailSent=g.mailSent||{};
     var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
     for(var t=0;t<MAIL_KEYS.length;t++){
@@ -1285,7 +1403,13 @@ function runAutoMails(){
           var st=(cfg.sendTime||'09:00').split(':'); var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
           if(daysUntil===(parseInt(cfg.sendDaysBefore)||3) && nowMin>=stMin)due=true; }
       }
-      else if(mk==='checkin'){ if(g.status==='checked_in'||g.status==='checkedin')due=true; }
+      else if(mk==='checkin'){
+        // 再開日より前に行われたチェックインには送らない（過去イベントへの追いかけ送信を防ぐ）
+        if(g.status==='checked_in'||g.status==='checkedin'){
+          var cinAt=g.checkedInAt?_jstYmd_(new Date(g.checkedInAt)):'';
+          if(!cinAt || cinAt>=MAIL_START_YMD)due=true;
+        }
+      }
       else if(mk==='checkout'){ var co=_checkoutDate_(gd,k,g); if(co&&_dayStart_(co)===todayMs)due=true; }
       if(!due)continue;
       try{
