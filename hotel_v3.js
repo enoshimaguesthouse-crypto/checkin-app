@@ -4241,31 +4241,135 @@ function _searchTerms(){
   const input=document.getElementById('reg-search-input');
   return input ? (input.value||'').trim().toLowerCase().split(/\s+/).filter(Boolean) : [];
 }
-// 表示中の月のセルに強調/淡色化を適用。jump:true で先頭ヒットへスクロール。
+// ── 検索結果ナビゲーション（↑ 1/3 ↓ ✕）─────────────────────
+// 検索結果は「予約単位」で管理する。連泊やドミトリーの人数展開で同じ予約が
+// 複数のセルに描画されていても1件として数えるため、DOM要素ではなく
+// 予約の識別子を配列で保持し、ハイライト時にDOMから引き直す。
+// （DOM要素を保持すると、月移動やCSV取込の再描画で古い参照になるため）
+let searchQuery='';
+let searchResults=[];      // 予約識別子の配列（タイムライン表示順）
+let currentSearchIndex=0;  // 現在アクティブな検索結果（0始まり）
+let _activeResId=null;     // 再描画をまたいでも同じ予約を選び続けるための識別子
+let _lastSearchedQuery=null; // Enterの2回目以降を「次へ」にするための記録
+
+// 連泊の先頭セル（cont:false）のキーを遡って求める。
+// 予約IDを持たない手入力予約を1予約としてまとめるために使う。
+function _anchorKeyOf(k){
+  try{
+    const pk=parseKey(k);
+    let y=pk.y,m=pk.m,d=pk.d;
+    for(let i=0;i<60;i++){
+      const key=gk(m,pk.r,d,y);
+      const g=guestData[key];
+      if(!g)break;
+      if(!g.cont)return key;
+      const p=addDays(m,d,-1,y);
+      y=p.y;m=p.m;d=p.d;
+    }
+  }catch(e){}
+  return k;
+}
+// 予約の識別子。予約IDがあればそれ、無ければ先頭セルのキーで代用する。
+function _resIdOf(g,k){
+  if(!g)return null;
+  if(g.reservationId)return 'R:'+String(g.reservationId);
+  return 'K:'+_anchorKeyOf(k);
+}
+// アクティブな予約のセルに search-active を付け、必要ならスクロールする
+function _applyActiveHighlight(doScroll){
+  document.querySelectorAll('#page-register .gc.search-active')
+    .forEach(c=>c.classList.remove('search-active'));
+  if(!_activeResId)return;
+  const cells=[...document.querySelectorAll('#page-register .gc.search-hit')]
+    .filter(c=>{ const k=c.getAttribute('data-k'); return _resIdOf(guestData[k],k)===_activeResId; });
+  cells.forEach(c=>c.classList.add('search-active'));
+  // 横スクロール・縦スクロールとも中央に寄せる
+  if(doScroll&&cells[0])cells[0].scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+}
+// 件数表示とボタンの有効/無効を更新する
+function _renderSearchNav(){
+  const box=document.getElementById('reg-search-nav');
+  if(!box)return;
+  const input=document.getElementById('reg-search-input');
+  const q=input?(input.value||'').trim():'';
+  if(!q){ box.style.display='none'; return; }
+  box.style.display='flex';
+  const n=searchResults.length;
+  const cnt=document.getElementById('reg-search-count');
+  if(cnt){
+    cnt.textContent=n?`${currentSearchIndex+1} / ${n}`:'0 / 0';
+    cnt.style.color=n?'':'#c0392b';
+  }
+  // 0件のときは前後ボタンを無効化（押してもエラーにしない）
+  [['reg-search-prev',n===0],['reg-search-next',n===0]].forEach(([id,dis])=>{
+    const b=document.getElementById(id); if(!b)return;
+    b.disabled=dis; b.style.opacity=dis?'.35':'1'; b.style.cursor=dis?'default':'pointer';
+  });
+}
+// 前(-1)／次(+1)の検索結果へ。端では循環する。
+function regSearchGo(dir){
+  if(!searchResults.length)return;
+  currentSearchIndex=(currentSearchIndex+dir+searchResults.length)%searchResults.length;
+  _activeResId=searchResults[currentSearchIndex];
+  _applyActiveHighlight(true);
+  _renderSearchNav();
+}
+// 検索状態を完全に解除する（画面のスクロール位置は動かさない）
+function regSearchClear(){
+  const input=document.getElementById('reg-search-input');
+  if(input)input.value='';
+  searchQuery='';searchResults=[];currentSearchIndex=0;_activeResId=null;_lastSearchedQuery=null;
+  document.querySelectorAll('#page-register .gc')
+    .forEach(c=>c.classList.remove('search-hit','search-dim','search-active'));
+  _renderSearchNav();
+  if(input)input.focus();
+}
+
+// 表示中の月のセルに強調/淡色化を適用。jump:true で現在の検索結果へスクロール。
+// 再描画のたびに呼ばれるため、ここで検索結果の配列をDOMから作り直す。
 function applyRegSearch(opts){
   const terms=_searchTerms();
   const cells=document.querySelectorAll('#page-register .gc');
+  const input=document.getElementById('reg-search-input');
+  searchQuery=input?(input.value||'').trim():'';
   if(terms.length===0){
-    cells.forEach(c=>c.classList.remove('search-hit','search-dim'));
+    cells.forEach(c=>c.classList.remove('search-hit','search-dim','search-active'));
+    searchResults=[];currentSearchIndex=0;_activeResId=null;
+    _renderSearchNav();
     return 0;
   }
-  let hitCount=0,firstHit=null;
+  let hitCount=0;
+  const seen=new Set(),order=[];
   cells.forEach(c=>{
-    const g=guestData[c.getAttribute('data-k')];
-    const hit=terms.every(t=>_searchHay(g).includes(t));
+    const k=c.getAttribute('data-k');
+    const g=guestData[k];
+    const hit=!!g&&terms.every(t=>_searchHay(g).includes(t));
     c.classList.toggle('search-hit',hit);
     c.classList.toggle('search-dim',!hit);
-    if(hit){hitCount++;if(!firstHit)firstHit=c;}
+    c.classList.remove('search-active');
+    if(hit){
+      hitCount++;
+      const rid=_resIdOf(g,k);                  // 同じ予約は1件だけ登録する
+      if(rid&&!seen.has(rid)){seen.add(rid);order.push(rid);}
+    }
   });
-  if(opts&&opts.jump&&firstHit){
-    firstHit.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
-  }
+  searchResults=order;
+  // 再描画後も同じ予約を選び続ける。見つからなければ位置を丸める。
+  let idx=_activeResId?order.indexOf(_activeResId):-1;
+  if(idx<0)idx=Math.min(currentSearchIndex,Math.max(0,order.length-1));
+  currentSearchIndex=order.length?idx:0;
+  _activeResId=order.length?order[currentSearchIndex]:null;
+  _applyActiveHighlight(!!(opts&&opts.jump));
+  _renderSearchNav();
   return hitCount;
 }
 // 全月・全年を横断検索し、当月に無ければ該当月へ移動してから強調する。
 function runRegSearch(){
   const value=(document.getElementById('reg-search-input').value||'').trim();
   const terms=value.toLowerCase().split(/\s+/).filter(Boolean);
+  // 新しい検索なので先頭から選び直す
+  _activeResId=null;currentSearchIndex=0;
+  _lastSearchedQuery=value.toLowerCase();
   if(terms.length===0){applyRegSearch();return;}
   const curY=parseInt(document.getElementById('sel-year').value)||2026;
   const curM=parseInt(document.getElementById('sel-month').value);
@@ -4307,11 +4411,24 @@ function runRegSearch(){
   if(!input)return;
   input.addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
-    runRegSearch();
+    e.preventDefault();
+    const q=(input.value||'').trim().toLowerCase();
+    // 1回目のEnter（または検索語を変えた直後）は従来どおり全月横断検索。
+    // 同じ検索語での2回目以降は「次の検索結果へ移動」に統一する。
+    // Shift+Enterは「前の検索結果へ」。
+    if(q && q===_lastSearchedQuery && searchResults.length){
+      regSearchGo(e.shiftKey?-1:1);
+    } else {
+      runRegSearch();
+    }
   });
-  // 入力が空になったら強調を即解除
+  // 入力のたびに表示中の月で再計算し、先頭の検索結果を選び直す。
+  // ここで全月横断検索(runRegSearch)を走らせると入力中に月が飛んでしまうため、
+  // 月移動が必要な検索はEnterに委ねる（既存仕様の維持）。
   input.addEventListener('input',()=>{
-    if(input.value.trim()==='')applyRegSearch();
+    _activeResId=null;currentSearchIndex=0;_lastSearchedQuery=null;
+    if(input.value.trim()===''){applyRegSearch();return;}
+    applyRegSearch({jump:true});
   });
 })();
 // ── 全パネルに右上の閉じる(×)ボタンを付与 ──────────────────────
