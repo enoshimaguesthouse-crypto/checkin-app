@@ -4276,11 +4276,12 @@ function _resIdOf(g,k){
   return 'K:'+_anchorKeyOf(k);
 }
 // アクティブな予約のセルに search-active を付け、必要ならスクロールする
-function _applyActiveHighlight(doScroll){
+function _applyActiveHighlight(doScroll,known){
   document.querySelectorAll('#page-register .gc.search-active')
     .forEach(c=>c.classList.remove('search-active'));
   if(!_activeResId)return;
-  const cells=[...document.querySelectorAll('#page-register .gc.search-hit')]
+  // 対象予約は表示中の月に無いこともある（別月の検索結果を選んでいる場合）
+  const cells=known||[...document.querySelectorAll('#page-register .gc[data-k]')]
     .filter(c=>{ const k=c.getAttribute('data-k'); return _resIdOf(guestData[k],k)===_activeResId; });
   cells.forEach(c=>c.classList.add('search-active'));
   // 横スクロール・縦スクロールとも中央に寄せる
@@ -4300,19 +4301,74 @@ function _renderSearchNav(){
     cnt.textContent=n?`${currentSearchIndex+1} / ${n}`:'0 / 0';
     cnt.style.color=n?'':'#c0392b';
   }
+  // 現在の検索結果が別の月にある場合、その年月を示す（↓でどこへ飛ぶか分かるように）
+  const ym=document.getElementById('reg-search-ym');
+  if(ym){
+    const r=searchResults[currentSearchIndex];
+    const cur=_curDispYM();
+    if(r&&(r.y!==cur.y||r.m!==cur.m)){ ym.textContent=`${r.y}/${r.m}`; ym.style.display=''; }
+    else { ym.textContent=''; ym.style.display='none'; }
+  }
   // 0件のときは前後ボタンを無効化（押してもエラーにしない）
   [['reg-search-prev',n===0],['reg-search-next',n===0]].forEach(([id,dis])=>{
     const b=document.getElementById(id); if(!b)return;
     b.disabled=dis; b.style.opacity=dis?'.35':'1'; b.style.cursor=dis?'default':'pointer';
   });
 }
+// 現在タイムラインに表示している年月
+function _curDispYM(){
+  return {y:parseInt(document.getElementById('sel-year').value)||2026,
+          m:parseInt(document.getElementById('sel-month').value)||1};
+}
+// 指定した検索結果の予約セルがDOMに現れるまで待つ。
+// 月を切り替えた直後は再描画が終わっていないことがあるため、
+// requestAnimationFrame で数フレームだけ再試行する（無限ループにしない）。
+function _waitForResCells(resId,tries){
+  return new Promise(resolve=>{
+    let n=tries||20;
+    const find=()=>{
+      const cells=[...document.querySelectorAll('#page-register .gc[data-k]')]
+        .filter(c=>{const k=c.getAttribute('data-k');return _resIdOf(guestData[k],k)===resId;});
+      if(cells.length||n--<=0)return resolve(cells);
+      // setTimeoutで再試行する。requestAnimationFrameはタブが非表示のとき
+      // 停止してしまい、待ち続けたまま戻らなくなるため使わない。
+      setTimeout(find,16);
+    };
+    find();
+  });
+}
+// 検索結果の n 番目へ移動する。別の年月ならタイムラインを切り替えてから
+// 描画完了を待ってハイライト＆スクロールする。
+async function _gotoSearchResult(idx){
+  const r=searchResults[idx];
+  if(!r)return;
+  currentSearchIndex=idx;
+  _activeResId=r.resId;
+  const cur=_curDispYM();
+  if(r.y!==cur.y||r.m!==cur.m){
+    const selY=document.getElementById('sel-year'),selM=document.getElementById('sel-month');
+    // 年の選択肢が無ければ追加する（stepMonthと同じ手順。
+    // 年セレクトは既定で当年しか持たないため、これが無いと年跨ぎの移動に失敗する）
+    if(!Array.from(selY.options).some(o=>parseInt(o.value)===r.y)){
+      const opt=document.createElement('option');
+      opt.value=opt.textContent=String(r.y);
+      if(r.y<parseInt(selY.options[0].value))selY.prepend(opt); else selY.append(opt);
+    }
+    selY.value=String(r.y);
+    selM.value=String(r.m);
+    DISP_YEAR=r.y;
+    _updateMonthDisplay();
+    renderReg(); // renderReg の中から applyRegSearch() が呼ばれ、この月の強調が付く
+  }
+  const cells=await _waitForResCells(r.resId);
+  _applyActiveHighlight(true,cells);
+  _renderSearchNav();
+}
 // 前(-1)／次(+1)の検索結果へ。端では循環する。
 function regSearchGo(dir){
   if(!searchResults.length)return;
-  currentSearchIndex=(currentSearchIndex+dir+searchResults.length)%searchResults.length;
-  _activeResId=searchResults[currentSearchIndex];
-  _applyActiveHighlight(true);
-  _renderSearchNav();
+  const i=(currentSearchIndex+dir+searchResults.length)%searchResults.length;
+  _gotoSearchResult(i);
 }
 // 検索状態を完全に解除する（画面のスクロール位置は動かさない）
 function regSearchClear(){
@@ -4325,8 +4381,35 @@ function regSearchClear(){
   if(input)input.focus();
 }
 
-// 表示中の月のセルに強調/淡色化を適用。jump:true で現在の検索結果へスクロール。
-// 再描画のたびに呼ばれるため、ここで検索結果の配列をDOMから作り直す。
+// 【重要】検索結果は「表示中の月のDOM」ではなく「保持している予約データ全体」から作る。
+// DOMから作ると、別の月にある予約が検索結果から消えてしまう。
+// 先頭セル（cont:false）だけを走査するので、連泊は自然に1件になる。
+// ドミトリーの人数展開など同じ予約IDが複数の先頭セルを持つ場合は識別子で重複排除する。
+// 並び順はチェックイン日の古い順。
+function _buildSearchResults(terms){
+  if(!terms.length)return [];
+  const seen=new Set(),out=[];
+  for(const k in guestData){
+    const g=guestData[k];
+    if(!g||g.cont)continue;
+    if(!terms.every(t=>_searchHay(g).includes(t)))continue;
+    const rid=_resIdOf(g,k);
+    if(!rid||seen.has(rid))continue;
+    seen.add(rid);
+    let pk; try{ pk=parseKey(k); }catch(e){ continue; }
+    out.push({
+      resId:rid, key:k,
+      reservationId:g.reservationId||'', guestName:g.name||'',
+      y:pk.y, m:pk.m, d:pk.d,           // 移動先の年月＝チェックイン日が属する月
+      roomId:g.roomId
+    });
+  }
+  out.sort((a,b)=>a.y-b.y||a.m-b.m||a.d-b.d||(a.roomId||0)-(b.roomId||0));
+  return out;
+}
+
+// 表示中の月のセルに強調/淡色化を適用し、検索結果の配列を作り直す。
+// 再描画のたびに呼ばれる。jump:true で現在の検索結果へスクロールする。
 function applyRegSearch(opts){
   const terms=_searchTerms();
   const cells=document.querySelectorAll('#page-register .gc');
@@ -4338,8 +4421,8 @@ function applyRegSearch(opts){
     _renderSearchNav();
     return 0;
   }
+  // 表示中の月のセルに全体ハイライト（他月の該当予約はDOMが無いのでここでは対象外）
   let hitCount=0;
-  const seen=new Set(),order=[];
   cells.forEach(c=>{
     const k=c.getAttribute('data-k');
     const g=guestData[k];
@@ -4347,18 +4430,15 @@ function applyRegSearch(opts){
     c.classList.toggle('search-hit',hit);
     c.classList.toggle('search-dim',!hit);
     c.classList.remove('search-active');
-    if(hit){
-      hitCount++;
-      const rid=_resIdOf(g,k);                  // 同じ予約は1件だけ登録する
-      if(rid&&!seen.has(rid)){seen.add(rid);order.push(rid);}
-    }
+    if(hit)hitCount++;
   });
-  searchResults=order;
+  // 検索結果は全データから作る（月が変わっても件数は変わらない）
+  searchResults=_buildSearchResults(terms);
   // 再描画後も同じ予約を選び続ける。見つからなければ位置を丸める。
-  let idx=_activeResId?order.indexOf(_activeResId):-1;
-  if(idx<0)idx=Math.min(currentSearchIndex,Math.max(0,order.length-1));
-  currentSearchIndex=order.length?idx:0;
-  _activeResId=order.length?order[currentSearchIndex]:null;
+  let idx=_activeResId?searchResults.findIndex(r=>r.resId===_activeResId):-1;
+  if(idx<0)idx=Math.min(currentSearchIndex,Math.max(0,searchResults.length-1));
+  currentSearchIndex=searchResults.length?idx:0;
+  _activeResId=searchResults.length?searchResults[currentSearchIndex].resId:null;
   _applyActiveHighlight(!!(opts&&opts.jump));
   _renderSearchNav();
   return hitCount;
@@ -4371,39 +4451,20 @@ function runRegSearch(){
   _activeResId=null;currentSearchIndex=0;
   _lastSearchedQuery=value.toLowerCase();
   if(terms.length===0){applyRegSearch();return;}
-  const curY=parseInt(document.getElementById('sel-year').value)||2026;
-  const curM=parseInt(document.getElementById('sel-month').value);
-  // guestData全体を走査（アンカー行のみ＝cont:falseで予約単位にカウント）
-  const matches=[];
-  for(const k in guestData){
-    const g=guestData[k];
-    if(!g||g.cont)continue;
-    if(terms.every(t=>_searchHay(g).includes(t)))matches.push(parseKey(k));
-  }
-  if(matches.length===0){
-    applyRegSearch();
+  const cur=_curDispYM();
+  applyRegSearch();                 // 全データから検索結果を作り直す
+  const n=searchResults.length;
+  if(n===0){
     if(typeof showToast==='function')showToast('🔍 該当する予約はありません');
     return;
   }
-  // 移動先：当月にヒットがあれば当月を維持、無ければ最も早い年月へ
-  const inCurrent=matches.some(p=>p.y===curY&&p.m===curM);
-  const monthSet=new Set(matches.map(p=>p.y*100+p.m));
-  let target;
-  if(inCurrent){
-    target={y:curY,m:curM};
-  } else {
-    target=matches.slice().sort((a,b)=>a.y-b.y||a.m-b.m||a.d-b.d)[0];
-    document.getElementById('sel-year').value=String(target.y);
-    document.getElementById('sel-month').value=String(target.m);
-    DISP_YEAR=target.y;
-    _updateMonthDisplay();
-    renderReg(); // renderReg内でapplyRegSearch()が呼ばれ強調が反映される
-  }
-  applyRegSearch({jump:true});
+  // 当月にヒットがあればそこから、無ければ先頭（＝最も早い日付）から始める
+  let idx=searchResults.findIndex(r=>r.y===cur.y&&r.m===cur.m);
+  if(idx<0)idx=0;
+  _gotoSearchResult(idx);
   if(typeof showToast==='function'){
-    const label=`${target.y===2026?'':target.y+'/'}${target.m}月`;
-    const more=monthSet.size>1?`（${monthSet.size}か月に分散・${label}を表示）`:'';
-    showToast(`🔍 全${matches.length}件ヒット${more}`);
+    const ms=new Set(searchResults.map(r=>r.y*100+r.m)).size;
+    showToast(`🔍 全${n}件ヒット${ms>1?`（${ms}か月に分散）`:''}`);
   }
 }
 (function initRegSearch(){
