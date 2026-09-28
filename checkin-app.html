@@ -233,7 +233,10 @@ input.needs-input::placeholder { color:#d08a3a; }
 .email-split { display:flex; align-items:center; gap:8px; }
 .email-split .email-local  { flex:1 1 auto; min-width:0; }
 .email-split .email-at     { flex:0 0 auto; font-size:17px; font-weight:700; color:var(--gray); padding:0 2px; }
-.email-split .email-domain { flex:0 0 auto; width:auto; max-width:52%; }
+/* ドメイン名は枠の中央に置く。左寄せのままだと、右側のプルダウン矢印用の
+   余白（padding-right）のぶんだけ文字が左に偏り、@から離れて見えるため。
+   左右のpaddingを揃えて視覚的な中央に合わせる。 */
+.email-split .email-domain { flex:0 0 auto; width:auto; max-width:52%; text-align:center; padding-left:34px; }
 .email-preview {
   margin-top:8px; padding:8px 12px; border-radius:8px;
   background:var(--ocean-pale); border:1px solid var(--border);
