@@ -1499,7 +1499,7 @@ input:focus,select:focus,textarea:focus{
         <div id="media-dots" style="position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:2;"></div>
       </div>
       <div id="guide-roomname" style="font-size:15px;font-weight:600;color:#1a5a6e;margin-bottom:10px;"></div>
-      <div id="guide-text" style="font-size:13px;line-height:1.9;color:#444;white-space:pre-wrap;"></div>
+      <div id="guide-text" style="font-size:13px;line-height:1.9;color:#fff;white-space:pre-wrap;"></div>
       <a id="guide-link" href="#" target="_blank" rel="noopener" style="display:none;margin-top:12px;padding:11px 14px;background:rgba(10,28,40,.55);border:1.5px solid #2f5f76;border-radius:10px;font-size:13px;font-weight:600;color:#1a7a9a;text-decoration:none;text-align:center;">🔗 <span id="guide-link-label">詳しい案内はこちら</span></a>
       <div id="wifi-box" style="display:none;margin-top:14px;padding:12px 14px;background:rgba(10,28,40,.55);border-radius:10px;">
         <div style="font-size:12px;font-weight:700;color:#1a7a9a;margin-bottom:6px;">📶 Wi-Fi</div>
@@ -1511,17 +1511,15 @@ input:focus,select:focus,textarea:focus{
       <button id="btn-replay-voice" onclick="replayGuideVoice()" style="margin-top:12px;width:100%;padding:10px;border:1.5px solid #1a7a9a;background:#fff;color:#1a7a9a;border-radius:10px;font-size:13px;cursor:pointer;">🔊 音声をもう一度再生</button>
     </div>
 
-    <!-- 戻る（完了画面：確認画面へ遡れる） -->
-    <div class="btn-group">
-      <button class="btn-back" onclick="showScreen('screen-confirm')" id="btn-back-complete">← 戻る</button>
+    <!-- 「最初に戻る（次のお客様）」は案内カード（音声をもう一度再生）の直下に置く。
+         カード内ではなくカードの外に置くのは、案内カードが非表示の物件でも
+         このボタンが必ず表示されるようにするため。 -->
+    <div style="text-align:center; margin-top:8px;">
+      <button class="btn-restart" id="btn-restart" onclick="restartApp()">最初に戻る（次のお客様）</button>
     </div>
 
     <!-- バックグラウンド送信の状態表示（非ブロッキング） -->
     <div id="sync-status" style="text-align:center; font-size:11px; color:var(--gray); margin-top:10px; min-height:15px;"></div>
-
-    <div style="text-align:center; margin-top:8px;">
-      <button class="btn-restart" id="btn-restart" onclick="restartApp()">最初に戻る（次のお客様）</button>
-    </div>
   </div>
 
 </div><!-- /app-wrapper -->
@@ -2155,7 +2153,6 @@ function applyLang() {
   el('pin-label').textContent = t.pinLabel;
   el('room-note').textContent = t.roomNote;
   el('btn-restart').textContent = t.restartBtn;
-  el('btn-back-complete').textContent = t.backBtn;
 }
 
 function el(id) { return document.getElementById(id); }
@@ -3662,9 +3659,7 @@ async function renderCompleteScreen(r, opts){
   el('pin-label').textContent      = t.pinLabel;
   el('room-note').textContent      = t.roomNote;
   el('btn-restart').textContent    = t.restartBtn;
-  // チェックイン済み予約の再表示時は、入力画面へ遡れないよう「戻る」を隠す
-  const backBtn=el('btn-back-complete');
-  if(backBtn) backBtn.style.display = o.hideBack ? 'none' : '';
+  // ※完了画面の「戻る」ボタンは廃止したため、hideBack の出し分けは不要
 
   // ② ローディングで画面をマスク
   el('sendingText').textContent = t.preparingRoom || t.sending || '準備しています…';
