@@ -2729,12 +2729,17 @@ function renderGuests(){
   const n=Math.max(1, parseInt(reservationData && reservationData.guests) || 1);
   const {last,first}=_splitName((reservationData&&reservationData.name)||'');
   const repForeign=!!(reservationData && ((reservationData.guestType==='foreign')||(reservationData.nat&&String(reservationData.nat).trim()&&reservationData.nat!=='日本')));
+  // 居住区分の初期値：トップ画面で選んだ言語が日本語以外なら「外国籍」から始める。
+  // 予約データが外国籍を示している場合（repForeign）は従来どおり代表者を外国籍にする。
+  // ここは新しいお客様の初回描画時にだけ使われる初期値で、その後は
+  // setGuestResident() でユーザーが自由に切り替えられる（言語で上書きし直さない）。
+  const langForeign = (lang!=='ja');
   // 人数が変わった場合のみ作り直し（戻る→再表示では入力を保持）
   if(guestsList.length!==n){
     guestsList=[];
     for(let i=0;i<n;i++){
       guestsList.push({
-        residentType:(i===0&&repForeign)?'foreign':'jp',
+        residentType:((i===0&&repForeign)||langForeign)?'foreign':'jp',
         familyName:i===0?last:'',
         givenName:i===0?first:'',
         nationality:(i===0&&repForeign)?(_matchNat(reservationData.nat)||''):'',
