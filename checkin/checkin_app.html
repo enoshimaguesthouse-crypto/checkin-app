@@ -1135,7 +1135,7 @@ input:focus,select:focus,textarea:focus{
       </div>
     </div>
     <div class="btn-group">
-      <button class="btn-back" onclick="showScreen('screen-lang')" id="btn-back-agree">← 戻る</button>
+      <button class="btn-back" onclick="showScreen('screen-form')" id="btn-back-agree">← 戻る</button>
       <button class="btn-next" id="btn-agree-next" onclick="proceedFromAgreement()" disabled>次へ　→</button>
     </div>
   </div>
@@ -1428,7 +1428,7 @@ input:focus,select:focus,textarea:focus{
       <div id="idv-status"></div>
     </div>
     <div class="btn-group">
-      <button class="btn-back" onclick="showScreen('screen-form')" id="btn-back-form2">← 戻る</button>
+      <button class="btn-back" onclick="_backFromIdentity()" id="btn-back-form2">← 戻る</button>
       <button class="btn-next" id="btn-idv-next" onclick="goToConfirmFromIdentity()">確認画面へ　→</button>
     </div>
   </div>
@@ -1840,11 +1840,32 @@ async function selectLang(l) {
   } else {
     cs = await loadContractSettings();
   }
-  if (cs && cs.enabled) {
-    showAgreementScreen();
-  } else {
-    showScreen('screen-search');
-  }
+  // 画面順序：言語選択 → チェックイン受付 → お客様情報 → 宿泊約款 → 本人確認 → 確認
+  // 約款は「お客様情報」の後に表示するため、ここでは必ず受付画面へ進む。
+  // （約款設定 cs は後続の画面で使うため、この時点で取得だけ済ませておく）
+  showScreen('screen-search');
+}
+
+// ── 画面のつなぎ（新しい表示順）──────────────────────────
+// 約款が無効な物件では約款画面を飛ばすため、前後の接続を関数にまとめる。
+function _agreementEnabled(){ return !!(contractSettings && contractSettings.enabled); }
+// お客様情報の「次へ」：約款が有効なら約款へ、無効なら本人確認/確認へ
+function _afterGuestForm(){
+  if(_agreementEnabled()){ showAgreementScreen(); return; }
+  _afterAgreement();
+}
+// 宿泊約款の「次へ」：本人確認が必要なら本人確認へ、不要なら確認画面へ
+// （本人確認の要否は既存の isIdentityRequired() の判定をそのまま使う）
+function _afterAgreement(){
+  if(isIdentityRequired()){ renderIdentityScreen(); showScreen('screen-identity'); return; }
+  buildConfirmTable();
+  showScreen('screen-confirm');
+}
+// 本人確認の「戻る」：約款が有効なら約款へ戻す。
+// showAgreementScreen は呼ばない＝同意・署名の状態を保持する。
+function _backFromIdentity(){
+  if(_agreementEnabled())showScreen('screen-agreement');
+  else showScreen('screen-form');
 }
 
 // ═══════════════════════════════════════
@@ -2024,7 +2045,7 @@ function proceedFromAgreement() {
   agreement.method = method;
   // 署名方式の場合のみ署名画像を保持（チェックイン完了署名とは独立して扱う）
   agreement.signature = (method === 'signature' && _signatureCtx) ? el('agree-sign-canvas').toDataURL('image/png') : '';
-  showScreen('screen-search');
+  _afterAgreement(); // 約款の次は本人確認（不要な設定なら確認画面）
 }
 
 // ── 署名パッド（チェックイン完了署名とは独立した Canvas）──
@@ -2150,14 +2171,10 @@ function showScreen(id) {
   if (id === 'screen-search') setTimeout(_maybeAutoSearchFromUrl, 0);
 }
 
-// 予約検索画面の「戻る」：約款利用ONなら約款画面へ（状態・署名を保持したまま直接表示）、
-// OFFなら言語選択へ。バリデーションは行わず確実に戻る。
+// 予約検索画面の「戻る」：受付の前は言語選択のみ（約款はお客様情報の後へ移動した）。
+// バリデーションは行わず確実に戻る。
 function backFromSearch() {
-  if (contractSettings && contractSettings.enabled) {
-    showScreen('screen-agreement'); // showAgreementScreenは呼ばない＝同意/署名の状態を保持
-  } else {
-    showScreen('screen-lang');
-  }
+  showScreen('screen-lang');
 }
 
 // ═══════════════════════════════════════
@@ -2992,10 +3009,11 @@ function renderIdentityScreen(){
   set('btn-idv-next', T[lang].nextBtn || '確認画面へ　→');
   renderIdentityStatus();
 }
-// 確認画面の「戻る」：本人確認を挟む物件では本人確認画面へ戻す
+// 確認画面の「戻る」：本人確認を挟む物件では本人確認画面へ、
+// 本人確認が無い場合は1つ前（約款が有効なら約款、無効ならお客様情報）へ戻す
 function backFromConfirm(){
   if(isIdentityRequired()){ renderIdentityScreen(); showScreen('screen-identity'); }
-  else showScreen('screen-form');
+  else _backFromIdentity();
 }
 // 本人確認画面 →「確認画面へ」：未撮影ならブロックしてエラー表示
 function goToConfirmFromIdentity(){
@@ -3335,14 +3353,8 @@ function goToConfirm() {
   }
   collectGuests();
   collectUpdatedGuestData();
-  // 物件設定＝写真撮影 のときは「本人確認」画面を挟む。行わない場合は従来どおり確認画面へ直行。
-  if (isIdentityRequired()) {
-    renderIdentityScreen();
-    showScreen('screen-identity');
-    return;
-  }
-  buildConfirmTable();
-  showScreen('screen-confirm');
+  // お客様情報の次は宿泊約款（約款が無効な物件では本人確認／確認画面へ飛ばす）
+  _afterGuestForm();
 }
 
 // HTMLエスケープ（XSS対策）：宿泊者が入力した氏名・国籍などをinnerHTMLに入れる前に必ず通す
