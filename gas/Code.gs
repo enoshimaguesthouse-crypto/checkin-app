@@ -418,7 +418,8 @@ function doPost(e) {
       if(!(sndG.email||'').trim()) return jsonOut(JSON.stringify({error:'no email address'}));
       var sndMs=_msCfg_(sndData); var sndCfg=sndMs[sndMailKey];
       if(!sndCfg) return jsonOut(JSON.stringify({error:'mail type not configured: '+sndMailKey}));
-      var sndOpts={}; if(payload.lang)sndOpts.lang=payload.lang;
+      // 施設ごとの送信可否は「自動」配信の設定なので、手動送信では適用しない
+      var sndOpts={ignoreRoomTypeGuard:true}; if(payload.lang)sndOpts.lang=payload.lang;
       var sndResult=_mailSendOne_(sndData, sndMailKey, sndG, sndGkey, sndMailKey, sndCfg, sndOpts);
       if(!sndResult||!sndResult.sent) return jsonOut(JSON.stringify({error:'send failed',detail:JSON.stringify(sndResult)}));
       var sndNow=new Date().toISOString();
@@ -609,6 +610,19 @@ function _ymdOf_(dt){
 function _mailStartReached_(now){ return _jstYmd_(now) >= MAIL_START_YMD; }
 // この予約が自動送信の対象範囲か（チェックアウト日が下限以降か）
 // チェックアウト日が取れない場合は安全側に倒して対象外にする。
+// ── 自動メールを送信する施設（部屋タイプ単位）─────────────────
+// 宿泊名簿アプリの「✉ 自動メール配信設定」で設定し、
+// mailSettings.sendRoomTypes = { 部屋タイプキー: true/false } に保存される。
+// 設定が無い部屋タイプは下の既定値を使う（未指定なら送信する）。
+// Sea Breeze 鎌倉・三浦は専用テンプレートが未整備で、設定しないままだと
+// 共通テンプレートが送られてしまうため、既定で送信しない。
+var MAIL_SEND_RT_DEFAULT_ = { sb_kamakura:false, sb_miura:false };
+function _mailRoomTypeAllowed_(ms, rtKey){
+  if(!rtKey)return false;                         // 部屋タイプを特定できない場合は送らない
+  var m = ms && ms.sendRoomTypes;
+  if(m && Object.prototype.hasOwnProperty.call(m, rtKey))return !!m[rtKey];
+  return MAIL_SEND_RT_DEFAULT_[rtKey] !== false;
+}
 function _mailCheckoutEligible_(gd, key, g){
   var co=_checkoutDate_(gd, key, g);
   if(!co)return false;
@@ -1121,6 +1135,11 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
   var ctx=_mailCtx_(data, gkey, g, lang);
   // 部屋タイプ×言語のテンプレートを解決（空ならフォールバック、全て空なら送信スキップ）
   var rtKey=_mailRoomTypeKey_(data, _mailRoomId_(gkey));
+  // ★施設ガード：設定で送信対象から外された施設へは、テンプレートの有無に
+  //   かかわらず送らない（共通テンプレートへのフォールバックも行わない）。
+  if(!opts.ignoreRoomTypeGuard && !_mailRoomTypeAllowed_(_msCfg_(data), rtKey)){
+    return {skipped:'room-type-disabled', roomType:rtKey||'unknown'};
+  }
   var tpl=_mailResolveTpl_(cfg, rtKey, lang);
   if(!tpl)return {skipped:'no-template', roomType:rtKey||'unknown'};
   var subject=_mailRender_(tpl.subject, ctx);
@@ -1243,12 +1262,14 @@ function previewAutoMails(){
   var data=_mailLoad_(); var ms=_msCfg_(data); var gd=data.guestData||{};
   var now=new Date(); var jnow=_jstNow_();
   var todayMs=_dayStart_(jnow); var nowMin=jnow.getHours()*60+jnow.getMinutes();
-  var rows=[], excluded=0;
+  var rows=[], excluded=0, rtExcluded=0;
   Object.keys(gd).forEach(function(k){
     var g=gd[k];
     if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
     if(!(g.email||'').trim())return;
     if(!_mailCheckoutEligible_(gd,k,g)){ excluded++; return; }
+    // 送信対象から外されている施設は除外（runAutoMails と同じ判定）
+    if(!_mailRoomTypeAllowed_(ms, _mailRoomTypeKey_(data, _mailRoomId_(k)))){ rtExcluded++; return; }
     var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
     var co=_checkoutDate_(gd,k,g);
     MAIL_KEYS.forEach(function(mk){
@@ -1288,6 +1309,7 @@ function previewAutoMails(){
     '配信開始日: '+MAIL_START_YMD+' / チェックアウト下限: '+MAIL_MIN_CHECKOUT_YMD,
     '開始日に到達しているか: '+(_mailStartReached_(now)?'はい':'いいえ（この時点では0通）'),
     'チェックアウト日で除外した予約: '+excluded+' 件',
+    '送信対象外の施設で除外した予約: '+rtExcluded+' 件',
     '対象: '+rows.length+' 件',''];
   rows.forEach(function(r){
     L.push([r.チェックアウト,r.メール種類,r.予約ID,r.氏名,'IN '+r.チェックイン,r.言語,r.送信予定].join(' | '));
@@ -1430,7 +1452,8 @@ function runAutoMails(){
         if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
         // テンプレート未設定（件名・本文が空の場合を含む）は恒久スキップにしない。
         // 後からタイトル・本文を設定すれば、次回の実行で送信対象に戻る。
-        else if(!(r&&(r.skipped==='no-template'||r.skipped==='empty-subject-or-body'))){
+        // 施設を送信対象に戻した場合も、次回の実行で送信対象に戻す
+        else if(!(r&&(r.skipped==='no-template'||r.skipped==='empty-subject-or-body'||r.skipped==='room-type-disabled'))){
           g.mailSent[mk]='skip:'+(r&&r.skipped||'?');
         }
       }catch(e){ Logger.log('send error '+mk+' '+k+': '+e); }

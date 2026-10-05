@@ -1538,6 +1538,38 @@ const MAIL_ROOM_TYPES=[
 ];
 let _mailDraft=null, _mailCur={type:'reservationCreated', rt:'honkan_double', lang:'ja'};
 
+// ── 自動メールを送信する施設（部屋タイプ単位・全メール種別に共通）──────
+// mailSettings.sendRoomTypes = { 部屋タイプキー: true/false } として保存する。
+// 設定が無い部屋タイプは下の既定値を使う（未指定なら送信する）。
+// Sea Breeze 鎌倉・三浦は専用テンプレートが未整備で、共通テンプレートが
+// そのまま送られてしまうため、既定で送信しない。
+// 将来この画面でチェックを入れれば送信対象にできる。
+const MAIL_SEND_RT_DEFAULT={ sb_kamakura:false, sb_miura:false };
+function _msSendRtDefault(key){ return MAIL_SEND_RT_DEFAULT[key]!==false; }
+// 保存値 → 送信可否（保存が無ければ既定値）
+function msSendRtEnabled(key){
+  const m=_mailDraft && _mailDraft.sendRoomTypes;
+  if(m && Object.prototype.hasOwnProperty.call(m,key))return !!m[key];
+  return _msSendRtDefault(key);
+}
+function msRenderSendRt(){
+  const el=document.getElementById('ms-sendrt');
+  if(!el)return;
+  el.innerHTML=MAIL_ROOM_TYPES.map(rt=>{
+    const on=msSendRtEnabled(rt.key);
+    return `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">
+      <input type="checkbox" ${on?'checked':''} onchange="msToggleSendRt('${rt.key}',this.checked)" style="width:14px;height:14px;">
+      <span style="${on?'':'color:var(--muted);text-decoration:line-through;'}">${rt.label}</span>
+    </label>`;
+  }).join('');
+}
+function msToggleSendRt(key,on){
+  if(!_mailDraft)return;
+  _mailDraft.sendRoomTypes=_mailDraft.sendRoomTypes||{};
+  _mailDraft.sendRoomTypes[key]=!!on;
+  msRenderSendRt();
+}
+
 function _msEmptyTpl(){ return {subject:{ja:'',en:'',zh:'',ko:''}, body:{ja:'',en:'',zh:'',ko:''}, attachments:{ja:[],en:[],zh:[],ko:[]}}; }
 function _msEnsureCfg(key){
   if(!propertySettings.mailSettings)propertySettings.mailSettings={};
@@ -1602,6 +1634,14 @@ function openMailSettings(){
   }
   // キーワードボタン
   document.getElementById('ms-keywords').innerHTML=MAIL_KEYWORDS.map(k=>`<button type="button" class="ms-kw" onclick="msInsertKeyword('${k}')">${k}</button>`).join('');
+  // 施設ごとの送信可否を明示的に用意しておく（未設定の施設は既定値で初期化）。
+  // 保存するとGAS側でも同じ値が参照される。
+  _mailDraft.sendRoomTypes=_mailDraft.sendRoomTypes||{};
+  MAIL_ROOM_TYPES.forEach(rt=>{
+    if(!Object.prototype.hasOwnProperty.call(_mailDraft.sendRoomTypes,rt.key))
+      _mailDraft.sendRoomTypes[rt.key]=_msSendRtDefault(rt.key);
+  });
+  msRenderSendRt();
   msRenderMTabs();
   msRenderCurrent();
   // ドラッグ＆ドロップ（一度だけバインド）
