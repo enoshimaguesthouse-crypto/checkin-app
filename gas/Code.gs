@@ -886,9 +886,14 @@ function _mailResolveTpl_(cfg, rtKey, lang){
   for(var i=0;i<cands.length;i++){
     var s=cands[i].src, l=cands[i].l;
     var body=(s.body&&s.body[l])||'';
-    if(String(body).trim()){
+    var subject=(s.subject&&(s.subject[l]||s.subject.ja))||'';
+    // 【重要】件名と本文の両方が入力されている候補だけを採用する。
+    // 以前は本文だけで判定していたため、件名が未入力のテンプレートがそのまま
+    // 返り、件名が空のまま送信されていた（送信側で '(no subject)' に置換）。
+    // 空白・改行だけの入力も未設定として扱い、次の候補へフォールバックする。
+    if(String(body).trim() && String(subject).trim()){
       return {
-        subject:(s.subject&&(s.subject[l]||s.subject.ja))||'',
+        subject:subject,
         body:body,
         attachments:(s.attachments&&s.attachments[l])||[],
         lang:l
@@ -1133,10 +1138,18 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
     }
     // QR取得失敗時はhtmlBody=nullのままプレーンテキストのみ送信（既存のフォールバック挙動を維持）
   }
+  // ★送信直前の最終チェック：差し込み後の件名・本文が空なら絶対に送らない。
+  // テンプレート解決時にも確認しているが、差し込みキーワードの置換結果が空に
+  // なる場合もあるため、Gmail APIを呼ぶ直前でもう一度確認する。
+  // 以前はここで subject が空でも '(no subject)' を件名にして送信していた。
+  if(!String(subject||'').trim() || !String(body||'').trim()){
+    Logger.log('自動メール送信をスキップ：件名または本文が未設定 ('+mailKey+' / '+(rtKey||'unknown')+' / '+lang+')');
+    return {skipped:'empty-subject-or-body', roomType:rtKey||'unknown', lang:lang};
+  }
   if(opts.dryRun)return {to:to,subject:subject,bodyLen:body.length,attachments:atts.length,lang:lang,htmlBody:!!htmlBody};
   var mailOptions={ attachments:atts, name:'江ノ島ゲストハウス134' };
   if(htmlBody){ mailOptions.htmlBody=htmlBody; mailOptions.inlineImages=inlineImages; }
-  GmailApp.sendEmail(to, subject||'(no subject)', body, mailOptions);
+  GmailApp.sendEmail(to, subject, body, mailOptions);
   return {sent:true,to:to};
 }
 
@@ -1415,8 +1428,11 @@ function runAutoMails(){
       try{
         var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
         if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
-        // テンプレート未設定は恒久スキップにしない（後からテンプレートを設定すれば次回送信される）
-        else if(!(r&&r.skipped==='no-template')){ g.mailSent[mk]='skip:'+(r&&r.skipped||'?'); }
+        // テンプレート未設定（件名・本文が空の場合を含む）は恒久スキップにしない。
+        // 後からタイトル・本文を設定すれば、次回の実行で送信対象に戻る。
+        else if(!(r&&(r.skipped==='no-template'||r.skipped==='empty-subject-or-body'))){
+          g.mailSent[mk]='skip:'+(r&&r.skipped||'?');
+        }
       }catch(e){ Logger.log('send error '+mk+' '+k+': '+e); }
     }
   }
