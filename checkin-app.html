@@ -2177,7 +2177,7 @@ function showScreen(id) {
 // 部屋番号・暗証番号が画面に残り続けないよう、一定時間操作がなければ
 // 自動的に最初の画面へ戻す（restartApp と同じ後始末を行う）。
 // 対象は完了画面だけ。入力途中の画面で消すと、お客様の入力が失われるため。
-const COMPLETE_IDLE_MS = 60 * 1000;   // ← 無操作で戻るまでの時間（1分）
+const COMPLETE_IDLE_MS = 90 * 1000;   // ← 無操作で戻るまでの時間（90秒）
 let _completeIdleTimer = null;
 function _clearCompleteIdleTimer(){
   if(_completeIdleTimer){ clearTimeout(_completeIdleTimer); _completeIdleTimer = null; }
