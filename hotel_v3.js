@@ -1844,6 +1844,30 @@ function importCSVText(text){
   </div>`:''}`;
   renderUnassignedPanel();
   renderReg();autoSave();
+  _triggerAutoMailsAfterImport();
+}
+
+// CSV取込の直後に自動メールを走らせ、定期トリガー（30分間隔）を待たずに送信する。
+// 【重要】取込内容がクラウドへ保存される前に依頼すると、サーバー側が古いデータを
+// 読んで新規予約を認識できないため、保存の完了を待ってから依頼する。
+// 送信条件の判定はすべてサーバー側（runAutoMails）で行うため、
+// ここから条件を迂回して送信されることはない。
+async function _triggerAutoMailsAfterImport(){
+  if(!GAS_URL)return;
+  try{
+    // 保存完了（未保存フラグの解除）を最大30秒待つ
+    for(let i=0;i<60 && (isDirty||isSyncing); i++) await new Promise(r=>setTimeout(r,500));
+    if(isDirty||isSyncing){
+      console.warn('CSV取込後の保存が完了しなかったため、自動メールの即時実行は見送りました（定期トリガーで送信されます）');
+      return;
+    }
+    const res=await fetch(_withKey(GAS_URL),{method:'POST',body:JSON.stringify({type:'runAutoMails'})});
+    const j=await res.json();
+    if(j&&j.status==='ok'&&j.sent>0)showToast(`✉ 自動メールを${j.sent}通送信しました`,6000);
+  }catch(e){
+    // 失敗しても取込自体には影響させない（30分以内に定期トリガーが送信する）
+    console.warn('自動メールの即時実行に失敗しました（定期トリガーで送信されます）',e);
+  }
 }
 
 // ══════════════════════════════════════════════
