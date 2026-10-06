@@ -1983,6 +1983,9 @@ function showAgreementScreen() {
     el('agree-sign-wrap').style.display = '';
     el('agree-sign-hint').textContent = t.agreeSignHint;
     showScreen('screen-agreement');
+    // 署名方式は _setupAgreementScroll を通らないため、ここで先頭へ戻す
+    // （前のお客様のスクロール位置を引き継がないようにする）
+    const _box = el('agreement-text'); if(_box)_box.scrollTop = 0;
     // canvas はレイアウト確定後に初期化
     setTimeout(initSignaturePad, 50);
   } else {
@@ -2006,6 +2009,11 @@ function _setupAgreementScroll() {
   _agreementScrolledToEnd = false;
   cb.checked = false;
   cb.disabled = true;
+  // 【重要】前のお客様のスクロール位置を引き継がないよう先頭へ戻す。
+  // これが無いと2人目以降は最下部が表示されたままになり、
+  // 直後の初期判定で「最後まで読んだ」と見なされて同意チェックが
+  // 有効になってしまう（約款を読まずに同意できる状態だった）。
+  box.scrollTop = 0;
   label.textContent = t.agreeScrollHint;        // スクロール前の案内文
   updateAgreeNext();
   const enable = () => {
