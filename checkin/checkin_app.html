@@ -1045,11 +1045,17 @@ input:focus,select:focus,textarea:focus{
     </svg>
     <!-- 撮影直後の確認用プレビュー（撮影済み画像そのもの） -->
     <img id="idv-preview" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+    <!-- 本人確認撮影の3秒カウントダウン（カメラ映像の上に重ねて表示） -->
+    <div id="idv-countdown" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;pointer-events:none;">
+      <span id="idv-countdown-num" style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;
+        font-size:88px;font-weight:800;color:#fff;line-height:1;border-radius:50%;
+        background:rgba(0,0,0,.38);text-shadow:0 2px 14px rgba(0,0,0,.65);">3</span>
+    </div>
   </div>
   <div class="cam-error" id="cam-error"></div>
   <div class="cam-actions">
     <button type="button" class="cam-btn cam-cancel" id="cam-cancel-btn" onclick="closeCamera()">キャンセル</button>
-    <button type="button" class="cam-btn cam-shutter" id="cam-shutter-btn" onclick="capturePassport()">● 撮影</button>
+    <button type="button" class="cam-btn cam-shutter" id="cam-shutter-btn" onclick="onShutter()">● 撮影</button>
   </div>
   <!-- 本人確認：撮影後のプレビュー確認アクション（再撮影／使用する） -->
   <div class="cam-actions" id="idv-confirm-actions" style="display:none;">
@@ -2179,6 +2185,8 @@ function showScreen(id) {
   if (id === 'screen-search') setTimeout(_maybeAutoSearchFromUrl, 0);
   // 完了画面では無操作タイマーを開始、それ以外の画面では止める
   if (id === 'screen-complete') _resetCompleteIdleTimer(); else _clearCompleteIdleTimer();
+  // 画面が切り替わったら撮影カウントダウンは必ず止める（離脱後の自動撮影を防ぐ）
+  if (typeof _cancelIdvCountdown === 'function') _cancelIdvCountdown();
 }
 
 // ── 完了画面の自動リセット ────────────────────────────────
@@ -2956,6 +2964,51 @@ function _assessPhotoQuality(src){
   }
 }
 
+// ── 本人確認写真：撮影前の3秒カウントダウン ──────────────────
+// 対象は本人確認（_camMode==='identity'）のときだけ。
+// パスポート・在留カードの撮影やQRスキャンなど他の撮影は従来どおり即時に行う。
+// 3秒経過後は既存の撮影処理 capturePassport() をそのまま呼ぶ
+// （撮影・品質判定・圧縮・保存の処理には一切手を入れない）。
+let _idvCountTimer=null;   // カウントダウン用タイマーID
+let _idvCounting=false;    // カウントダウン中フラグ（連打・二重起動の防止）
+
+// カウントダウンを中止して表示と操作を元に戻す。
+// 画面離脱・キャンセル・再撮影のいずれからでも安全に呼べる。
+function _cancelIdvCountdown(){
+  if(_idvCountTimer){ clearTimeout(_idvCountTimer); _idvCountTimer=null; }
+  _idvCounting=false;
+  const box=el('idv-countdown'); if(box)box.style.display='none';
+  const sh=el('cam-shutter-btn'); if(sh)sh.disabled=false;
+}
+
+// シャッターボタンの入口。本人確認のときだけ3秒数えてから撮影する。
+function onShutter(){
+  if(_camMode!=='identity'){ capturePassport(); return; }  // 他の撮影は従来どおり即時
+  if(_idvCounting)return;                                   // 連打しても二重に開始しない
+  _idvCounting=true;
+  const sh=el('cam-shutter-btn'); if(sh)sh.disabled=true;   // カウント中は押せないようにする
+  const box=el('idv-countdown'), num=el('idv-countdown-num');
+  if(box)box.style.display='flex';
+  let n=3;
+  if(num)num.textContent=String(n);                         // 押した瞬間に「3」
+  const tick=function(){
+    n--;
+    if(n>0){                                                // 1秒ごとに 2 → 1
+      if(num)num.textContent=String(n);
+      _idvCountTimer=setTimeout(tick,1000);
+      return;
+    }
+    // 押してから3秒経過：表示を消して既存の撮影処理へ
+    _idvCountTimer=null; _idvCounting=false;
+    if(box)box.style.display='none';
+    // 撮影が失敗（ピンぼけ・暗すぎ等）してもボタンを戻し、撮り直せるようにする
+    if(sh)sh.disabled=false;
+    try{ capturePassport(); }
+    catch(e){ console.warn('本人確認写真の撮影に失敗しました',e); }
+  };
+  _idvCountTimer=setTimeout(tick,1000);
+}
+
 function capturePassport(){
   const idx=_pendingPhotoIndex;
   const video=el('cam-video');
@@ -3009,6 +3062,9 @@ function _idvEnterPreview(dataUrl){
 }
 function _idvExitPreview(){
   _idvPendingPhoto='';
+  // 再撮影に備えてカウントダウンの状態を完全に初期化する
+  // （前回のタイマーやフラグが残って次の撮影を妨げないようにする）
+  if(typeof _cancelIdvCountdown==='function')_cancelIdvCountdown();
   const img=el('idv-preview');
   if(img){ img.style.display='none'; img.removeAttribute('src'); }
   const acts=el('idv-confirm-actions'); if(acts)acts.style.display='none';
@@ -3064,6 +3120,8 @@ function goToConfirmFromIdentity(){
 }
 
 function closeCamera(){
+  // カウントダウン中に閉じられても、後から勝手に撮影されないよう必ず止める
+  if(typeof _cancelIdvCountdown==='function')_cancelIdvCountdown();
   if(_camStream){ _camStream.getTracks().forEach(tr=>tr.stop()); _camStream=null; }
   const video=el('cam-video'); if(video) video.srcObject=null;
   el('camOverlay').classList.remove('active');
