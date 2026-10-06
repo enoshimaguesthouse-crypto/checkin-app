@@ -2169,7 +2169,35 @@ function showScreen(id) {
   window.scrollTo({top:0, behavior:'smooth'});
   // 予約検索画面に到達したらURLパラメータの自動検索を試行（初回のみ）
   if (id === 'screen-search') setTimeout(_maybeAutoSearchFromUrl, 0);
+  // 完了画面では無操作タイマーを開始、それ以外の画面では止める
+  if (id === 'screen-complete') _resetCompleteIdleTimer(); else _clearCompleteIdleTimer();
 }
+
+// ── 完了画面の自動リセット ────────────────────────────────
+// 部屋番号・暗証番号が画面に残り続けないよう、一定時間操作がなければ
+// 自動的に最初の画面へ戻す（restartApp と同じ後始末を行う）。
+// 対象は完了画面だけ。入力途中の画面で消すと、お客様の入力が失われるため。
+const COMPLETE_IDLE_MS = 60 * 1000;   // ← 無操作で戻るまでの時間（1分）
+let _completeIdleTimer = null;
+function _clearCompleteIdleTimer(){
+  if(_completeIdleTimer){ clearTimeout(_completeIdleTimer); _completeIdleTimer = null; }
+}
+function _resetCompleteIdleTimer(){
+  const sc = el('screen-complete');
+  if(!sc || !sc.classList.contains('active'))return;   // 完了画面以外では動かさない
+  _clearCompleteIdleTimer();
+  _completeIdleTimer = setTimeout(function(){
+    _completeIdleTimer = null;
+    // 念のため、戻す直前にも完了画面であることを確認する
+    const s = el('screen-complete');
+    if(s && s.classList.contains('active') && typeof restartApp === 'function')restartApp();
+  }, COMPLETE_IDLE_MS);
+}
+// 画面操作があればタイマーを延長する。タイマー作動中（＝完了画面表示中）のみ反応する。
+['pointerdown','touchstart','keydown','wheel','scroll'].forEach(function(ev){
+  document.addEventListener(ev, function(){ if(_completeIdleTimer)_resetCompleteIdleTimer(); },
+    {passive:true, capture:true});
+});
 
 // 予約検索画面の「戻る」：受付の前は言語選択のみ（約款はお客様情報の後へ移動した）。
 // バリデーションは行わず確実に戻る。
