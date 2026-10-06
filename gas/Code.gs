@@ -402,6 +402,21 @@ function doPost(e) {
       var prevQrUrl=(prevMailKey==='checkinCode'&&prevCfg.qr)?prevCtx['チェックインURL']:null;
       return jsonOut(JSON.stringify({status:'ok',type:'mailPreview',to:prevG.email||'',lang:prevTpl.lang,roomType:prevRt||'',subject:prevSubj,body:prevBody,attachments:prevAttList,qrUrl:prevQrUrl||null}));
 
+    } else if (payload.type === 'runAutoMails') {
+      // CSV取込の直後など、定期トリガー(30分間隔)を待たずに自動送信を走らせる。
+      // 送信条件・ガードはすべて runAutoMails 側のものをそのまま使うため、
+      // この入口から条件を迂回して送信されることはない。
+      // 多重起動（取込連打・複数端末）での二重送信を防ぐためロックで直列化し、
+      // ロックが取れない場合は「他で実行中」とみなして何もしない。
+      var amLock = LockService.getScriptLock();
+      if(!amLock.tryLock(1000)){
+        return jsonOut(JSON.stringify({status:'ok', type:'runAutoMails', skipped:'busy', sent:0}));
+      }
+      try {
+        var amSent = runAutoMails();
+        return jsonOut(JSON.stringify({status:'ok', type:'runAutoMails', sent:amSent||0}));
+      } finally { amLock.releaseLock(); }
+
     } else if (payload.type === 'sendMail') {
       // 手動メール送信：1通送信してmailHistoryを保存
       // 読み→送信→書きの間にPMSの全体保存が割り込むとmailHistoryが消えるためロックで直列化
@@ -1453,6 +1468,38 @@ function exportSentMailsToSheet(){
 }
 
 // トリガー本体：自動送信（現在は手動再開指示があるまで完全停止）
+// メール種別ごとの「送信すべきか」の判定。条件は従来どおりで、
+// runAutoMails から切り出しただけ（種別を外側でまわすため）。
+function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin){
+  var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
+  if(mk==='reservationCreated'){ return ciMs!==null && ciMs>=todayMs; }
+  if(mk==='checkinCode'){
+    if(ciMs===null)return false;
+    var daysUntil=Math.round((ciMs-todayMs)/86400000);
+    var st=(cfg.sendTime||'09:00').split(':');
+    var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
+    var nb=(parseInt(cfg.sendDaysBefore)||3);
+    // 送信予定日時（チェックイン日の nb 日前の sendTime）を過ぎていれば送信対象。
+    // 【修正前】daysUntil===nb の「ちょうどその日」だけを対象にしていたため、
+    // 予定時刻を過ぎてからCSV取込された直前予約・当日予約は、
+    // 予定日を過ぎている（daysUntil<nb）という理由で永久に送信されなかった。
+    // 【下限】チェックイン日を過ぎた予約（daysUntil<0）は対象にしない。
+    // すでに滞在中のお客様へ、今さらチェックイン案内を送らないため。
+    return daysUntil>=0 && (daysUntil<nb || (daysUntil===nb && nowMin>=stMin));
+  }
+  if(mk==='checkin'){
+    // 再開日より前に行われたチェックインには送らない（過去イベントへの追いかけ送信を防ぐ）
+    if(g.status!=='checked_in' && g.status!=='checkedin')return false;
+    var cinAt=g.checkedInAt?_jstYmd_(new Date(g.checkedInAt)):'';
+    return !cinAt || cinAt>=MAIL_START_YMD;
+  }
+  if(mk==='checkout'){
+    var co=_checkoutDate_(gd,k,g);
+    return !!(co && _dayStart_(co)===todayMs);
+  }
+  return false;
+}
+
 function runAutoMails(){
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return 0; }
@@ -1470,47 +1517,25 @@ function runAutoMails(){
   var todayMs=_dayStart_(jnow); var nowMin=jnow.getHours()*60+jnow.getMinutes();
   var sent=0;
   var keys=Object.keys(gd);
-  for(var i=0;i<keys.length;i++){
+  // ★メール種別を外側でまわす。MAIL_KEYS の先頭が reservationCreated のため、
+  //   1回の実行で送信上限(MAIL_SEND_CAP)に達しても、予約確定時メールが
+  //   最優先で送られる。予約ごとに4種別を送る順序だと、先頭の数予約で
+  //   上限を使い切り、他の予約の予約確定時メールが後回しになっていた。
+  for(var t=0;t<MAIL_KEYS.length;t++){
     if(sent>=MAIL_SEND_CAP)break;
-    var k=keys[i], g=gd[k];
-    if(!g||g.cont)continue; if(g.charter&&!g.charterAnchor)continue;
-    if(!(g.email||'').trim())continue;
-    // ★ チェックアウト日ガード：10/06以前にチェックアウトする予約は全種別で対象外。
-    //   すでにチェックアウト済みの予約へ再開に伴うメールが飛ぶのも同時に防げる。
-    if(!_mailCheckoutEligible_(gd, k, g))continue;
-    g.mailSent=g.mailSent||{};
-    var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
-    for(var t=0;t<MAIL_KEYS.length;t++){
+    var mk=MAIL_KEYS[t]; var cfg=ms[mk];
+    if(!cfg||!cfg.enabled)continue;
+    for(var i=0;i<keys.length;i++){
       if(sent>=MAIL_SEND_CAP)break;
-      var mk=MAIL_KEYS[t]; var cfg=ms[mk];
-      if(!cfg||!cfg.enabled)continue;
+      var k=keys[i], g=gd[k];
+      if(!g||g.cont)continue; if(g.charter&&!g.charterAnchor)continue;
+      if(!(g.email||'').trim())continue;
+      // ★ チェックアウト日ガード：10/06以前にチェックアウトする予約は全種別で対象外。
+      //   すでにチェックアウト済みの予約へ再開に伴うメールが飛ぶのも同時に防げる。
+      if(!_mailCheckoutEligible_(gd, k, g))continue;
+      g.mailSent=g.mailSent||{};
       if(g.mailSent[mk])continue;
-      var due=false;
-      if(mk==='reservationCreated'){ if(ciMs!==null && ciMs>=todayMs)due=true; }
-      else if(mk==='checkinCode'){
-        if(ciMs!==null){
-          var daysUntil=Math.round((ciMs-todayMs)/86400000);
-          var st=(cfg.sendTime||'09:00').split(':');
-          var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
-          var nb=(parseInt(cfg.sendDaysBefore)||3);
-          // 送信予定日時（チェックイン日の nb 日前の sendTime）を過ぎていれば送信対象。
-          // 【修正前】daysUntil===nb の「ちょうどその日」だけを対象にしていたため、
-          // 予定時刻を過ぎてからCSV取込された直前予約・当日予約は、
-          // 予定日を過ぎている（daysUntil<nb）という理由で永久に送信されなかった。
-          // 【下限】チェックイン日を過ぎた予約（daysUntil<0）は対象にしない。
-          // すでに滞在中のお客様へ、今さらチェックイン案内を送らないため。
-          if(daysUntil>=0 && (daysUntil<nb || (daysUntil===nb && nowMin>=stMin)))due=true;
-        }
-      }
-      else if(mk==='checkin'){
-        // 再開日より前に行われたチェックインには送らない（過去イベントへの追いかけ送信を防ぐ）
-        if(g.status==='checked_in'||g.status==='checkedin'){
-          var cinAt=g.checkedInAt?_jstYmd_(new Date(g.checkedInAt)):'';
-          if(!cinAt || cinAt>=MAIL_START_YMD)due=true;
-        }
-      }
-      else if(mk==='checkout'){ var co=_checkoutDate_(gd,k,g); if(co&&_dayStart_(co)===todayMs)due=true; }
-      if(!due)continue;
+      if(!_mailDue_(mk, cfg, g, gd, k, todayMs, nowMin))continue;
       try{
         var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
         if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
