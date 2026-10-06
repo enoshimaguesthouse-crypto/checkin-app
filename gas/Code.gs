@@ -1181,6 +1181,58 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
 //   一方 checkinCode / checkin / checkout は、既存予約でも設定された
 //   送信タイミングが到来すれば送る必要があるためフラグを立てない
 //   （これらはチェックアウト日ガードと各種別の条件で保護される）。
+// ── 手動送信済みの予約を自動送信の対象から外す（スポット作業用）──────
+// 自動配信を開始した日に「すでに手動でQR・予約IDメールを送った当日チェックイン分」が
+// 直前予約として一斉送信されるのを防ぐための関数。
+//   SUPPRESS_TARGET_YMD : 対象とするチェックイン日（日本時間）。誤実行防止のため
+//                         この日付のチェックイン分だけを操作する。
+//   SUPPRESS_KEEP_IDS   : 自動送信を残す予約ID（ここに挙げた予約は手を付けない）。
+// 実行順：previewSuppressCheckinCode() で対象を確認 → suppressCheckinCode() で確定。
+var SUPPRESS_TARGET_YMD = '2026-10-06';
+var SUPPRESS_KEEP_IDS   = ['30008'];   // KIRAKAMI HARUKI は自動送信する
+
+// 対象の抽出（送信済みフラグを立てる前の確認用。データは変更しない）
+function _suppressTargets_(data){
+  var gd=data.guestData||{}, out=[];
+  Object.keys(gd).forEach(function(k){
+    var g=gd[k];
+    if(!g||g.cont)return; if(g.charter&&!g.charterAnchor)return;
+    var ci=_keyToDate_(k); if(!ci)return;
+    if(_ymdOf_(ci)!==SUPPRESS_TARGET_YMD)return;              // 指定日のチェックインのみ
+    if(g.mailSent && g.mailSent.checkinCode)return;            // すでに送信済み/記録済みは対象外
+    if(!(g.email||'').trim())return;                           // メールアドレスが無い予約は
+                                                               // そもそも送信されないため記録しない
+    var rid=String(g.reservationId||'');
+    if(SUPPRESS_KEEP_IDS.indexOf(rid)>=0)return;               // 残す予約は対象外
+    out.push({key:k, id:rid, name:g.name||'', email:(g.email||'').trim(), checkin:_ymdOf_(ci)});
+  });
+  return out;
+}
+function previewSuppressCheckinCode(){
+  var data=_mailLoad_();
+  var t=_suppressTargets_(data);
+  var L=['── 自動送信を止める対象（確認のみ・まだ変更していません）──',
+    '対象チェックイン日: '+SUPPRESS_TARGET_YMD,
+    '自動送信を残す予約ID: '+(SUPPRESS_KEEP_IDS.join(', ')||'（なし）'),
+    '対象: '+t.length+' 件',''];
+  t.forEach(function(r){ L.push([r.id, r.name, r.email, 'IN '+r.checkin].join(' | ')); });
+  var text=L.join('\n'); Logger.log(text); return text;
+}
+function suppressCheckinCode(){
+  var data=_mailLoad_();
+  var t=_suppressTargets_(data);
+  if(!t.length){ var m='対象がありません（すでに処理済みか、該当するチェックインがありません）'; Logger.log(m); return m; }
+  var stamp='manual-sent:'+new Date().toISOString();
+  var gd=data.guestData||{};
+  t.forEach(function(r){ var g=gd[r.key]; g.mailSent=g.mailSent||{}; g.mailSent.checkinCode=stamp; });
+  _mailSave_(data);
+  var msg='QR・予約IDメールの自動送信を '+t.length+' 件停止しました（手動送信済みとして記録）。\n'
+        + '残した予約ID: '+(SUPPRESS_KEEP_IDS.join(', ')||'（なし）')+'\n'
+        + t.map(function(r){return '  '+r.id+' '+r.name;}).join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
 function primeMailFlags(){
   var data=_mailLoad_(); var gd=data.guestData||{}; var n=0; var stamp='primed:'+new Date().toISOString();
   Object.keys(gd).forEach(function(k){
