@@ -1538,7 +1538,18 @@ function runAutoMails(){
       if(!_mailDue_(mk, cfg, g, gd, k, todayMs, nowMin))continue;
       try{
         var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
-        if(r&&r.sent){ g.mailSent[mk]=new Date().toISOString(); sent++; }
+        if(r&&r.sent){
+          var sentAt=new Date().toISOString();
+          // mailSent : 二重送信防止用の状態（'skip:...' 等の非日時も入る）
+          g.mailSent[mk]=sentAt;
+          // mailHistory : 予約詳細画面の「前回送信」が読むプロパティ。
+          // 手動送信(type=sendMail)と同じものを使う。これが無かったため、
+          // 自動送信しても詳細画面が「前回送信：なし」のままだった。
+          // Gmail API が成功した場合のみ記録する（失敗時は従来の日時を残す）。
+          g.mailHistory=g.mailHistory||{};
+          g.mailHistory[mk]=sentAt;
+          sent++;
+        }
         // テンプレート未設定（件名・本文が空の場合を含む）は恒久スキップにしない。
         // 後からタイトル・本文を設定すれば、次回の実行で送信対象に戻る。
         // 施設を送信対象に戻した場合も、次回の実行で送信対象に戻す
