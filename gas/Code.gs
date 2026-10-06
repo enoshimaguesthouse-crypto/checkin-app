@@ -1284,7 +1284,9 @@ function previewAutoMails(){
           var nb=(parseInt(cfg.sendDaysBefore)||3);
           var st=(cfg.sendTime||'09:00');
           var stMin=(parseInt(st.split(':')[0])||0)*60+(parseInt(st.split(':')[1])||0);
-          if(daysUntil===nb&&nowMin>=stMin){due=true;when='今すぐ（'+nb+'日前 '+st+'）';}
+          // runAutoMails と同じ判定にそろえる（予定時刻を過ぎた直前予約も対象）
+          if(daysUntil>=0 && daysUntil<nb){due=true;when='今すぐ（予定時刻経過・直前予約）';}
+          else if(daysUntil===nb&&nowMin>=stMin){due=true;when='今すぐ（'+nb+'日前 '+st+'）';}
           else if(daysUntil>nb||(daysUntil===nb&&nowMin<stMin)){
             var d=new Date(ci.getFullYear(),ci.getMonth(),ci.getDate()-nb);
             due=true; when=_ymdOf_(d)+' '+st+'（予定）';
@@ -1434,9 +1436,19 @@ function runAutoMails(){
       var due=false;
       if(mk==='reservationCreated'){ if(ciMs!==null && ciMs>=todayMs)due=true; }
       else if(mk==='checkinCode'){
-        if(ciMs!==null){ var daysUntil=Math.round((ciMs-todayMs)/86400000);
-          var st=(cfg.sendTime||'09:00').split(':'); var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
-          if(daysUntil===(parseInt(cfg.sendDaysBefore)||3) && nowMin>=stMin)due=true; }
+        if(ciMs!==null){
+          var daysUntil=Math.round((ciMs-todayMs)/86400000);
+          var st=(cfg.sendTime||'09:00').split(':');
+          var stMin=(parseInt(st[0])||0)*60+(parseInt(st[1])||0);
+          var nb=(parseInt(cfg.sendDaysBefore)||3);
+          // 送信予定日時（チェックイン日の nb 日前の sendTime）を過ぎていれば送信対象。
+          // 【修正前】daysUntil===nb の「ちょうどその日」だけを対象にしていたため、
+          // 予定時刻を過ぎてからCSV取込された直前予約・当日予約は、
+          // 予定日を過ぎている（daysUntil<nb）という理由で永久に送信されなかった。
+          // 【下限】チェックイン日を過ぎた予約（daysUntil<0）は対象にしない。
+          // すでに滞在中のお客様へ、今さらチェックイン案内を送らないため。
+          if(daysUntil>=0 && (daysUntil<nb || (daysUntil===nb && nowMin>=stMin)))due=true;
+        }
       }
       else if(mk==='checkin'){
         // 再開日より前に行われたチェックインには送らない（過去イベントへの追いかけ送信を防ぐ）
