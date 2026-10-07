@@ -3055,7 +3055,10 @@ function renderCancel(){
   table.innerHTML=html+'</tbody>';
 }
 function exportCancelCSV(){
-  let csv='\uFEFF支払済み,日程,氏名,予約サイト,支払方法,キャンセル料,国籍,性別,区分,部屋,備考\n';
+  // 列順は会計で使う並びに合わせる（部屋を先頭へ、支払済みをJ列へ移動）。
+  // A部屋 B日程 C氏名 D予約サイト E支払方法 Fキャンセル料 G国籍 H性別
+  // I区分 J支払済み K備考 L決済
+  let csv='\uFEFF部屋,日程,氏名,予約サイト,支払方法,キャンセル料,国籍,性別,区分,支払済み,備考,決済\n';
   // 日程は「2026/09/07」形式で出力する（宿泊者名簿のCSV出力と統一）。
   // 保存値は "2026-09-07" のようなハイフン区切りのため、スラッシュ区切りへ変換する。
   // 想定外の形式はそのまま出力し、値を壊さないようにする。
@@ -3066,7 +3069,8 @@ function exportCancelCSV(){
     return m?`${m[1]}/${_p2(m[2])}/${_p2(m[3])}`:s;
   };
   cancelList.forEach(c=>{
-    csv+=[c.payDone?'済み':'未収',_fmtCancelDate(c.date),c.name||'',c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.room||'','"'+(c.note||'').replace(/"/g,'""')+'"'].join(',')+'\n';
+    // 決済(L列)は支払方法から出力時だけ変換する。キャンセルデータには書き込まない。
+    csv+=[c.room||'',_fmtCancelDate(c.date),c.name||'',c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.payDone?'済み':'未収','"'+(c.note||'').replace(/"/g,'""')+'"',_settlementFromPay(c.pay)].join(',')+'\n';
   });
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='キャンセルリスト.csv';a.click();
