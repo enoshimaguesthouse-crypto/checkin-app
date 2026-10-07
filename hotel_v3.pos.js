@@ -382,6 +382,8 @@ function renderPosSales(){
   document.getElementById('pos-sum-cash').textContent=_posYen(sum.cash);
   document.getElementById('pos-sum-paypay').textContent=_posYen(sum.paypay);
   document.getElementById('pos-sum-other').textContent=_posYen(sum.other);
+  // カテゴリー別売上：上のサマリーと同じ sales を集計対象にする
+  _posRenderCategorySales(sales, mode, y, m);
   // テーブル
   const tb=document.getElementById('pos-sales-list'); if(!tb)return;
   if(!keys.length){ tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:#bbb;padding:20px;">売上データがありません</td></tr>`; return; }
@@ -395,6 +397,66 @@ function renderPosSales(){
   </tr>`; }).join('');
 }
 let _posSalesGroupsCache={};
+
+// ── カテゴリー別売上 ──────────────────────────────────────
+// 日別売上のサマリー（総売上）と同じ売上レコードを、明細の商品名から
+// カテゴリーへ振り分けて合計する。表示用の動的集計で、売上・商品・
+// カテゴリーのデータは一切変更せず、保存も行わない。
+//
+// 売上明細(items)は {name,qty,price} しか保持しておらず商品IDを持たないため、
+// 商品名で商品マスターを引いてカテゴリーを特定する。
+// 商品名が見つからない（削除・改名された商品など）場合は「その他」へまとめる。
+// 金額は総売上と同じ price×qty をそのまま使う（税・割引の再計算はしない）。
+function _posCategoryTotals(sales){
+  // 商品名 → カテゴリーID の対応表を1度だけ作る（売上件数が増えても重くならないように）
+  const catOfName={};
+  posProducts.forEach(p=>{ if(!(p.name in catOfName))catOfName[p.name]=p.catId; });
+  const totals={};            // カテゴリーID（未分類は '_other'）→ 合計金額
+  let grand=0;
+  (sales||[]).forEach(s=>{
+    (s.items||[]).forEach(it=>{
+      const amount=(Number(it.price)||0)*(Number(it.qty)||0);
+      const cid=catOfName[it.name];
+      const key=(cid!=null && _posCat(cid))?cid:'_other';
+      totals[key]=(totals[key]||0)+amount;
+      grand+=amount;
+    });
+  });
+  // 並び順は商品設定のカテゴリー順。未分類ぶんは最後の「その他」へ寄せる。
+  const rows=[];
+  posCategories.slice().sort((a,b)=>(a.order||0)-(b.order||0)).forEach(c=>{
+    if(totals[c.id])rows.push({name:c.name,amount:totals[c.id]});
+  });
+  if(totals._other){
+    // 既存の「その他」カテゴリーがあればそこへ合算、無ければ行を足す
+    const ex=rows.find(r=>r.name==='その他');
+    if(ex)ex.amount+=totals._other; else rows.push({name:'その他',amount:totals._other});
+  }
+  return {rows,grand};
+}
+
+function _posRenderCategorySales(sales, mode, y, m){
+  const card=document.getElementById('pos-cat-card');
+  const body=document.getElementById('pos-cat-body');
+  const title=document.getElementById('pos-cat-title');
+  if(!card||!body)return;
+  const {rows,grand}=_posCategoryTotals(sales);
+  if(title){
+    const period=(mode==='day')?`${y}年${m}月`:(mode==='month')?`${y}年`:`${y}年`;
+    title.textContent=`カテゴリー別売上（${period}）`;
+  }
+  if(!rows.length){ card.style.display='none'; body.innerHTML=''; return; }
+  card.style.display='';
+  body.innerHTML=
+    `<table style="width:100%;border-collapse:collapse;font-size:13px;">`
+    + rows.map(r=>`<tr style="border-bottom:1px solid var(--sand-border);">
+        <td style="padding:7px 2px;">${esc(r.name)}</td>
+        <td style="padding:7px 2px;text-align:right;font-weight:600;">${_posYen(r.amount)}</td>
+      </tr>`).join('')
+    + `<tr><td style="padding:9px 2px;font-weight:700;">カテゴリー合計</td>
+        <td style="padding:9px 2px;text-align:right;font-weight:800;">${_posYen(grand)}</td></tr>`
+    + `</table>`;
+}
 
 // ── 取引明細一覧（行クリックで開く）──
 function openPosSaleList(key){
