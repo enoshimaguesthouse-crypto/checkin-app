@@ -1481,24 +1481,28 @@ function deleteGuest(){
   findAllKeys(g.roomId,month,g.day).forEach(({k})=>delete guestData[k]);
   closeM('modal');renderReg();autoSave();
 }
+// ── 支払 → 決済（L列）の対応表 ───────────────────────────
+// 宿泊者名簿CSV・キャンセルリストCSVの両方から使う共通処理。
+// 【重要】CSVを書き出すときだけ使い、予約データ・キャンセルデータには
+// 一切書き込まない（画面表示や保存内容は変わらない）。
+//   現金・銀行振込     → 事業主貸
+//   事前決済・Stripe決済 → 売掛金
+// 前後の空白（全角スペース含む）は除去して判定し、Stripeは大文字小文字を区別しない。
+// 上記4種類に一致しない値（その他・現地精算・空欄など）は変換せず空欄にする。
+function _settlementFromPay(pay){
+  const p=String(pay==null?'':pay).trim();
+  if(p==='現金'||p==='銀行振込')return '事業主貸';
+  if(p==='事前決済'||p.toLowerCase()==='stripe決済')return '売掛金';
+  return '';
+}
+
 function exportCSV(){
   const month=parseInt(document.getElementById('sel-month').value);let csv='部屋,日,氏名,予約サイト,支払,料金,国籍,性別,区分,ステータス,備考,決済\n';
   const year=parseInt(document.getElementById('sel-year').value)||2026;
-  // E列「支払」→ L列「決済」の対応表。
-  // 【重要】CSVを書き出すときだけ使う。予約データ(guestData)には一切書き込まない。
-  //   現金・銀行振込 → 事業主貸 ／ 事前決済・Stripe決済 → 売掛金
-  // 前後の空白（全角スペース含む）は除去して判定し、Stripeは大文字小文字を区別しない。
-  // 指定の4種類に一致しない値（その他・空欄など）は変換せず空欄のままにする。
-  const _settlementOf=(pay)=>{
-    const p=String(pay==null?'':pay).trim();
-    if(p==='現金'||p==='銀行振込')return '事業主貸';
-    if(p==='事前決済'||p.toLowerCase()==='stripe決済')return '売掛金';
-    return '';
-  };
   // 日付列は「10日」ではなく「2026/08/13」形式で出力する。
   // 表計算ソフト側で日付として認識され、並べ替えや期間での集計ができるようにするため。
   const _p2=n=>String(n).padStart(2,'0');
-  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);const dateStr=`${pk.y}/${_p2(pk.m)}/${_p2(pk.d!=null?pk.d:g.day)}`;csv+=`${r?r.type:''},${dateStr},${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}",${_settlementOf(g.pay)}\n`;});
+  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);const dateStr=`${pk.y}/${_p2(pk.m)}/${_p2(pk.d!=null?pk.d:g.day)}`;csv+=`${r?r.type:''},${dateStr},${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}",${_settlementFromPay(g.pay)}\n`;});
   const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`宿泊者名簿_${year}_${month}月.csv`;a.click();
 }
 
