@@ -1339,18 +1339,25 @@ function _normPhoneForCompare(p){
   else if(d.startsWith('0081'))d='0'+d.slice(4);
   return d;
 }
+// 変更内容は「項目名(変更前→変更後)」の形で返す。
+// 「変更が無いのに変更扱いになった」と思われたときに、どの値が食い違ったのかを
+// 取込結果の画面でそのまま確認できるようにするため。
 function detectReservationChanges(ex,incoming){
   const changes=[];
-  if(ex.month!==incoming.checkinMonth || ex.day!==incoming.checkinDay) changes.push('\u65e5\u7a0b\u5909\u66f4');
-  else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights) changes.push('\u6cca\u6570\u5909\u66f4');
+  const _d=v=>{ const t=String(v==null?'':v).trim(); return t===''?'（空）':t; };
+  const _add=(label,before,after)=>changes.push(label+'('+_d(before)+'→'+_d(after)+')');
+  if(ex.month!==incoming.checkinMonth || ex.day!==incoming.checkinDay)
+    _add('\u65e5\u7a0b\u5909\u66f4', ex.month+'/'+ex.day, incoming.checkinMonth+'/'+incoming.checkinDay);
+  else if(ex.nights!=null && incoming.nights!=null && ex.nights!==incoming.nights)
+    _add('\u6cca\u6570\u5909\u66f4', ex.nights+'泊', incoming.nights+'泊');
   // \u4eba\u6570\u306f\u30c9\u30df\u30c8\u30ea\u30fc\u306e\u4eba\u6570\u5c55\u958b\u3092\u8003\u616e\u3057\u305f\u5408\u8a08\u5024\uff08guestsTotal\uff09\u3067\u6bd4\u8f03\u3059\u308b\u3002
   // guestsTotal \u304c\u53d6\u308c\u306a\u3044\u5834\u5408\u306e\u307f\u30a2\u30f3\u30ab\u30fc\u30bb\u30eb\u306e\u5024\u306b\u30d5\u30a9\u30fc\u30eb\u30d0\u30c3\u30af\u3059\u308b\u3002
   const exGuests=(ex.guestsTotal!=null)?ex.guestsTotal:ex.data.guests;
-  if(exGuests!=null && incoming.guests!=null && Number(exGuests)!==Number(incoming.guests)) changes.push('\u4eba\u6570\u5909\u66f4');
-  if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) changes.push('\u6599\u91d1\u5909\u66f4');
-  if(_normPhoneForCompare(ex.data.phone)!==_normPhoneForCompare(incoming.phone)) changes.push('\u96fb\u8a71\u5909\u66f4');
-  if(String(ex.data.email||'').trim().toLowerCase()!==String(incoming.email||'').trim().toLowerCase()) changes.push('\u30e1\u30fc\u30eb\u5909\u66f4');
-  if(String(ex.data.address||'').replace(/\s+/g,'')!==String(incoming.address||'').replace(/\s+/g,'')) changes.push('\u4f4f\u6240\u5909\u66f4');
+  if(exGuests!=null && incoming.guests!=null && Number(exGuests)!==Number(incoming.guests)) _add('\u4eba\u6570\u5909\u66f4', exGuests+'名', incoming.guests+'名');
+  if(ex.data.price!=null && incoming.price!=null && Number(ex.data.price)!==Number(incoming.price)) _add('\u6599\u91d1\u5909\u66f4', ex.data.price, incoming.price);
+  if(_normPhoneForCompare(ex.data.phone)!==_normPhoneForCompare(incoming.phone)) _add('\u96fb\u8a71\u5909\u66f4', ex.data.phone, incoming.phone);
+  if(String(ex.data.email||'').trim().toLowerCase()!==String(incoming.email||'').trim().toLowerCase()) _add('\u30e1\u30fc\u30eb\u5909\u66f4', ex.data.email, incoming.email);
+  if(String(ex.data.address||'').replace(/\s+/g,'')!==String(incoming.address||'').replace(/\s+/g,'')) _add('\u4f4f\u6240\u5909\u66f4', ex.data.address, incoming.address);
   return changes;
 }
 function clearReservationCells(resId){
