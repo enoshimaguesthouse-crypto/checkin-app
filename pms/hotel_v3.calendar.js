@@ -1353,8 +1353,10 @@ function saveGuest(){
   // フォームに無いため、編集保存で消えないよう既存レコードから引き継ぐ。
   const _preserve={};
   if(editKey&&guestData[editKey]){
-    // mailLang（送信言語の手動上書き）・mailHistory・identityPhotoId もフォームに無いため引き継ぐ
-    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport','mailLang','mailHistory','identityPhotoId'].forEach(f=>{
+    // mailLang（送信言語の手動上書き）・mailHistory・identityPhotoId もフォームに無いため引き継ぐ。
+    // mailSent（自動メールの二重送信防止フラグ）は特に重要。これを落とすと
+    // 「まだ送っていない」と判定され、編集のたびに同じメールが再送される。
+    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport','mailLang','mailSent','mailHistory','identityPhotoId'].forEach(f=>{
       if(guestData[editKey][f]!==undefined)_preserve[f]=guestData[editKey][f];
     });
   }
