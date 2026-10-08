@@ -1352,7 +1352,16 @@ function previewAutoMails(){
           var st=(cfg.sendTime||'09:00');
           var stMin=(parseInt(st.split(':')[0])||0)*60+(parseInt(st.split(':')[1])||0);
           // runAutoMails と同じ判定にそろえる（予定時刻を過ぎた直前予約も対象）
-          if(daysUntil>=0 && daysUntil<nb){due=true;when='今すぐ（予定時刻経過・直前予約）';}
+          if(daysUntil>=0 && daysUntil<nb){
+            // 直前予約は予約確定時メールの送信成功から5分後
+            var rcCfg0=ms&&ms.reservationCreated;
+            var rcAt0=_mailSentAt_(g.mailSent&&g.mailSent.reservationCreated);
+            if(rcCfg0&&rcCfg0.enabled&&!rcAt0){due=true;when='保留中（予約確定時メールの送信成功待ち）';}
+            else if(rcCfg0&&rcCfg0.enabled&&Date.now()-rcAt0.getTime()<QR_DELAY_AFTER_RESERVATION_MS){
+              due=true;when=Utilities.formatDate(new Date(rcAt0.getTime()+QR_DELAY_AFTER_RESERVATION_MS),'Asia/Tokyo','HH:mm')+'（確定メール送信成功の5分後）';
+            }
+            else {due=true;when='今すぐ（予定時刻経過・直前予約）';}
+          }
           else if(daysUntil===nb&&nowMin>=stMin){due=true;when='今すぐ（'+nb+'日前 '+st+'）';}
           else if(daysUntil>nb||(daysUntil===nb&&nowMin<stMin)){
             var d=new Date(ci.getFullYear(),ci.getMonth(),ci.getDate()-nb);
@@ -1470,7 +1479,21 @@ function exportSentMailsToSheet(){
 // トリガー本体：自動送信（現在は手動再開指示があるまで完全停止）
 // メール種別ごとの「送信すべきか」の判定。条件は従来どおりで、
 // runAutoMails から切り出しただけ（種別を外側でまわすため）。
-function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin){
+// 直前予約でQR・予約IDメールを送るまでの待機時間（予約確定時メールの送信成功時刻が起点）
+var QR_DELAY_AFTER_RESERVATION_MS = 5*60*1000;
+
+// mailSent[mk] の値が「実際に送信が成功した日時」かどうかを判定する。
+// mailSent には 'primed:...' / 'skip:...' / 'manual-sent:...' のような
+// 送信成功ではない値も入るため、ISO日時形式のものだけを成功とみなす。
+function _mailSentAt_(v){
+  if(!v)return null;
+  var s=String(v);
+  if(!/^\d{4}-\d{2}-\d{2}T/.test(s))return null;
+  var d=new Date(s);
+  return isNaN(d.getTime())?null:d;
+}
+
+function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin, ms){
   var ci=_keyToDate_(k); var ciMs=ci?_dayStart_(ci):null;
   if(mk==='reservationCreated'){ return ciMs!==null && ciMs>=todayMs; }
   if(mk==='checkinCode'){
@@ -1485,7 +1508,22 @@ function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin){
     // 予定日を過ぎている（daysUntil<nb）という理由で永久に送信されなかった。
     // 【下限】チェックイン日を過ぎた予約（daysUntil<0）は対象にしない。
     // すでに滞在中のお客様へ、今さらチェックイン案内を送らないため。
-    return daysUntil>=0 && (daysUntil<nb || (daysUntil===nb && nowMin>=stMin));
+    if(daysUntil<0)return false;
+    var overdue = daysUntil<nb;                              // 直前予約（予定日時を過ぎている）
+    var onTime  = daysUntil===nb && nowMin>=stMin;           // 通常予約（予定日時が到来）
+    if(!overdue && !onTime)return false;
+    // 【直前予約のみ】予約確定時メールが先に届くよう、その「送信成功」から5分あける。
+    // 起点はCSV取込時刻でも送信開始時刻でもなく、送信成功時に記録した mailSent の日時。
+    // この日時はクラウドデータに永続化されるため、再読込やCSV再取込でも待機がリセットされない。
+    if(overdue){
+      var rcCfg = ms && ms.reservationCreated;
+      if(rcCfg && rcCfg.enabled){
+        var rcAt=_mailSentAt_(g.mailSent && g.mailSent.reservationCreated);
+        if(!rcAt)return false;                                           // 確定メールがまだ送信成功していない
+        if(Date.now()-rcAt.getTime() < QR_DELAY_AFTER_RESERVATION_MS)return false;          // 5分未経過
+      }
+    }
+    return true;
   }
   if(mk==='checkin'){
     // 再開日より前に行われたチェックインには送らない（過去イベントへの追いかけ送信を防ぐ）
@@ -1535,7 +1573,7 @@ function runAutoMails(){
       if(!_mailCheckoutEligible_(gd, k, g))continue;
       g.mailSent=g.mailSent||{};
       if(g.mailSent[mk])continue;
-      if(!_mailDue_(mk, cfg, g, gd, k, todayMs, nowMin))continue;
+      if(!_mailDue_(mk, cfg, g, gd, k, todayMs, nowMin, ms))continue;
       try{
         var r=_mailSendOne_(data, mk, g, k, mk, cfg, {});
         if(r&&r.sent){
@@ -1571,7 +1609,7 @@ function autosend_ON(){ var r=setAutosend(true); Logger.log(r); return r; }
 function autosend_OFF(){ var r=setAutosend(false); Logger.log(r); return r; }
 function installMailTrigger(){
   removeMailTrigger();
-  ScriptApp.newTrigger('runAutoMails').timeBased().everyMinutes(30).create();
+  ScriptApp.newTrigger('runAutoMails').timeBased().everyMinutes(5).create();
   return '30分間隔の自動送信トリガーを設置しました';
 }
 function removeMailTrigger(){
