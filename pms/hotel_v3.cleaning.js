@@ -1525,6 +1525,9 @@ function saveTabletSettings(){
 // ══════════════════════════════════════════════════════════
 //  自動メール配信設定
 // ══════════════════════════════════════════════════════════
+// チェックアウト時メールの既定送信時刻。未設定の既存データはこの値として扱う。
+// （以前は時刻の概念が無く、チェックアウト日になった瞬間＝00:00過ぎに送信されていた）
+const MAIL_CHECKOUT_DEFAULT_TIME='10:00';
 const MAIL_TYPES=[
   {key:'reservationCreated', label:'予約確定時'},
   {key:'checkinCode',        label:'QR・予約ID送信', code:true},
@@ -1641,6 +1644,9 @@ function openMailSettings(){
     for(let h=0;h<24;h++)for(let m=0;m<60;m+=30){ const v=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); opt+=`<option value="${v}">${v}</option>`; }
     tsel.innerHTML=opt;
   }
+  // チェックアウト時の送信時間も同じ選択肢を使う（UI方式を増やさない）
+  const cosel=document.getElementById('ms-co-time');
+  if(cosel && !cosel.options.length && tsel)cosel.innerHTML=tsel.innerHTML;
   // キーワードボタン
   document.getElementById('ms-keywords').innerHTML=MAIL_KEYWORDS.map(k=>`<button type="button" class="ms-kw" onclick="msInsertKeyword('${k}')">${k}</button>`).join('');
   // 施設ごとの送信可否を明示的に用意しておく（未設定の施設は既定値で初期化）。
@@ -1720,12 +1726,19 @@ function msRenderCurrent(){
   // チェックインコード専用UI
   const isCode=_mailCur.type==='checkinCode';
   document.getElementById('ms-checkincode-extra').style.display=isCode?'':'none';
-  if(isCode){
-    document.getElementById('ms-days').value=String(c.sendDaysBefore||3);
-    document.getElementById('ms-time').value=c.sendTime||'09:00';
-    document.getElementById('ms-qr').value=c.qr?'1':'0';
-    document.getElementById('ms-resend').checked=!!c.resend;
-  }
+  // チェックアウト時専用UI（送信時間）
+  const isCo=_mailCur.type==='checkout';
+  document.getElementById('ms-checkout-extra').style.display=isCo?'':'none';
+  // ★入力欄の値は「そのタブを開いたときだけ」ではなく常に現在値へ揃えておく。
+  //   保存(saveMailSettings)はタブの表示状態に関係なくこれらの欄を読むため、
+  //   一度も開かれていないと選択肢の先頭(00:00)が保存され、設定が勝手に
+  //   書き換わってしまう（チェックアウト時メールが0時に送信される原因と同じ事故）。
+  const code=_msEnsureCfg('checkinCode');
+  document.getElementById('ms-days').value=String(code.sendDaysBefore||3);
+  document.getElementById('ms-time').value=code.sendTime||'09:00';
+  document.getElementById('ms-qr').value=code.qr?'1':'0';
+  document.getElementById('ms-resend').checked=!!code.resend;
+  document.getElementById('ms-co-time').value=_msEnsureCfg('checkout').sendTime||MAIL_CHECKOUT_DEFAULT_TIME;
   msRenderLangPart();
 }
 function msRenderLangPart(){
@@ -1813,6 +1826,9 @@ function saveMailSettings(){
   code.sendTime=document.getElementById('ms-time').value||'09:00';
   code.qr=document.getElementById('ms-qr').value==='1';
   code.resend=document.getElementById('ms-resend').checked;
+  // チェックアウト時の送信時間（既存の保存方式のまま。保存先は propertySettings.mailSettings.checkout）
+  const co=_msEnsureCfg('checkout');
+  co.sendTime=document.getElementById('ms-co-time').value||MAIL_CHECKOUT_DEFAULT_TIME;
   // 本体へ反映してクラウド保存（cloudSaveのみ）
   propertySettings.mailSettings=_mailDraft;
   logAudit('設定変更', '自動メール配信設定', MAIL_TYPES.map(m=>`${m.label}:${(_mailDraft[m.key]&&_mailDraft[m.key].enabled)?'ON':'OFF'}`).join(' / '));

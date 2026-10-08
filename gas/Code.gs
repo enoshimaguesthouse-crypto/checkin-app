@@ -1412,7 +1412,10 @@ function previewAutoMails(){
       else if(mk==='checkin'){ if(g.status==='checked_in'||g.status==='checkedin'){
         var cinAt=g.checkedInAt?_jstYmd_(new Date(g.checkedInAt)):'';
         if(!cinAt||cinAt>=MAIL_START_YMD){due=true;when='即時';} } }
-      else if(mk==='checkout'){ if(co){ due=true; when=_ymdOf_(co)+'（チェックアウト日）'; } }
+      else if(mk==='checkout'){ if(co){
+        var coT=String((cfg.sendTime)||MAIL_CHECKOUT_DEFAULT_TIME);
+        due=true; when=_ymdOf_(co)+' '+coT+'（チェックアウト日）';
+      } }
       if(!due)return;
       rows.push({
         予約ID:g.reservationId||'', 氏名:g.name||'',
@@ -1522,6 +1525,10 @@ function exportSentMailsToSheet(){
 // 直前予約でQR・予約IDメールを送るまでの待機時間（予約確定時メールの送信成功時刻が起点）
 var QR_DELAY_AFTER_RESERVATION_MS = 5*60*1000;
 
+// チェックアウト時メールの既定送信時刻（日本時間）。
+// 設定が未保存の既存データはこの値として扱う。PMS側の MAIL_CHECKOUT_DEFAULT_TIME と同じ値。
+var MAIL_CHECKOUT_DEFAULT_TIME = '10:00';
+
 // mailSent[mk] の値が「実際に送信が成功した日時」かどうかを判定する。
 // mailSent には 'primed:...' / 'skip:...' / 'manual-sent:...' のような
 // 送信成功ではない値も入るため、ISO日時形式のものだけを成功とみなす。
@@ -1573,7 +1580,15 @@ function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin, ms){
   }
   if(mk==='checkout'){
     var co=_checkoutDate_(gd,k,g);
-    return !!(co && _dayStart_(co)===todayMs);
+    if(!co || _dayStart_(co)!==todayMs)return false;
+    // 【修正前】時刻を見ていなかったため、チェックアウト日になった瞬間
+    // （＝日本時間00:00直後の最初のトリガー）に送信されていた。
+    // チェックアウト日の設定時刻（既定10:00）を過ぎるまでは送らない。
+    // nowMin は日本時間での「0時からの経過分」（_jstNow_ 由来）なので、
+    // ブラウザやサーバーのタイムゾーンの影響を受けない。
+    var coSt=String(cfg.sendTime||MAIL_CHECKOUT_DEFAULT_TIME).split(':');
+    var coStMin=(parseInt(coSt[0])||0)*60+(parseInt(coSt[1])||0);
+    return nowMin>=coStMin;
   }
   return false;
 }
