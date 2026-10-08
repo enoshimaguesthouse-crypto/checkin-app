@@ -4120,7 +4120,7 @@ function saveCharter(){
   const _carryOver={};
   if(editCharterStartDay!==null){
     const _CARRY_FIELDS=['reservationId','checkinUrl','email','phone','address',
-                         'mailLang','mailHistory','identityPhotoId','guests_list'];
+                         'mailLang','mailSent','mailHistory','identityPhotoId','guests_list'];
     for(const k of Object.keys(guestData)){
       const og=guestData[k];
       if(!og||!og.charter)continue;
