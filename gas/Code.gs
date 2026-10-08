@@ -341,6 +341,50 @@ function mergePassportImages(incomingGuestData, existingGuestData) {
   });
 }
 
+// ── 自動メールの送信済み記録を保全する ──────────────────────
+// mailSent / mailHistory を書くのはGAS（サーバー）だけで、PMS側のフォームや
+// CSV取込はこれらを一切持たない。そのためクライアントが予約セルを作り直して
+// 保存すると、サーバーにしか無い送信済み記録が丸ごと消え、
+// 「まだ送っていない」と判定されて同じメールが再送されてしまう。
+// （3wayマージはセル単位で「ローカル優先」のため、クライアント側では守れない）
+// ここでサーバー側の記録を必ず復元し、どの保存経路からでも消えないようにする。
+// 消すことはせず、既存値を補うだけなので、手動送信でクライアントが追加した
+// mailHistory も失われない。
+function mergeMailFlags(incomingGuestData, existingGuestData) {
+  if (!incomingGuestData || !existingGuestData) return;
+  // 予約IDごとの記録も作る。取込で日付・部屋が変わるとセルのキーが変わり、
+  // キー一致では復元できないため、予約IDで拾えるようにしておく。
+  const byResId = {};
+  Object.keys(existingGuestData).forEach(k => {
+    const eg = existingGuestData[k];
+    if (!eg || !eg.reservationId) return;
+    const id = String(eg.reservationId);
+    const slot = byResId[id] || (byResId[id] = { mailSent:{}, mailHistory:{} });
+    ['mailSent','mailHistory'].forEach(prop => {
+      const src = eg[prop];
+      if (!src) return;
+      Object.keys(src).forEach(mk => { if (slot[prop][mk] === undefined) slot[prop][mk] = src[mk]; });
+    });
+  });
+  Object.keys(incomingGuestData).forEach(k => {
+    const ig = incomingGuestData[k];
+    if (!ig) return;
+    const eg = existingGuestData[k];
+    const fallback = (!eg && ig.reservationId) ? byResId[String(ig.reservationId)] : null;
+    const src = eg || fallback;
+    if (!src) return;
+    ['mailSent','mailHistory'].forEach(prop => {
+      const sv = src[prop];
+      if (!sv) return;
+      Object.keys(sv).forEach(mk => {
+        if (sv[mk] === undefined || sv[mk] === null) return;
+        ig[prop] = ig[prop] || {};
+        if (ig[prop][mk] === undefined) ig[prop][mk] = sv[mk];   // 既存値を補うだけ（上書き・削除はしない）
+      });
+    });
+  });
+}
+
 // ── POST：payload.type=rental なら rental ファイルに保存 ──────
 function doPost(e) {
   try {
@@ -408,14 +452,9 @@ function doPost(e) {
       // この入口から条件を迂回して送信されることはない。
       // 多重起動（取込連打・複数端末）での二重送信を防ぐためロックで直列化し、
       // ロックが取れない場合は「他で実行中」とみなして何もしない。
-      var amLock = LockService.getScriptLock();
-      if(!amLock.tryLock(1000)){
-        return jsonOut(JSON.stringify({status:'ok', type:'runAutoMails', skipped:'busy', sent:0}));
-      }
-      try {
-        var amSent = runAutoMails();
-        return jsonOut(JSON.stringify({status:'ok', type:'runAutoMails', sent:amSent||0}));
-      } finally { amLock.releaseLock(); }
+      // ロックは runAutoMails() 本体が持つ（時限トリガー経由の実行も必ず直列化される）
+      var amSent = runAutoMails();
+      return jsonOut(JSON.stringify({status:'ok', type:'runAutoMails', sent:amSent||0}));
 
     } else if (payload.type === 'sendMail') {
       // 手動メール送信：1通送信してmailHistoryを保存
@@ -540,6 +579,7 @@ function doPost(e) {
       // クライアントが画像なしで保存しても既存の画像が消えないようマージする。
       const incomingGuestData = payload.guestData || {};
       if (existing) mergePassportImages(incomingGuestData, existing.guestData || {});
+      if (existing) mergeMailFlags(incomingGuestData, existing.guestData || {});
       const newData = {
   guestData:   incomingGuestData   || {},
   cancelList:  payload.cancelList  || [],
@@ -1538,7 +1578,18 @@ function _mailDue_(mk, cfg, g, gd, k, todayMs, nowMin, ms){
   return false;
 }
 
+// 自動送信の入口。時限トリガーとCSV取込直後のPOSTが同時に走ると、
+// 両方が「未送信」と判定して同じメールを二重に送ってしまう。
+// （送信済みフラグは実行の最後にまとめて保存するため、途中では互いに見えない）
+// 必ずここで直列化し、他が実行中なら今回は何もしない（次の実行で送られる）。
 function runAutoMails(){
+  var amLock = LockService.getScriptLock();
+  if(!amLock.tryLock(1000)){ Logger.log('runAutoMails: 他の実行中のためスキップ'); return 0; }
+  try { return _runAutoMailsUnlocked_(); }
+  finally { amLock.releaseLock(); }
+}
+
+function _runAutoMailsUnlocked_(){
   var props=PropertiesService.getScriptProperties();
   if(props.getProperty('MAIL_AUTOSEND')!=='on'){ Logger.log('runAutoMails: 無効（MAIL_AUTOSEND≠on）'); return 0; }
   if(props.getProperty('MAIL_PRIMED')!=='yes'){ Logger.log('runAutoMails: 中止（先に primeMailFlags() を実行してください）'); return 0; }
@@ -1610,7 +1661,7 @@ function autosend_OFF(){ var r=setAutosend(false); Logger.log(r); return r; }
 function installMailTrigger(){
   removeMailTrigger();
   ScriptApp.newTrigger('runAutoMails').timeBased().everyMinutes(5).create();
-  return '30分間隔の自動送信トリガーを設置しました';
+  return '5分間隔の自動送信トリガーを設置しました';
 }
 function removeMailTrigger(){
   var n=0; ScriptApp.getProjectTriggers().forEach(function(t){ if(t.getHandlerFunction()==='runAutoMails'){ ScriptApp.deleteTrigger(t); n++; } });
