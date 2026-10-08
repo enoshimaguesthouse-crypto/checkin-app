@@ -1075,7 +1075,9 @@ function copyLineMessage(){
     const dm=t.match(/[A-Z]$/);
     if(dm)return dm[0];
     // 個室①②
-    const lbl=room.label||'';
+    // 本館は label（例「①ダブル」）に、ANNEXは no（例「①」）に入っているため両方を見る。
+    // no を見ていなかったため、ANNEX個室だけ「個室ANNEX−個室①」と部屋名がそのまま出ていた。
+    const lbl=room.label||room.no||'';
     if(lbl.includes('①'))return '①';
     if(lbl.includes('②'))return '②';
     // アパートメント・SB：部屋番号
@@ -1142,9 +1144,10 @@ function copyLineMessage(){
         indiv.forEach(e=>{
           const short=roomShort(e.room);
           let line=`・個室${short}`;
-          // 次予約あり（個室のみ表示）
+          // 次予約あり（個室のみ表示）。画面の表示と同じ「（N名 / M泊）」形式にして、
+          // 次のお客様が連泊かどうかが分かるようにする。
           if(e.info.hasNextBooking&&e.info.nextGuest){
-            line+=` 次予約あり${guestCountOf(e.info.nextGuest)}名`;
+            line+=` 次予約あり（${guestCountOf(e.info.nextGuest)}名 / ${e.info.nextNights||1}泊）`;
           }
           msg+=line+'\n';
         });
@@ -1164,16 +1167,22 @@ function copyLineMessage(){
         const guests=guestCountOf(e.info.guest);
         if(guests>0)line+=` ${guests}名分`;
         if(e.info.hasNextBooking&&e.info.nextGuest){
-          line+=` 次予約あり${guestCountOf(e.info.nextGuest)}名`;
+          line+=` 次予約あり（${guestCountOf(e.info.nextGuest)}名 / ${e.info.nextNights||1}泊）`;
         }
         msg+=line+'\n';
       });
 
       // 連泊
       if(stayRooms.length>0){
-        const letters=stayRooms.map(e=>roomShort(e.room)).join('');
-        // ドミ系はアルファベット、個室は①②
-        msg+=`連泊：${letters}\n`;
+        // 連泊中の部屋は「部屋（N名 / M泊）」で、何泊目の滞在かが分かるようにする。
+        // 部屋ごとに人数・泊数が違うため、まとめずに1部屋ずつ出す。
+        const parts=stayRooms.map(e=>{
+          const short=roomShort(e.room);
+          const n=guestCountOf(e.info.guest);
+          const nights=e.info.nights||1;
+          return `${short}（${n>0?n+'名 / ':''}${nights}泊）`;
+        });
+        msg+=`連泊：${parts.join(' ')}\n`;
       }
     }
   });
