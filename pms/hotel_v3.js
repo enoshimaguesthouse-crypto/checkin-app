@@ -1610,6 +1610,9 @@ function importCSVText(text){
     // ★重要：自分自身の既存セルが「空室なし」原因にならないよう、
     //   部屋を検索する前に既存予約の重複・変更を判定する
     let preservedNote=null; // CSV更新時にスタッフ手入力の備考を保護
+    // 自動メールの送信済み記録。変更反映でセルを作り直すと消えてしまい、
+    // 「まだ送っていない」とみなされて同じメールが再送される（重複送信の原因）。
+    let preservedMailSent=null, preservedMailHistory=null;
     let _pendingRestore=null; // 日程変更で削除した旧セルの退避（新配置に失敗したら復元する）
     if(!isCharter && reservationId){
       const existing=findExistingReservationInfo(reservationId);
@@ -1633,6 +1636,9 @@ function importCSVText(text){
         // 退避が無いと「新しい日程の部屋が見つからない」場合に、管理者が手動で
         // 移動・調整した予約（元のセル）まで丸ごと消えてしまう（過去の不具合の原因）。
         preservedNote=existing.data.note||''; // スタッフ手入力の備考を保存
+        // 送信済み記録も引き継ぐ（これが無いと取込のたびに自動メールが再送される）
+        if(existing.data.mailSent)preservedMailSent={...existing.data.mailSent};
+        if(existing.data.mailHistory)preservedMailHistory={...existing.data.mailHistory};
         _pendingRestore=Object.entries(guestData)
           .filter(([k,g])=>g&&String(g.reservationId)===String(reservationId))
           .map(([k,g])=>[k,{...g}]);
@@ -1730,6 +1736,9 @@ function importCSVText(text){
       arrivalTime,charter:isCharter,
       charterGroup:isCharter?(isAnnexCharter?'ANNEX':'本館'):null,
       reservationId,checkinUrl:generateCheckinUrl(reservationId),
+      // 変更反映でセルを作り直す場合も、自動メールの送信済み記録は引き継ぐ
+      ...(preservedMailSent?{mailSent:preservedMailSent}:{}),
+      ...(preservedMailHistory?{mailHistory:preservedMailHistory}:{}),
     };
 
     if(isCharter&&charterGroupRooms.length>0){
