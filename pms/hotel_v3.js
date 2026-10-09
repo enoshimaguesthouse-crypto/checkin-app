@@ -1180,6 +1180,7 @@ function importAirhostCSV(text){
   );
 
   let imported=0,skipped=0,cancelled=0;
+  const ciSkipList=[];  // チェックイン済みのため取り込まなかった予約 {name,reservationId}
   const monthCounts={};
 
   for(let ri=1;ri<lines.length;ri++){
@@ -1232,6 +1233,22 @@ function importAirhostCSV(text){
     const cashAmt=parseFloat(get(cols,'現金')||'0');
     const pay=cashAmt>0?'現金':'事前決済';
 
+    // ★チェックイン済み予約の保護。
+    //   このCSVは既存セルを占有状況に関わらず上書きする（guestData[キー]=... の直接代入）。
+    //   同じ予約IDの行は上の重複チェックで既に除外されているため、ここに来るのは
+    //   「別の予約が、チェックイン済みの予約が入っている部屋・日付に割り当たった」場合。
+    //   そのまま書くと現地でチェックインを済ませた予約が消えるので、この行は取り込まない。
+    const _targetKeys=[];
+    for(let n=0;n<nights;n++){
+      const {y:ty,m:tm,d:td}=addDays(cm,cd,n,cy);
+      _targetKeys.push(gk(tm,rid,td,ty));
+    }
+    const _blocked=_targetKeys.find(k=>guestData[k]&&isCheckedIn(guestData[k].status));
+    if(_blocked){
+      ciSkipList.push({name, reservationId, 既存:(guestData[_blocked].name||'')});
+      continue;
+    }
+
     if(reservationId)existingIds.add(reservationId);
 
     const gBase={
@@ -1256,7 +1273,11 @@ function importAirhostCSV(text){
   if(resultEl)resultEl.innerHTML=`<div class="import-result">
     ✓ 取込完了：<strong>${imported}件</strong>${monthSummary?`（${monthSummary}）`:''}${cancelled>0?`、<strong>${cancelled}件</strong>キャンセル除外`:''}
     ${skipped>0?`<br>ℹ 重複スキップ：<strong>${skipped}件</strong>`:''}
-  </div>`;
+    ${ciSkipList.length>0?`<br>🔒 チェックイン済みのためスキップ：<strong>${ciSkipList.length}件</strong>`:''}
+  </div>${ciSkipList.length>0?`<div class="import-ci-skip" style="background:#eef6f1;border-left:4px solid #2e7d5b;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#1f5c43;">🔒 チェックイン済みのためスキップ（${ciSkipList.length}件・既存データを保護しました）</div>
+    <div style="color:#1f5c43;font-size:11px;">${ciSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>${d.既存?`（既存：${esc(d.既存)}）`:''}`).join(' / ')}</div>
+  </div>`:''}`;
   renderReg();autoSave();
 }
 // ── CSV取込：予約ID重複・変更検知ヘルパー ──────────────────
