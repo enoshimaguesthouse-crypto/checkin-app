@@ -1342,6 +1342,20 @@ function _normPhoneForCompare(p){
 // 変更内容は「項目名(変更前→変更後)」の形で返す。
 // 「変更が無いのに変更扱いになった」と思われたときに、どの値が食い違ったのかを
 // 取込結果の画面でそのまま確認できるようにするため。
+// findExistingReservationInfo / findExistingCharterByDate の戻り値が
+// 「チェックイン済みの予約」かどうか。判定は既存の isCheckedIn()（'checked_in' と
+// 旧表記 'checkedin' の両対応）をそのまま使い、新しい判定方式は作らない。
+function _isCheckedInReservation(ex){
+  if(!ex||!ex.data)return false;
+  if(isCheckedIn(ex.data.status))return true;
+  // 連泊では、泊ごとのセルでステータスが食い違っていることが実際にある
+  // （一部だけ checked_in・残りが reserved）。アンカーセルだけを見ると
+  // 保護漏れになるため、同一予約IDのセルを1つでもチェックイン済みなら保護する。
+  const rid=ex.data.reservationId;
+  if(!rid)return false;
+  return Object.values(guestData).some(g=>
+    g && String(g.reservationId)===String(rid) && isCheckedIn(g.status));
+}
 function detectReservationChanges(ex,incoming){
   const changes=[];
   const _d=v=>{ const t=String(v==null?'':v).trim(); return t===''?'（空）':t; };
@@ -1381,6 +1395,7 @@ function importCSVText(text){
   let imported=0,cancelled=0,skipped=0,parkAdded=0,surfAdded=0,charterCount=0,unassignedCount=0,updatedCount=0;
   const updatedList=[]; // 変更反映された予約 {name,reservationId,changes:[]}
   const dupSkipList=[]; // 完全重複でスキップした予約 {name,reservationId}
+  const ciSkipList=[];  // チェックイン済みのため更新しなかった予約 {name,reservationId}
   const monthCounts={};
   // 貸切の重複予約番号を管理（同一予約番号は1回だけ取り込む）
   const processedCharter=new Set();
@@ -1580,6 +1595,13 @@ function importCSVText(text){
         exCharter=findExistingCharterByDate(charterGroupName,cm,cd,cy);
         matchedByDate=!!exCharter;
       }
+      if(exCharter && _isCheckedInReservation(exCharter)){
+        // チェックイン済み → この予約はCSV取込の対象外（後述の通常予約と同じ扱い）
+        // skipped は「2泊目以降の行数」として表示されるため加算しない。
+        // チェックイン済みスキップは ciSkipList として別に集計・表示する。
+        ciSkipList.push({name:guestName,reservationId});
+        continue;
+      }
       if(exCharter){
         // 重要：phone/email/addressは実際のCSV値を渡す（空文字固定にすると、
         // 既存側に値がある限り毎回「電話変更」等が誤検知され続ける）
@@ -1616,6 +1638,19 @@ function importCSVText(text){
     let _pendingRestore=null; // 日程変更で削除した旧セルの退避（新配置に失敗したら復元する）
     if(!isCharter && reservationId){
       const existing=findExistingReservationInfo(reservationId);
+      // ★チェックイン済みの予約は、CSVの内容で一切更新しない。
+      //   現地でチェックインを済ませた予約の氏名・部屋・料金・人数・メモ・写真・
+      //   メール送信記録などが、後からのCSV取込で上書きされるのを防ぐ。
+      //   判定は「取込前に名簿へ保存されている既存の status」だけで行う。
+      //   CSV側の値は一切見ないため、CSVの内容で判定をすり抜けることはない。
+      //   変更の検知・既存セルの削除（clearReservationCells）より前に抜けるので、
+      //   既存データには手が付かない。continue により新規追加にも進まない。
+      if(existing && _isCheckedInReservation(existing)){
+        // skipped は「2泊目以降の行数」として表示されるため加算しない。
+        // チェックイン済みスキップは ciSkipList として別に集計・表示する。
+        ciSkipList.push({name:guestName,reservationId});
+        continue;
+      }
       if(existing){
         // 名簿上に既に存在する＝以前の取込エラーは解消済みのはず。
         // 残骸として未割当キューに残っていれば削除する（古いエラー表示を防ぐ）
@@ -1841,6 +1876,7 @@ function importCSVText(text){
     ✓ 取込完了：<strong>${imported}件</strong>（${monthSummary}）、<strong>${cancelled}件</strong>キャンセル除外
     ${updatedCount>0?`<br>🔄 変更反映：<strong>${updatedCount}件</strong>`:''}
     ${dupSkipList.length>0?`<br>ℹ 重複スキップ：<strong>${dupSkipList.length}件</strong>`:''}
+    ${ciSkipList.length>0?`<br>🔒 チェックイン済みのためスキップ：<strong>${ciSkipList.length}件</strong>`:''}
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
     ${charterCount>0?`<br>🔒 貸切予約 <strong>${charterCount}件</strong>検出`:''}
@@ -1853,6 +1889,10 @@ function importCSVText(text){
       <span style="margin-left:8px;color:#7a5800;">${esc(u.changes.join('・'))}</span>
       ${u.status==='競合エラー'?'<span style="color:#c0392b;font-weight:700;margin-left:8px;">⚠ 競合（手動割当が必要）</span>':''}
     </div>`).join('')}
+  </div>`:''}
+  ${ciSkipList.length>0?`<div class="import-ci-skip" style="background:#eef6f1;border-left:4px solid #2e7d5b;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
+    <div style="font-weight:700;margin-bottom:6px;color:#1f5c43;">🔒 チェックイン済みのためスキップ（${ciSkipList.length}件・既存データを保護しました）</div>
+    <div style="color:#1f5c43;font-size:11px;">${ciSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>`).join(' / ')}</div>
   </div>`:''}
   ${dupSkipList.length>0?`<div class="import-dups" style="background:#f0f4f8;border-left:4px solid #90a4ae;padding:10px 14px;border-radius:6px;margin-top:8px;font-size:12px;">
     <div style="font-weight:700;margin-bottom:6px;color:#546e7a;">ℹ 重複スキップ（${dupSkipList.length}件・変更なしのため未処理）</div>
