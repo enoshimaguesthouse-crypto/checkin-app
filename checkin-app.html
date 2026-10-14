@@ -1484,8 +1484,17 @@ input:focus,select:focus,textarea:focus{
       <div class="complete-sub" id="complete-sub">チェックインが完了しました。</div>
     </div>
 
+    <!-- 複数部屋予約：全部屋の部屋番号・暗証番号を1ページにまとめて表示 -->
+    <div class="card" id="group-rooms-card" style="display:none;">
+      <div class="room-display">
+        <div class="room-number-label" id="group-rooms-title">お部屋番号・暗証番号</div>
+        <div id="group-rooms-list" style="margin-top:10px;"></div>
+        <div class="room-note" id="group-room-note">ドアの暗証番号パッドに各お部屋の番号を入力してください。</div>
+      </div>
+    </div>
+
     <!-- 部屋番号・暗証番号 -->
-    <div class="card">
+    <div class="card" id="single-room-card">
       <div class="room-display">
         <div class="room-number-label" id="room-label">お部屋番号</div>
         <div class="room-number" id="room-number-display">—</div>
@@ -2617,6 +2626,48 @@ async function searchReservation() {
       // タブレット表示（部屋タイプ×言語）用の部屋タイプキーを確定
       reservationData.roomTypeKey = matchedRoom ? _tdsRoomTypeKey(matchedRoom) : null;
 
+      // ── 複数部屋予約（グループ）の組み立て ────────────────────────
+      // GASのtype=searchは、groupIdが一致する全部屋のセルも返す。
+      // 部屋ごとの予約（子予約）は維持したまま、チェックインだけ1回にまとめる。
+      const _grpId = String(best.groupId || reservation.groupId ||
+        (targetArray.find(x=>x.groupId && String(x.reservationId||'').trim()===targetId)||{}).groupId || '').trim();
+      reservationData.groupId = _grpId;
+      if(_grpId){
+        // 子予約ごとに1件へまとめる（連泊・人数展開で同じ予約IDが複数セルあるため）
+        const byRes = new Map();
+        targetArray.forEach(x=>{
+          if(!x || String(x.groupId||'').trim() !== _grpId) return;
+          const rid = String(x.reservationId || x.id || '').trim();
+          if(!rid) return;
+          const prev = byRes.get(rid);
+          // 代表セル＝チェックイン日（最も早い日付）のセル。人数・部屋はここから採る。
+          if(!prev || String(_gkToDate(x._key)||'') < String(_gkToDate(prev._key)||'')) byRes.set(rid, x);
+        });
+        const rooms2 = [];
+        byRes.forEach((x,rid)=>{
+          const rm = roomsArr.find(r=>String(r.id)===String(x.roomId) || r.id===x.roomId);
+          rooms2.push({
+            reservationId: rid,
+            roomId: x.roomId,
+            roomNo: rm ? String(rm.no) : String(x.roomId||'—'),
+            roomType: rm ? rm.type : (x.type||''),
+            guests: Number(x.guests)||1,
+            status: x.status||''
+          });
+        });
+        // 部屋番号で安定した並びにする
+        rooms2.sort((a,b)=>String(a.roomNo).localeCompare(String(b.roomNo),'ja'));
+        if(rooms2.length > 1){
+          reservationData.groupRooms = rooms2;
+          // 人数は子予約ごとの代表セルの合計（CSVの重複行は上のMapで1件化済み）
+          reservationData.guests = rooms2.reduce((a,x)=>a+(Number(x.guests)||0),0);
+          // 全部屋がチェックイン済みのときだけ「チェックイン済み」として扱う。
+          // 一部だけ済みの状態は、既存状態を消さずに通常フローで処理する。
+          const allIn = rooms2.every(x=>_isCheckedInStatus(x.status));
+          if(!allIn) reservationData.status = '';
+        }
+      }
+
       const r = reservationData;
       el('rv-name').textContent  = r.name || '—';
       el('rv-dates').textContent = (r.checkin || '?') + ' → ' + (r.checkout || '?');
@@ -3698,6 +3749,10 @@ function clearCompleteScreen(){
   // 部屋番号・暗証番号は「—」（安全な空状態）へ
   setTxt('room-number-display','—');
   setTxt('pin-display','—');
+  // 複数部屋の一覧も空状態へ（前のお客様の部屋・暗証番号を残さない）
+  { const _gl=el('group-rooms-list'); if(_gl)_gl.innerHTML='';
+    const _gc=el('group-rooms-card'); if(_gc)_gc.style.display='none';
+    const _sc=el('single-room-card'); if(_sc)_sc.style.display=''; }
   // 入室案内・Wi-Fi・外部リンク
   hide('guide-card');
   setTxt('guide-roomname','');
@@ -3765,6 +3820,8 @@ async function renderCompleteScreen(r, opts){
     // ③ 部屋情報の取得完了を待つ（この間、完了画面はまだ表示しない）
     el('room-number-display').textContent = (r && (r.roomNo || r.roomId)) ? (r.roomNo || String(r.roomId)) : '—';
     await applyRoomGuide(r ? r.roomId : null);
+    // 複数部屋予約：全部屋の部屋番号と暗証番号を1ページに並べる
+    await renderGroupRooms(r);
   }catch(e){
     console.error('部屋情報の取得に失敗:', e);
     // 失敗しても前のお客様の情報は既にクリア済みなので「—」表示のまま安全に進む
@@ -3773,6 +3830,45 @@ async function renderCompleteScreen(r, opts){
   }
   // ④ データが揃ってから完了画面を表示
   showScreen('screen-complete');
+}
+
+// 複数部屋予約の完了画面：グループ内の全部屋の「部屋番号＋暗証番号」を一覧表示する。
+// 暗証番号は部屋ごとに取得し、部屋と番号の対応がずれないよう1行ずつ組み立てる。
+async function renderGroupRooms(r){
+  const card=el('group-rooms-card'), single=el('single-room-card'), list=el('group-rooms-list');
+  if(!card||!list)return;
+  const rooms=(r&&Array.isArray(r.groupRooms))?r.groupRooms:[];
+  if(rooms.length<2){
+    // 単一予約は従来どおりの表示
+    card.style.display='none'; list.innerHTML='';
+    if(single)single.style.display='';
+    return;
+  }
+  const t=T[lang]||{};
+  if(el('group-rooms-title'))el('group-rooms-title').textContent=(t.roomLabel||'お部屋番号')+' / '+(t.pinLabel||'暗証番号');
+  if(el('group-room-note'))el('group-room-note').textContent=t.roomNote||'';
+  let settingsAll=null, roomsAll=null;
+  try{ const got=await _fetchRoomSettings(); settingsAll=got.roomSettings; roomsAll=got.rooms; }catch(e){}
+  const rows=rooms.map(x=>{
+    const st=_resolveRoomSetting(settingsAll,x.roomId);
+    const pin=(st&&st.roomCode)?st.roomCode:((st&&st.keycode)?st.keycode:'—');
+    const rm=(roomsAll||[]).find(z=>String(z.id)===String(x.roomId));
+    const no=x.roomNo||(rm?String(rm.no):String(x.roomId||'—'));
+    const ty=x.roomType||(rm?rm.type:'');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin-bottom:8px;background:#f7faf8;border:1px solid #d7ebe0;border-radius:10px;">
+      <div style="text-align:left;min-width:0;">
+        <div style="font-size:22px;font-weight:700;line-height:1.2;">${_esc(no)}</div>
+        <div style="font-size:12px;color:#666;margin-top:2px;">${_esc(ty||'')}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#666;">${_esc(t.pinLabel||'暗証番号')}</div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:2px;">${_esc(pin)}</div>
+      </div>
+    </div>`;
+  });
+  list.innerHTML=rows.join('');
+  card.style.display='';
+  if(single)single.style.display='none';   // 単一表示とニ重に出さない
 }
 
 async function applyRoomGuide(roomId){
