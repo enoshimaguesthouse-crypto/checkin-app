@@ -2069,6 +2069,59 @@ function getTodayGuestCount(month){
 // 稼働率：自動計算・編集
 // ============================================================
 
+// ── 集計対象フィルタ（稼働率画面）────────────────────────────
+// 集計対象が「全選択」かどうか。全選択のときは従来どおり occCumul の保存値を
+// そのまま使い、機能追加前と数値が1件も変わらないようにする。
+function occFilterIsAll(){ return FILTER_GROUPS.every(g=>roomFilter[g.key]!==false); }
+function occFilterIsNone(){ return FILTER_GROUPS.every(g=>roomFilter[g.key]===false); }
+
+// 指定年月の「使用セル数」を guestData から集計する。
+// 計算式は名簿(renderReg)の usedCells と完全に同一にそろえてある：
+//   ・通常予約のセルは1つにつき1
+//   ・貸切はアンカーで（本館 or ANNEXの部屋数）×泊数をまとめて計上し、
+//     同じ貸切グループ・同じ日を二重計上しない
+// これを変えると稼働率画面と名簿の数字がずれるため、定義は踏襲すること。
+// guestData にその年月のセルが1つも無ければ null（＝部屋別に再集計できない）。
+function occUsedCellsFromGuestData(year,month){
+  const fRooms=rooms.filter(r=>roomFilter[r.group]!==false);
+  const days=gDays(year,month);
+  // その年月のデータを名簿が保持しているか（全部屋で判定。フィルタ結果が0件でも
+  // 「データが無い」と誤判定しないため）
+  const hasAny=rooms.some(r=>{
+    for(let d=1;d<=days;d++){ if(guestData[gk(month,r.id,d,year)])return true; }
+    return false;
+  });
+  if(!hasAny)return null;
+  const honkanRooms=fRooms.filter(r=>r.group==='本館−個室'||r.group==='本館−男女混合ドミトリー').length;
+  const annexRooms =fRooms.filter(r=>r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー').length;
+  let used=0; const charterCounted=new Set();
+  for(let d=1;d<=days;d++){
+    fRooms.forEach(room=>{
+      const g=guestData[gk(month,room.id,d,year)];
+      if(!g)return;
+      if(g.charter){
+        if(g.charterAnchor){
+          const cg=g.charterGroup||'本館';
+          const key=`${cg}:${d}`;
+          if(!charterCounted.has(key)){
+            charterCounted.add(key);
+            let cNights=1;
+            while(true){
+              const next=guestData[gk(month,room.id,d+cNights,year)];
+              if(!next||!next.charter)break;
+              if(next.charterAnchor)break;
+              if(!next.cont)break;
+              cNights++;
+            }
+            used+=(cg==='ANNEX'?annexRooms:honkanRooms)*cNights;
+          }
+        }
+      } else { used++; }
+    });
+  }
+  return used;
+}
+
 // ① 22時以降に当日guestDataを集計してoccCumulに反映
 function autoCalcTodayOcc(force=false){
   const now=new Date();
@@ -2136,6 +2189,16 @@ function getOccData(year,month){
   const days=gDays(year,month);
   const maxCumul=totalRoomCount*days; // 例: 30室×30日=900セルが100%（名簿側のtotalCellsと同一定義）
 
+  // 集計対象が一部だけ選ばれている場合は、保存済みの occCumul（全施設合計の
+  // 日別スナップショット）をそのまま使えない。部屋別の内訳を持たないため。
+  // guestData から対象部屋だけで月合計を数え直し、月末累計・稼働率に使う。
+  if(!occFilterIsAll()){
+    if(occFilterIsNone())return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:0};
+    const used=occUsedCellsFromGuestData(year,month);
+    // guestData にその年月が無い＝部屋別に分解できない（過去月・前年など）
+    if(used==null)return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:null,noBreakdown:true};
+    return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:used};
+  }
   // 実データあり
   if(occCumul[year]&&occCumul[year][month]){
     return {data:occCumul[year][month],max:maxCumul,isReal:true};
@@ -2154,10 +2217,76 @@ function getOccData(year,month){
   return {data:cumul,max:maxCumul,isReal:false};
 }
 
+// ── 集計対象フィルタ UI（稼働率画面）─────────────────────────
+// 選択状態は名簿画面と同じ roomFilter を共有する。既に localStorage
+// （hotel_roomFilter）へ保存され、稼働率の分母にも使われている既存の仕組みなので、
+// 新しい保存先や二つ目のフィルターは作らない。
+function toggleOccFilterPanel(){
+  const p=document.getElementById('occ-filter-panel');
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')renderOccFilterList();
+}
+function renderOccFilterList(){
+  const el=document.getElementById('occ-filter-list');
+  if(!el)return;
+  el.innerHTML=FILTER_GROUPS.map(g=>`
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+      <input type="checkbox" ${roomFilter[g.key]!==false?'checked':''}
+        onchange="onOccFilterChange('${g.key}',this.checked)" style="width:13px;height:13px;cursor:pointer;">
+      ${g.label}
+    </label>`).join('');
+}
+function onOccFilterChange(key,checked){
+  roomFilter[key]=checked;
+  saveToLS();                 // 既存の表示設定の保存先（hotel_roomFilter）
+  renderOccFilterBtn();
+  renderOcc();                // 即時再計算
+}
+function setOccFilterAll(val){
+  FILTER_GROUPS.forEach(g=>roomFilter[g.key]=val);
+  saveToLS();
+  renderOccFilterList();renderOccFilterBtn();
+  renderOcc();
+}
+function renderOccFilterBtn(){
+  const b=document.getElementById('occ-filter-btn');
+  if(!b)return;
+  const on=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false).length;
+  const all=FILTER_GROUPS.length;
+  b.textContent=on===all?'集計対象：すべて':`集計対象 ${on}/${all}`;
+  b.style.borderColor=on===all?'#e8e6e0':'#185FA5';
+  b.style.color=on===all?'#333':'#185FA5';
+}
+
 function renderOcc(){
   const year=parseInt(document.getElementById('occ-year').value);
   const cmpYearVal=document.getElementById('occ-cmp-year').value;
   const cmpYear=cmpYearVal?parseInt(cmpYearVal):null;
+
+  renderOccFilterBtn();
+  const noteEl=document.getElementById('occ-filter-note');
+  if(occFilterIsNone()){
+    // 選択0件：全施設の数字を出さず、空状態にする
+    if(noteEl){
+      noteEl.style.display='block';
+      noteEl.innerHTML='<div style="background:#fff4f4;border-left:4px solid #dc2626;padding:9px 13px;border-radius:6px;color:#991b1b;">集計対象が選択されていません。「集計対象」から対象を選んでください。</div>';
+    }
+    document.getElementById('occ-stats').innerHTML='';
+    document.getElementById('occ-month-tabs').innerHTML='';
+    document.getElementById('occ-month-title').innerHTML='';
+    document.getElementById('occ-month-stats').innerHTML='';
+    occCharts.forEach(c=>{try{c.destroy();}catch(e){}});occCharts=[];
+    return;
+  }
+  if(noteEl){
+    if(!occFilterIsAll()){
+      noteEl.style.display='block';
+      noteEl.innerHTML='<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:9px 13px;border-radius:6px;color:#92400e;">'
+        +'集計対象を絞り込み中です。月末累計・稼働率は名簿データから対象部屋だけで数え直しています。'
+        +'<br>日別の累計グラフは「その日時点で判明していた予約数」の記録で、部屋別に遡って分解できないため非表示にしています。'
+        +'名簿データの無い月（2026年4月以前・前年）は「内訳データなし」と表示されます。</div>';
+    } else { noteEl.style.display='none'; noteEl.innerHTML=''; }
+  }
 
   // 今日の通知
   const noticeEl=document.getElementById('occ-today-notice');
@@ -2168,7 +2297,12 @@ function renderOcc(){
 
   // 年間サマリー
   const months=Array.from({length:12},(_,i)=>i+1);
-  const yearTotals=months.map(m=>{const d=getOccData(year,m);return d?d.data.filter(v=>v!=null).reduce((a,b)=>Math.max(a,b||0),0):null;});
+  const yearTotals=months.map(m=>{
+    const d=getOccData(year,m);
+    if(!d)return null;
+    if(d.filtered)return d.monthTotal;   // 絞り込み時は guestData から数え直した月合計
+    return d.data.filter(v=>v!=null).reduce((a,b)=>Math.max(a,b||0),0);
+  });
   const validTotals=yearTotals.filter(v=>v);
   const grandMax=validTotals.length?validTotals.reduce((s,v)=>s+v,0):0;
   document.getElementById('occ-stats').innerHTML=`
@@ -2186,7 +2320,7 @@ function renderOcc(){
   tabsEl.innerHTML=monthLabels.map((mn,mi)=>{
     const cur=getOccData(year,mi+1);
     const hasData=!!cur;
-    const curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
+    const curLast=cur?(cur.filtered?cur.monthTotal:cur.data.filter(v=>v!=null).slice(-1)[0]):null;
     const pct=cur&&curLast?Math.round(curLast/cur.max*1000)/10:null;
     const isActive=mi+1===defaultMonth;
     const pctColor=pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc';
@@ -2222,30 +2356,33 @@ function selectOccMonth(month,year,cmpYear){
   const days=gDays(year,month);
   const curMax=cur?cur.max:null;
   const cmpMax=cmp?cmp.max:null;
-  let curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
+  let curLast=cur?(cur.filtered?cur.monthTotal:cur.data.filter(v=>v!=null).slice(-1)[0]):null;
   // 集計対象部屋フィルタのリアルタイム反映：
   // 名簿（renderReg）が同じ年月を最後に描画していれば、その時点のフィルター後usedCellsで上書きする
-  if(window._lastRenderRegYear===year && window._lastRenderRegMonth===month && window._lastUsedCells!=null){
+  if(!(cur&&cur.filtered) && window._lastRenderRegYear===year && window._lastRenderRegMonth===month && window._lastUsedCells!=null){
     curLast=window._lastUsedCells;
   }
   const pct=curMax&&curLast!=null?Math.round(curLast/curMax*1000)/10:null;
-  const cmpLast=cmp?cmp.data.filter(v=>v!=null).slice(-1)[0]:null;
+  const cmpLast=cmp?(cmp.filtered?cmp.monthTotal:cmp.data.filter(v=>v!=null).slice(-1)[0]):null;
   const cmpPct=cmpMax&&cmpLast?Math.round(cmpLast/cmpMax*1000)/10:null;
   const dataTag=cur&&cur.isReal?'<span style="font-size:10px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:3px;margin-left:6px;">実データ</span>':'<span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:1px 5px;border-radius:3px;margin-left:6px;">推計</span>';
 
   document.getElementById('occ-month-title').innerHTML=`${year}年 ${monthLabel} ${cur?dataTag:''}`;
   document.getElementById('occ-month-stats').innerHTML=`
-    <div class="sc" style="flex:1;min-width:0;"><div class="sl">${year}年 月末累計</div><div class="sv" style="font-size:17px;">${curLast!=null?curLast+'人':'—'}</div></div>
+    <div class="sc" style="flex:1;min-width:0;"><div class="sl">${year}年 月末累計</div><div class="sv" style="font-size:17px;">${curLast!=null?curLast+'人':(cur&&cur.noBreakdown?'<span style="font-size:11px;color:#b45309;">内訳データなし</span>':'—')}</div></div>
     <div class="sc" style="flex:1;min-width:0;"><div class="sl">稼働率</div><div class="sv" style="font-size:17px;color:${pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc'};">${pct!=null?pct+'%':'—'}</div></div>
-    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:#888;">${cmpLast!=null?cmpLast+'人':'—'}</div></div>`:''}
+    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:#888;">${cmpLast!=null?cmpLast+'人':(cmp&&cmp.noBreakdown?'<span style="font-size:11px;color:#b45309;">内訳データなし</span>':'—')}</div></div>`:''}
     ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 稼働率</div><div class="sv" style="font-size:17px;color:#ea580c;">${cmpPct!=null?cmpPct+'%':'—'}</div></div>`:''}`;
 
   // チャート描画
   occCharts.forEach(c=>{try{c.destroy();}catch(e){}});occCharts=[];
   const ctx=document.getElementById('occ-chart');if(!ctx)return;
   const labels=Array.from({length:days},(_,i)=>i+1);
-  const curData=cur?cur.data.slice(0,days):null;
-  const cmpData=cmp?cmp.data.slice(0,days):null;
+  // 絞り込み時は日別の棒・折れ線を描かない。occCumul は「その日時点で判明していた
+  // 予約数」という過去のスナップショットの積み重ねで、部屋別に遡って分解できないため。
+  // 分解できない日別値を出すと、月末累計（再集計値）と食い違う数字が並んでしまう。
+  const curData=(cur&&!cur.filtered)?cur.data.slice(0,days):null;
+  const cmpData=(cmp&&!cmp.filtered)?cmp.data.slice(0,days):null;
   const pctLine=curData&&curMax?curData.map(v=>v!=null?Math.min(100,Math.round(v/curMax*100)):null):null;
   const cmpPctLine=cmpData&&cmpMax?cmpData.map(v=>v!=null?Math.min(100,Math.round(v/cmpMax*100)):null):null;
   const todayCount=(year===2026)?getTodayGuestCount(month):null;
