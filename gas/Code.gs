@@ -443,7 +443,8 @@ function doPost(e) {
       var prevSubj=_mailRender_(prevTpl.subject, prevCtx);
       var prevBody=_mailRender_(prevTpl.body, prevCtx);
       var prevAttList=(prevTpl.attachments||[]).map(function(a){return{name:a.name||'',id:a.id||''};});
-      var prevQrUrl=(prevMailKey==='checkinCode'&&prevCfg.qr)?prevCtx['チェックインURL']:null;
+      // プレビューのQRも実際に送るものと同じ内容（予約IDの文字列）にする
+      var prevQrUrl=(prevMailKey==='checkinCode'&&prevCfg.qr)?_mailQrPayload_(prevG):null;
       return jsonOut(JSON.stringify({status:'ok',type:'mailPreview',to:prevG.email||'',lang:prevTpl.lang,roomType:prevRt||'',subject:prevSubj,body:prevBody,attachments:prevAttList,qrUrl:prevQrUrl||null}));
 
     } else if (payload.type === 'runAutoMails') {
@@ -1067,10 +1068,20 @@ function _mailAttachBlobs_(list){
   (list||[]).forEach(function(a){ try{ if(a&&a.id)out.push(DriveApp.getFileById(a.id).getBlob()); }catch(e){} });
   return out;
 }
-// チェックインURLのQR画像Blob（外部API・生成ロジックは変更なし）
-function _mailQrBlob_(url){
-  try{ if(!url)return null;
-    var resp=UrlFetchApp.fetch('https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data='+encodeURIComponent(url));
+// メール用QRの中身（QRに格納する文字列）。
+// 【変更】以前はチェックインアプリのURLを入れていたため、お客様が個人の
+// スマートフォンの標準カメラで読み取るとブラウザでアプリが開いてしまっていた。
+// 予約IDの文字列だけを入れることで、読み取ってもURLは開かない。
+// 店舗タブレット側は extractReservationId() が数字のみのQRに元から対応しており、
+// 手入力と同じ予約検索処理へ渡されるため、読み取り後の流れは変わらない。
+// 先頭ゼロを落とさないよう、数値化せず文字列のまま扱う。
+function _mailQrPayload_(g){
+  return g&&g.reservationId!=null ? String(g.reservationId).trim() : '';
+}
+// QR画像Blob（外部API・画像サイズ等は変更なし。格納する文字列だけを変更）
+function _mailQrBlob_(payload){
+  try{ if(!payload)return null;
+    var resp=UrlFetchApp.fetch('https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data='+encodeURIComponent(payload));
     return resp.getBlob().setName('checkin_qr.png');
   }catch(e){ return null; }
 }
@@ -1204,7 +1215,7 @@ function _mailSendOne_(data, key, g, gkey, mailKey, cfg, opts){
   // チェックインコード送信メールのみ：QRをcidインライン画像にしてQR＋予約IDのカードをファーストビューに配置
   var htmlBody=null, inlineImages=null;
   if(mailKey==='checkinCode' && cfg.qr){
-    var qb=_mailQrBlob_(ctx['チェックインURL']);
+    var qb=_mailQrBlob_(_mailQrPayload_(g));
     if(qb){
       var cid='qr_code_'+(g.reservationId||gkey);
       inlineImages={}; inlineImages[cid]=qb;
