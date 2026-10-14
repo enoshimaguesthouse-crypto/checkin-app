@@ -2073,6 +2073,20 @@ function getTodayGuestCount(month){
 // 集計対象が「全選択」かどうか。全選択のときは従来どおり occCumul の保存値を
 // そのまま使い、機能追加前と数値が1件も変わらないようにする。
 function occFilterIsAll(){ return FILTER_GROUPS.every(g=>roomFilter[g.key]!==false); }
+// 2026年5月以前の occCumul は Sea Breeze 鎌倉・三浦を集計していない期間のデータ。
+// 内訳を持たない過去月を表示するときは、この5区分を母数として扱う。
+const OCC_LEGACY_GROUPS=FILTER_GROUPS
+  .map(g=>g.key)
+  .filter(k=>k!=='Sea Breeze 鎌倉'&&k!=='Sea Breeze 三浦');
+function occLegacyMax(year,month){
+  return rooms.filter(r=>OCC_LEGACY_GROUPS.includes(r.group)).length*gDays(year,month);
+}
+// occCumul に Sea Breeze 鎌倉・三浦が含まれていない期間（2026年5月以前）かどうか。
+// この期間の記録を全部屋数で割ると、集計されていない施設の分だけ稼働率が
+// 実際より低く出てしまうため、母数を当時の集計範囲にそろえる。
+function occIsLegacyPeriod(year,month){
+  return (year<2026)||(year===2026&&month<=5);
+}
 function occFilterIsNone(){ return FILTER_GROUPS.every(g=>roomFilter[g.key]===false); }
 
 // 指定年月の「使用セル数」を guestData から集計する。
@@ -2239,14 +2253,27 @@ function getOccData(year,month){
   // guestData から対象部屋だけで月合計を数え直し、月末累計・稼働率に使う。
   if(!occFilterIsAll()){
     if(occFilterIsNone())return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:0};
-    const used=occUsedCellsFromGuestData(year,month);
-    // guestData にその年月が無い＝部屋別に分解できない（過去月・前年など）
-    if(used==null)return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:null,noBreakdown:true};
+    // 2026年5月以前は名簿（guestData）が古い月から順に整理されており、
+    // 残っているセルだけで数えると実際よりはるかに少ない値になる
+    // （例：2026年2月は11セルしか残っておらず1.8%になってしまう）。
+    // この期間は部屋別に分解せず、当時記録した occCumul の全体値を使う。
+    const used=occIsLegacyPeriod(year,month)?null:occUsedCellsFromGuestData(year,month);
+    // guestData にその年月が無い＝部屋別に分解できない（過去月・前年など）。
+    // 数字を消すのではなく、保存済みの occCumul をそのまま「内訳なしの全体値」として表示する。
+    // 当時の集計には Sea Breeze 鎌倉・三浦が含まれていないため、稼働率の母数も
+    // その5区分で計算する（絞り込み後の母数を使うと率が実際より高く出てしまう）。
+    if(used==null){
+      const legacy=(occCumul[year]&&occCumul[year][month])?occCumul[year][month]:null;
+      if(!legacy)return null;
+      return {data:legacy,max:occLegacyMax(year,month),isReal:true,filtered:true,
+              monthTotal:legacy.filter(v=>v!=null).slice(-1)[0],noBreakdown:true};
+    }
     return {data:occDailyCumulFromGuestData(year,month)||[],max:maxCumul,isReal:true,filtered:true,monthTotal:used};
   }
   // 実データあり
   if(occCumul[year]&&occCumul[year][month]){
-    return {data:occCumul[year][month],max:maxCumul,isReal:true};
+    const legacyMax=occIsLegacyPeriod(year,month)?occLegacyMax(year,month):maxCumul;
+    return {data:occCumul[year][month],max:legacyMax,isReal:true};
   }
   // 推計データ
   const total=(occMonthlyTotal[year]||[])[month-1];
@@ -2329,7 +2356,8 @@ function renderOcc(){
       noteEl.innerHTML='<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:9px 13px;border-radius:6px;color:#92400e;">'
         +'集計対象を絞り込み中です。月末累計・稼働率・グラフは名簿データから対象部屋だけで数え直しています。'
         +'<br>グラフは<strong>宿泊日ベースの累計</strong>です（全選択時は「その日時点で判明していた予約数」の記録を表示するため、同じ月でも途中の形が変わります。月末累計は一致します）。'
-        +'名簿データの無い月は「内訳データなし」と表示されます。</div>';
+        +'<br>名簿データの無い過去の月は部屋別に分解できないため、記録済みの<strong>全体値</strong>をそのまま表示し「内訳なし・全体値」と注記します。'
+        +'この期間の記録には Sea Breeze 鎌倉・三浦が含まれないため、稼働率の母数もその5区分で計算しています。</div>';
     } else { noteEl.style.display='none'; noteEl.innerHTML=''; }
   }
 
@@ -2414,9 +2442,9 @@ function selectOccMonth(month,year,cmpYear){
 
   document.getElementById('occ-month-title').innerHTML=`${year}年 ${monthLabel} ${cur?dataTag:''}`;
   document.getElementById('occ-month-stats').innerHTML=`
-    <div class="sc" style="flex:1;min-width:0;"><div class="sl">${year}年 月末累計</div><div class="sv" style="font-size:17px;">${curLast!=null?curLast+'人':(cur&&cur.noBreakdown?'<span style="font-size:11px;color:#b45309;">内訳データなし</span>':'—')}</div></div>
+    <div class="sc" style="flex:1;min-width:0;"><div class="sl">${year}年 月末累計</div><div class="sv" style="font-size:17px;">${curLast!=null?curLast+'人':'—'}${cur&&cur.noBreakdown?'<span style="font-size:10px;color:#b45309;margin-left:5px;">内訳なし・全体値</span>':''}</div></div>
     <div class="sc" style="flex:1;min-width:0;"><div class="sl">稼働率</div><div class="sv" style="font-size:17px;color:${pct!=null?(pct>=80?'#16a34a':pct>=50?'#185FA5':'#888'):'#ccc'};">${pct!=null?pct+'%':'—'}</div></div>
-    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:#888;">${cmpLast!=null?cmpLast+'人':(cmp&&cmp.noBreakdown?'<span style="font-size:11px;color:#b45309;">内訳データなし</span>':'—')}</div></div>`:''}
+    ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 月末累計</div><div class="sv" style="font-size:17px;color:#888;">${cmpLast!=null?cmpLast+'人':'—'}${cmp&&cmp.noBreakdown?'<span style="font-size:10px;color:#b45309;margin-left:5px;">内訳なし・全体値</span>':''}</div></div>`:''}
     ${cmpYear?`<div class="sc" style="flex:1;min-width:0;"><div class="sl">${cmpYear}年 稼働率</div><div class="sv" style="font-size:17px;color:#ea580c;">${cmpPct!=null?cmpPct+'%':'—'}</div></div>`:''}`;
 
   // チャート描画
@@ -2432,9 +2460,7 @@ function selectOccMonth(month,year,cmpYear){
     const div=document.createElement('div');
     div.id='occ-chart-empty';
     div.style.cssText='padding:40px 20px;text-align:center;color:#92400e;font-size:13px;background:#fffbeb;border-radius:8px;';
-    div.textContent=(cur&&cur.noBreakdown)
-      ? 'この月は名簿データが無いため、部屋別のグラフを表示できません（集計対象を「すべて」にすると全施設合計のグラフが表示されます）。'
-      : 'この月のデータがありません。';
+    div.textContent='この月のデータがありません。';
     box.appendChild(div);
     return;
   }
@@ -2448,8 +2474,9 @@ function selectOccMonth(month,year,cmpYear){
   const todayCount=(year===2026)?getTodayGuestCount(month):null;
 
   const datasets=[];
-  const curLbl=(cur&&cur.filtered)?`${year}年 累計（宿泊日ベース）`:`${year}年 累計`;
-  const cmpLbl=(cmp&&cmp.filtered)?`${cmpYear}年 累計（宿泊日ベース）`:`${cmpYear}年 累計`;
+  const _lbl=(o,y)=>!o||!o.filtered?`${y}年 累計`
+    :(o.noBreakdown?`${y}年 累計（内訳なし・全体値）`:`${y}年 累計（宿泊日ベース）`);
+  const curLbl=_lbl(cur,year), cmpLbl=_lbl(cmp,cmpYear);
   if(curData)datasets.push({type:'bar',label:curLbl,data:curData,backgroundColor:'rgba(96,165,250,0.55)',borderColor:'rgba(59,130,246,0.7)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
   if(cmpData)datasets.push({type:'bar',label:cmpLbl,data:cmpData,backgroundColor:'rgba(251,146,60,0.38)',borderColor:'rgba(234,88,12,0.55)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
   if(pctLine)datasets.push({type:'line',label:`稼働率(${year})`,data:pctLine,borderColor:'#185FA5',borderWidth:2,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2'});
