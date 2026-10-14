@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f6c8c'/%3E%3Crect x='15' y='17' width='34' height='30' rx='3' fill='%23fff'/%3E%3Crect x='15' y='17' width='34' height='9' rx='3' fill='%23ff8f4d'/%3E%3Crect x='21' y='31' width='6' height='6' rx='1' fill='%234db6d6'/%3E%3Crect x='30' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='39' y='31' width='6' height='6' rx='1' fill='%23ccddee'/%3E%3Crect x='21' y='39' width='6' height='5' rx='1' fill='%23ccddee'/%3E%3Crect x='30' y='39' width='6' height='5' rx='1' fill='%234db6d6'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
-<link rel="stylesheet" href="hotel_v3.css?v=20261014d">
+<link rel="stylesheet" href="hotel_v3.css?v=20261014e">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.3/css/flag-icons.min.css">
 </head>
 <body>
@@ -320,14 +320,32 @@
         <option value="2024">2024と比較</option>
         <option value="2025" selected>2025と比較</option>
       </select>
+      <div style="position:relative;">
+        <button id="occ-filter-btn" onclick="toggleOccFilterPanel()"
+          style="padding:6px 12px;border-radius:8px;border:1.5px solid #e8e6e0;background:#fff;cursor:pointer;font-size:13px;">集計対象：すべて</button>
+        <div id="occ-filter-panel" style="display:none;position:absolute;right:0;top:36px;z-index:50;background:#fff;border:1px solid #e0ded8;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);padding:12px 14px;min-width:300px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;color:#555;">集計対象部屋・物件</div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="setOccFilterAll(true)" style="padding:3px 9px;border-radius:6px;border:1px solid #e8e6e0;background:#fff;cursor:pointer;font-size:11px;">全選択</button>
+              <button onclick="setOccFilterAll(false)" style="padding:3px 9px;border-radius:6px;border:1px solid #e8e6e0;background:#fff;cursor:pointer;font-size:11px;">全解除</button>
+            </div>
+          </div>
+          <div id="occ-filter-list" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;"></div>
+          <div style="margin-top:9px;padding-top:8px;border-top:1px solid #f0eee8;font-size:11px;color:#888;line-height:1.5;">
+            絞り込みは<strong>2026年11月以降</strong>に対応します。それ以前は施設別の記録が無いため、全体の数値を表示します。
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+  <div id="occ-filter-note" style="display:none;margin-bottom:10px;font-size:12px;"></div>
   <div id="occ-stats" style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;"></div>
   <!-- 月タブ（横スクロール対応） -->
   <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px;">
     <div id="occ-month-tabs" style="display:flex;gap:4px;min-width:max-content;padding-bottom:2px;"></div>
   </div>
-  <div style="font-size:11px;color:#888;margin-bottom:8px;">棒グラフ：累計宿泊者数　折れ線：稼働率（全部屋満室=100%）　●：今日（22時以降に自動反映）　<span style="color:#185FA5;cursor:pointer;" onclick="autoCalcTodayOcc(true)">▶ 今すぐ反映</span></div>
+  <div style="font-size:11px;color:#888;margin-bottom:8px;">棒グラフ：累計宿泊者数　折れ線：稼働率（満室=100%）　●：今日（22時以降に自動反映／Sea Breeze 鎌倉・三浦を除く5区分で記録）　<span style="color:#185FA5;cursor:pointer;" onclick="autoCalcTodayOcc(true)">▶ 今すぐ反映</span></div>
   <div id="occ-chart-area" style="background:#fff;border:1px solid #e8e6e0;border-radius:10px;padding:12px;">
     <div id="occ-month-title" style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px;"></div>
     <div id="occ-month-stats" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"></div>
@@ -1947,11 +1965,11 @@
 <!-- 機能別に分割（レビュー#13第2段）。読込順：清掃→カレンダー→同期→main(定数/その他/BOOT)。
      mainは最後（BOOT時点で全関数が揃う必要があるため）。全ファイルはグローバルスコープを共有する。 -->
 <!-- ?v= はキャッシュバスティング用バージョン。デプロイのたびに日付/連番を更新すること（古いJS/CSSキャッシュ防止） -->
-<script src="hotel_v3.cleaning.js?v=20261014d"></script>
-<script src="hotel_v3.calendar.js?v=20261014d"></script>
-<script src="hotel_v3.sync.js?v=20261014d"></script>
-<script src="hotel_v3.pos.js?v=20261014d"></script>
-<script src="hotel_v3.js?v=20261014d"></script>
+<script src="hotel_v3.cleaning.js?v=20261014e"></script>
+<script src="hotel_v3.calendar.js?v=20261014e"></script>
+<script src="hotel_v3.sync.js?v=20261014e"></script>
+<script src="hotel_v3.pos.js?v=20261014e"></script>
+<script src="hotel_v3.js?v=20261014e"></script>
 <div id="notification-container"></div>
 </body>
 </html>

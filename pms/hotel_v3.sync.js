@@ -139,7 +139,7 @@ function _auditGuestLabel(g){
 function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
-    occCumul,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
+    occCumul,occGroups,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
     rentalSpaceReservations,propertySettings,repeatReminders,auditLog,
     posCategories,posProducts,posSales,posSettings,cleaningStaffList,
@@ -682,6 +682,25 @@ function _applyServerDataRaw(data) {
       propertySettings.mailSettings = base;
     }
   }
+  if (data.occGroups){
+    Object.keys(data.occGroups).forEach(y=>{
+      const yi=parseInt(y);
+      if(!occGroups[yi])occGroups[yi]={};
+      Object.keys(data.occGroups[y]).forEach(m=>{
+        const mi=parseInt(m);
+        const srvM=data.occGroups[y][m]||{};
+        const locM=occGroups[yi][mi]||{};
+        const merged={};
+        new Set([...Object.keys(srvM),...Object.keys(locM)]).forEach(gkey=>{
+          const sa=srvM[gkey], la=locM[gkey];
+          if(!Array.isArray(la)){ merged[gkey]=Array.isArray(sa)?sa:la; return; }
+          // セル単位マージ：ローカルに値があれば保持、無ければサーバーで補完
+          merged[gkey]=la.map((lv,i)=>lv!=null?lv:((Array.isArray(sa)&&sa[i]!=null)?sa[i]:null));
+        });
+        occGroups[yi][mi]=merged;
+      });
+    });
+  }
   if (data.occCumul){
     Object.keys(data.occCumul).forEach(y=>{
       const yi=parseInt(y);
@@ -1004,6 +1023,7 @@ function saveToLS(){
   put('hotel_repeatReminders',JSON.stringify(repeatReminders));
   put('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
   put('hotel_roomFilter',JSON.stringify(roomFilter));
+  put('hotel_occGroups',JSON.stringify(occGroups));
   put('hotel_rooms',JSON.stringify(rooms));
   put('hotel_budgets',JSON.stringify(budgets));
 }
@@ -1015,6 +1035,7 @@ function loadFromLS(){
     const rr=localStorage.getItem('hotel_repeatReminders');if(rr){repeatReminders=JSON.parse(rr);nextReminderId=Math.max(0,...repeatReminders.map(r=>r.id||0))+1;}
     rankAPanelHidden=localStorage.getItem('hotel_rankAPanelHidden')==='1';
     const rf=localStorage.getItem('hotel_roomFilter');if(rf){const parsed=JSON.parse(rf);FILTER_GROUPS.forEach(g=>{if(parsed[g.key]!==undefined)roomFilter[g.key]=parsed[g.key];});}
+    const og=localStorage.getItem('hotel_occGroups');if(og){const parsed=JSON.parse(og);if(parsed&&typeof parsed==='object')occGroups=parsed;}
     const bg=localStorage.getItem('hotel_budgets');if(bg){
       const parsed=JSON.parse(bg);
       for(let m=1;m<=12;m++){if(parsed[m]!=null)budgets[m]=Number(parsed[m])||0;}
