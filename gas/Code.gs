@@ -200,12 +200,28 @@ function doGet(e) {
       const guestData = data.guestData || {};
       const matches = {};
       if (id) {
+        // ① 予約IDまたは共通チェックインID(groupId)が一致するセルを拾う
         Object.keys(guestData).forEach(k => {
           const g = guestData[k];
           if (!g) return;
           const gid = g.reservationId || g.id;
-          if (gid && String(gid).trim() === id) matches[k] = g;
+          if ((gid && String(gid).trim() === id) ||
+              (g.groupId && String(g.groupId).trim() === id)) matches[k] = g;
         });
+        // ② 複数部屋予約：見つかった予約が属するグループの全部屋を追加する。
+        //    どの子予約のIDで検索しても、グループ全体が1回で取得できるようにする。
+        var grpIds = {};
+        Object.keys(matches).forEach(function(k){
+          var g = matches[k];
+          if (g && g.groupId) grpIds[String(g.groupId).trim()] = true;
+        });
+        if (Object.keys(grpIds).length) {
+          Object.keys(guestData).forEach(function(k){
+            if (matches[k]) return;
+            var g = guestData[k];
+            if (g && g.groupId && grpIds[String(g.groupId).trim()]) matches[k] = g;
+          });
+        }
       }
       // パスポート画像は管理者キーのみ取得可（予約IDの総当たりによる画像流出を防止）
       if (auth !== 'admin') { stripPassportImages(matches); }
@@ -521,8 +537,26 @@ function doPost(e) {
       const finalGuestsLight = finalGuests;
       // 年付きキー(y:m:r:d)/2026形式(m:r:d)の両方で正しく日付順に並べる
       const keyDateNum = function(k){ var pk=_parseKey_(k); return (pk.y||0)*10000 + (pk.m||0)*100 + (pk.d||0); };
+      // 複数部屋予約：対象予約が属するグループを特定し、グループ内の全部屋を更新対象にする。
+      // 一部の部屋だけチェックイン済みになる不整合を防ぐため、1回の更新でまとめて処理する。
+      var groupId = '';
+      Object.keys(guestData).forEach(function(k){
+        var g = guestData[k]; if(!g) return;
+        var gid = g.reservationId || g.id;
+        if (gid && String(gid).trim() === targetId && g.groupId) groupId = String(g.groupId).trim();
+      });
+      if (!groupId) {
+        // targetId 自体が共通チェックインIDの場合
+        Object.keys(guestData).forEach(function(k){
+          var g = guestData[k];
+          if (!groupId && g && g.groupId && String(g.groupId).trim() === targetId) groupId = targetId;
+        });
+      }
       const matchingKeys = Object.keys(guestData).filter(function(k){
-        var g=guestData[k]; var gid=g&&(g.reservationId||g.id); return gid && String(gid).trim()===targetId;
+        var g=guestData[k]; if(!g) return false;
+        var gid=g.reservationId||g.id;
+        if (gid && String(gid).trim()===targetId) return true;
+        return !!(groupId && g.groupId && String(g.groupId).trim()===groupId);
       }).sort(function(a,b){ return keyDateNum(a)-keyDateNum(b); });
       const anchorKey = matchingKeys[0];
       var updated = 0;
@@ -1076,7 +1110,12 @@ function _mailAttachBlobs_(list){
 // 手入力と同じ予約検索処理へ渡されるため、読み取り後の流れは変わらない。
 // 先頭ゼロを落とさないよう、数値化せず文字列のまま扱う。
 function _mailQrPayload_(g){
-  return g&&g.reservationId!=null ? String(g.reservationId).trim() : '';
+  if(!g)return '';
+  // 複数部屋予約は共通チェックインID(groupId)を入れる。
+  // どの子予約のメールから読み取っても同じグループが特定でき、
+  // 1回の手続きで全部屋をチェックインできるようにするため。
+  if(g.groupId!=null && String(g.groupId).trim()) return String(g.groupId).trim();
+  return g.reservationId!=null ? String(g.reservationId).trim() : '';
 }
 // QR画像Blob（外部API・画像サイズ等は変更なし。格納する文字列だけを変更）
 function _mailQrBlob_(payload){

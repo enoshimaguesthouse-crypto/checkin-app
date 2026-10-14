@@ -1423,6 +1423,64 @@ function clearReservationCells(resId){
   });
 }
 
+// ══════════════════════════════════════════════════════════
+//  複数部屋予約のグループ判定
+//  同じ予約番号のベース部分（枝番を除く）＋予約者氏名が一致する予約を
+//  1つのチェックイングループとして扱う。
+//  例: 5951519997_01（本館ドミ）と 5951519997_02（ANNEX個室）→ 同一グループ
+// ══════════════════════════════════════════════════════════
+// 予約番号から「ベース番号」と「枝番」を取り出す。末尾の _01 / -01 形式に対応。
+// 枝番が無い通常予約は null を返し、グループ判定の対象外とする。
+function _parseBookingNo(no){
+  const m=String(no||'').trim().match(/^(.+?)[_-](\d{1,3})$/);
+  if(!m)return null;
+  return {base:m[1], seq:parseInt(m[2],10)};
+}
+// 氏名の比較用の正規化。全角・半角や前後/連続の空白の違いで別人と判定されないようにする。
+// 表示用の氏名そのものは変更しない（比較のためだけに使う）。
+function _normBookerName(name){
+  let s=String(name||'');
+  try{ s=s.normalize('NFKC'); }catch(e){}
+  return s.replace(/\s+/g,' ').trim().toLowerCase();
+}
+// CSVの行（予約ID・予約番号・予約者氏名）からグループを判定し、
+// 予約ID → グループID のMapを返す。グループIDは枝番が最小の予約の予約ID。
+// ・同じ予約IDの重複行は先に1件へまとめる（部屋数・人数を二重に数えないため）
+// ・予約者氏名が一致しないものは統合しない
+// ・枝番が _01 から連続していないものは統合しない（取りこぼしは別予約のまま）
+function detectReservationGroups(rows){
+  const byRes=new Map();   // 予約ID → {resId, base, seq, nameKey}
+  (rows||[]).forEach(r=>{
+    const resId=String(r.reservationId||'').trim();
+    if(!resId)return;
+    const pb=_parseBookingNo(r.bookingNo);
+    if(!pb)return;
+    if(byRes.has(resId))return;          // 同一予約IDの重複行はここで除外
+    byRes.set(resId,{resId,base:pb.base,seq:pb.seq,nameKey:_normBookerName(r.bookerName)});
+  });
+  // ベース番号＋氏名でまとめる
+  const buckets=new Map();
+  byRes.forEach(v=>{
+    if(!v.nameKey)return;                // 氏名が無ければ判定しない
+    const k=v.base+'\u0000'+v.nameKey;
+    if(!buckets.has(k))buckets.set(k,[]);
+    buckets.get(k).push(v);
+  });
+  const out=new Map();
+  const skipped=[];
+  buckets.forEach(list=>{
+    if(list.length<2)return;             // 単一予約は従来どおり
+    list.sort((a,b)=>a.seq-b.seq);
+    // 枝番が 1 から連続していること
+    const ok=list.every((v,i)=>v.seq===i+1);
+    if(!ok){ skipped.push(list.map(v=>v.resId+'(#'+v.seq+')').join(',')); return; }
+    const groupId=list[0].resId;         // 枝番が最小（_01）の予約IDを共通IDにする
+    list.forEach(v=>out.set(v.resId,groupId));
+  });
+  if(skipped.length)console.warn('[予約グループ] 枝番が連続しないため統合しませんでした:',skipped.join(' / '));
+  return out;
+}
+
 function importCSVText(text){
   // クォート内改行を考慮したレコード分割
   const records=splitCSVRecords(text);
@@ -1440,6 +1498,24 @@ function importCSVText(text){
   const monthCounts={};
   // 貸切の重複予約番号を管理（同一予約番号は1回だけ取り込む）
   const processedCharter=new Set();
+  // ── 複数部屋予約のグループ判定（本処理の前に全行を1回走査）──
+  // 行ごとに判定すると「相手の行をまだ見ていない」ため確定できないので先に作る。
+  // 予約者氏名は AD列（予約者氏名）を使う。宿泊者氏名(M列)は部屋ごとに
+  // 表記が違うことがあり（例: Megumi Nakano / Nakano Megumi）判定に使えない。
+  const _groupRows=[];
+  for(let li=1;li<records.length;li++){
+    const c=parseCSVLine(records[li]);
+    if(!c||c.length<5)continue;
+    if(get(c,'予約区分')==='キャンセル')continue;
+    if((parseInt(get(c,'泊目')||'1'))!==1)continue;
+    _groupRows.push({
+      reservationId:(get(c,'予約ID')||'').replace(/\D/g,'').slice(0,6),
+      bookingNo:get(c,'予約番号'),
+      bookerName:get(c,'予約者氏名')
+    });
+  }
+  const _groupMap=detectReservationGroups(_groupRows);
+  const _groupedIds=new Set();
   // 既存reservationId を Map で高速検索（value=true は通常予約、false は cont）
   const existingIdMap=new Map(
     Object.values(guestData)
@@ -1676,6 +1752,7 @@ function importCSVText(text){
     // 自動メールの送信済み記録。変更反映でセルを作り直すと消えてしまい、
     // 「まだ送っていない」とみなされて同じメールが再送される（重複送信の原因）。
     let preservedMailSent=null, preservedMailHistory=null;
+    let preservedGroupId=null;   // 複数部屋予約の共通チェックインID
     let _pendingRestore=null; // 日程変更で削除した旧セルの退避（新配置に失敗したら復元する）
     if(!isCharter && reservationId){
       const existing=findExistingReservationInfo(reservationId);
@@ -1715,6 +1792,7 @@ function importCSVText(text){
         // 送信済み記録も引き継ぐ（これが無いと取込のたびに自動メールが再送される）
         if(existing.data.mailSent)preservedMailSent={...existing.data.mailSent};
         if(existing.data.mailHistory)preservedMailHistory={...existing.data.mailHistory};
+        if(existing.data.groupId)preservedGroupId=existing.data.groupId;
         _pendingRestore=Object.entries(guestData)
           .filter(([k,g])=>g&&String(g.reservationId)===String(reservationId))
           .map(([k,g])=>[k,{...g}]);
@@ -1815,7 +1893,13 @@ function importCSVText(text){
       // 変更反映でセルを作り直す場合も、自動メールの送信済み記録は引き継ぐ
       ...(preservedMailSent?{mailSent:preservedMailSent}:{}),
       ...(preservedMailHistory?{mailHistory:preservedMailHistory}:{}),
+      // 複数部屋予約の共通チェックインID。各部屋の予約IDはそのまま残す。
+      // 今回のCSVで判定できなければ、既存セルの値を引き継ぐ（取込のたびに
+      // グループが外れないようにするため）。
+      ...(_groupMap.get(reservationId)?{groupId:_groupMap.get(reservationId)}
+          :(preservedGroupId?{groupId:preservedGroupId}:{})),
     };
+    if(_groupMap.get(reservationId))_groupedIds.add(reservationId);
 
     if(isCharter&&charterGroupRooms.length>0){
       // 貸切: グループ全部屋×全泊に書き込み（月跨ぎ対応）
@@ -1918,6 +2002,7 @@ function importCSVText(text){
     ${updatedCount>0?`<br>🔄 変更反映：<strong>${updatedCount}件</strong>`:''}
     ${dupSkipList.length>0?`<br>ℹ 重複スキップ：<strong>${dupSkipList.length}件</strong>`:''}
     ${ciSkipList.length>0?`<br>🔒 チェックイン済みのためスキップ：<strong>${ciSkipList.length}件</strong>`:''}
+    ${_groupedIds.size>0?`<br>🔗 複数部屋のまとめ：<strong>${_groupedIds.size}件</strong>の予約を${new Set([..._groupedIds].map(id=>_groupMap.get(id))).size}グループに統合（1回のチェックインで全部屋を処理できます）`:''}
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
     ${charterCount>0?`<br>🔒 貸切予約 <strong>${charterCount}件</strong>検出`:''}
