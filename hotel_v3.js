@@ -2122,6 +2122,51 @@ function occUsedCellsFromGuestData(year,month){
   return used;
 }
 
+// 絞り込み時の日別グラフ用。guestData から「宿泊日ごとの使用セル数」を数え、
+// 1日目からの累計配列にして返す（最終値は occUsedCellsFromGuestData と必ず一致する）。
+// 全選択時に使う occCumul は「その日時点で判明していた予約数」という別の意味の
+// 記録だが、こちらは宿泊日ベースの累計。月末累計が一致するので画面内の数字は
+// 食い違わない。グラフの凡例で意味の違いが分かるようにする。
+function occDailyCumulFromGuestData(year,month){
+  if(occUsedCellsFromGuestData(year,month)==null)return null;
+  const fRooms=rooms.filter(r=>roomFilter[r.group]!==false);
+  const days=gDays(year,month);
+  const honkanRooms=fRooms.filter(r=>r.group==='本館−個室'||r.group==='本館−男女混合ドミトリー').length;
+  const annexRooms =fRooms.filter(r=>r.group==='ANNEX−個室'||r.group==='ANNEX−ドミトリー').length;
+  const perDay=Array(days).fill(0);
+  const charterCounted=new Set();
+  for(let d=1;d<=days;d++){
+    fRooms.forEach(room=>{
+      const g=guestData[gk(month,room.id,d,year)];
+      if(!g)return;
+      if(g.charter){
+        if(g.charterAnchor){
+          const cg=g.charterGroup||'本館';
+          const key=`${cg}:${d}`;
+          if(!charterCounted.has(key)){
+            charterCounted.add(key);
+            let cNights=1;
+            while(true){
+              const next=guestData[gk(month,room.id,d+cNights,year)];
+              if(!next||!next.charter)break;
+              if(next.charterAnchor)break;
+              if(!next.cont)break;
+              cNights++;
+            }
+            // 貸切の合計（部屋数×泊数）を、泊まった日へ1日ずつ割り振る。
+            // 合計は usedCells と同じになるため、月末累計がずれない。
+            const per=(cg==='ANNEX'?annexRooms:honkanRooms);
+            for(let n=0;n<cNights;n++){ if(d-1+n<days)perDay[d-1+n]+=per; }
+          }
+        }
+      } else { perDay[d-1]++; }
+    });
+  }
+  const cumul=[]; let sum=0;
+  for(let i=0;i<days;i++){ sum+=perDay[i]; cumul.push(sum); }
+  return cumul;
+}
+
 // ① 22時以降に当日guestDataを集計してoccCumulに反映
 function autoCalcTodayOcc(force=false){
   const now=new Date();
@@ -2197,7 +2242,7 @@ function getOccData(year,month){
     const used=occUsedCellsFromGuestData(year,month);
     // guestData にその年月が無い＝部屋別に分解できない（過去月・前年など）
     if(used==null)return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:null,noBreakdown:true};
-    return {data:[],max:maxCumul,isReal:true,filtered:true,monthTotal:used};
+    return {data:occDailyCumulFromGuestData(year,month)||[],max:maxCumul,isReal:true,filtered:true,monthTotal:used};
   }
   // 実データあり
   if(occCumul[year]&&occCumul[year][month]){
@@ -2282,9 +2327,9 @@ function renderOcc(){
     if(!occFilterIsAll()){
       noteEl.style.display='block';
       noteEl.innerHTML='<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:9px 13px;border-radius:6px;color:#92400e;">'
-        +'集計対象を絞り込み中です。月末累計・稼働率は名簿データから対象部屋だけで数え直しています。'
-        +'<br>日別の累計グラフは「その日時点で判明していた予約数」の記録で、部屋別に遡って分解できないため非表示にしています。'
-        +'名簿データの無い月（2026年4月以前・前年）は「内訳データなし」と表示されます。</div>';
+        +'集計対象を絞り込み中です。月末累計・稼働率・グラフは名簿データから対象部屋だけで数え直しています。'
+        +'<br>グラフは<strong>宿泊日ベースの累計</strong>です（全選択時は「その日時点で判明していた予約数」の記録を表示するため、同じ月でも途中の形が変わります。月末累計は一致します）。'
+        +'名簿データの無い月は「内訳データなし」と表示されます。</div>';
     } else { noteEl.style.display='none'; noteEl.innerHTML=''; }
   }
 
@@ -2377,19 +2422,36 @@ function selectOccMonth(month,year,cmpYear){
   // チャート描画
   occCharts.forEach(c=>{try{c.destroy();}catch(e){}});occCharts=[];
   const ctx=document.getElementById('occ-chart');if(!ctx)return;
+  // 空のグラフ枠だけが残らないようにする
+  const _noData=!(cur&&cur.data&&cur.data.length)&&!(cmp&&cmp.data&&cmp.data.length);
+  const _ph=document.getElementById('occ-chart-empty');
+  if(_ph)_ph.remove();
+  ctx.style.display=_noData?'none':'';
+  if(_noData){
+    const box=ctx.parentNode;
+    const div=document.createElement('div');
+    div.id='occ-chart-empty';
+    div.style.cssText='padding:40px 20px;text-align:center;color:#92400e;font-size:13px;background:#fffbeb;border-radius:8px;';
+    div.textContent=(cur&&cur.noBreakdown)
+      ? 'この月は名簿データが無いため、部屋別のグラフを表示できません（集計対象を「すべて」にすると全施設合計のグラフが表示されます）。'
+      : 'この月のデータがありません。';
+    box.appendChild(div);
+    return;
+  }
   const labels=Array.from({length:days},(_,i)=>i+1);
-  // 絞り込み時は日別の棒・折れ線を描かない。occCumul は「その日時点で判明していた
-  // 予約数」という過去のスナップショットの積み重ねで、部屋別に遡って分解できないため。
-  // 分解できない日別値を出すと、月末累計（再集計値）と食い違う数字が並んでしまう。
-  const curData=(cur&&!cur.filtered)?cur.data.slice(0,days):null;
-  const cmpData=(cmp&&!cmp.filtered)?cmp.data.slice(0,days):null;
+  // 絞り込み時は guestData から作った「宿泊日ベースの累計」を描く。
+  // 名簿データが無い月（noBreakdown）はグラフも出せない。
+  const curData=(cur&&cur.data&&cur.data.length)?cur.data.slice(0,days):null;
+  const cmpData=(cmp&&cmp.data&&cmp.data.length)?cmp.data.slice(0,days):null;
   const pctLine=curData&&curMax?curData.map(v=>v!=null?Math.min(100,Math.round(v/curMax*100)):null):null;
   const cmpPctLine=cmpData&&cmpMax?cmpData.map(v=>v!=null?Math.min(100,Math.round(v/cmpMax*100)):null):null;
   const todayCount=(year===2026)?getTodayGuestCount(month):null;
 
   const datasets=[];
-  if(curData)datasets.push({type:'bar',label:`${year}年 累計`,data:curData,backgroundColor:'rgba(96,165,250,0.55)',borderColor:'rgba(59,130,246,0.7)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
-  if(cmpData)datasets.push({type:'bar',label:`${cmpYear}年 累計`,data:cmpData,backgroundColor:'rgba(251,146,60,0.38)',borderColor:'rgba(234,88,12,0.55)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
+  const curLbl=(cur&&cur.filtered)?`${year}年 累計（宿泊日ベース）`:`${year}年 累計`;
+  const cmpLbl=(cmp&&cmp.filtered)?`${cmpYear}年 累計（宿泊日ベース）`:`${cmpYear}年 累計`;
+  if(curData)datasets.push({type:'bar',label:curLbl,data:curData,backgroundColor:'rgba(96,165,250,0.55)',borderColor:'rgba(59,130,246,0.7)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
+  if(cmpData)datasets.push({type:'bar',label:cmpLbl,data:cmpData,backgroundColor:'rgba(251,146,60,0.38)',borderColor:'rgba(234,88,12,0.55)',borderWidth:0.5,borderRadius:2,yAxisID:'y'});
   if(pctLine)datasets.push({type:'line',label:`稼働率(${year})`,data:pctLine,borderColor:'#185FA5',borderWidth:2,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2'});
   if(cmpPctLine)datasets.push({type:'line',label:`稼働率(${cmpYear})`,data:cmpPctLine,borderColor:'#ea580c',borderWidth:1.5,pointRadius:0,fill:false,tension:0.4,yAxisID:'y2',borderDash:[4,3]});
   if(todayCount&&NOW.getMonth()+1===month){
