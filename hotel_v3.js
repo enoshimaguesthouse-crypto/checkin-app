@@ -599,6 +599,11 @@ let roomFilter=Object.fromEntries(FILTER_GROUPS.map(g=>[g.key,true]));
 // occGroups[年][月][区分キー] = 日別の配列 を持つ。
 // occCumul は合計しか持たず部屋別に遡れないため、ここから記録を始める。
 let occGroups={};
+// お客様単位の継続情報（リピートメモ）。予約ではなくお客様に紐づく。
+// キーはメールアドレス（無ければ電話番号）。氏名だけでは同姓同名の別人へ
+// メモが渡ってしまうため、氏名はキーに使わない。
+// { "e:xxx@example.com": {name:'表示用の氏名', repeatMemo:'...', updatedAt:'ISO'} }
+let guestProfiles={};
 // 内訳の記録開始。これより前の月は内訳が無いので絞り込みの対象外とする。
 const OCC_GROUPS_FROM={y:2026,m:11};
 // occCumul（全体の累計）が対象としてきた範囲。過去のデータは一貫して
@@ -1481,6 +1486,58 @@ function detectReservationGroups(rows){
   return out;
 }
 
+// ══════════════════════════════════════════════════════════
+//  リピーター判定・お客様単位の継続メモ
+// ══════════════════════════════════════════════════════════
+// 氏名の比較用の正規化（全角半角・空白・大小文字の違いを吸収）。
+// 元の氏名データは書き換えず、比較のためだけに使う。
+function _normPersonName(name){
+  let t=String(name||'');
+  try{ t=t.normalize('NFKC'); }catch(e){}
+  return t.replace(/[\s　]+/g,' ').trim().toLowerCase();
+}
+// お客様を一意に識別するキー。メールアドレス優先、無ければ電話番号。
+// 氏名はキーに使わない（同姓同名の別人に個人メモが渡るのを防ぐため）。
+// どちらも無い場合は空＝お客様単位のメモは扱わない。
+function _customerKeyOf(g){
+  if(!g)return '';
+  const em=String(g.email||'').trim().toLowerCase();
+  if(em && em.indexOf('@')>0)return 'e:'+em;
+  const ph=String(g.phone||'').replace(/\D/g,'');
+  if(ph.length>=9)return 'p:'+(ph.startsWith('81')?'0'+ph.slice(2):ph);
+  return '';
+}
+// 宿泊実績のある予約か。既存のステータス判定をそのまま使う。
+// キャンセルは cancelList へ移動して guestData から削除されるため、ここには現れない。
+function _hasStayed(g){ return !!(g && isCheckedIn(g.status)); }
+// 名簿全体から「過去に宿泊実績のあるお客様」の索引を作る。
+// 氏名の索引＝リピーター表示用／顧客キーの索引＝メモ引き継ぎの可否判定用。
+function buildPastStayIndex(){
+  const names=new Set(), keys=new Set();
+  Object.values(guestData||{}).forEach(g=>{
+    if(!_hasStayed(g))return;
+    const n=_normPersonName(g.name); if(n)names.add(n);
+    const k=_customerKeyOf(g); if(k)keys.add(k);
+  });
+  return {names,keys};
+}
+// お客様のリピートメモを取得／保存（予約ではなくお客様に紐づく）
+function getRepeatMemo(g){
+  const k=_customerKeyOf(g);
+  if(!k)return '';
+  const p=guestProfiles[k];
+  return (p&&typeof p.repeatMemo==='string')?p.repeatMemo:'';
+}
+function setRepeatMemo(g, memo){
+  const k=_customerKeyOf(g);
+  if(!k)return false;                       // 照合できないお客様には保存しない
+  const cur=guestProfiles[k]||{};
+  const next=String(memo==null?'':memo);
+  if(String(cur.repeatMemo||'')===next)return false;   // 変化なし
+  guestProfiles[k]={...cur, name:g.name||cur.name||'', repeatMemo:next, updatedAt:new Date().toISOString()};
+  return true;
+}
+
 function importCSVText(text){
   // クォート内改行を考慮したレコード分割
   const records=splitCSVRecords(text);
@@ -1515,6 +1572,11 @@ function importCSVText(text){
     });
   }
   const _groupMap=detectReservationGroups(_groupRows);
+  // 【重要】リピーター判定の根拠は「取込前の名簿にある宿泊実績」だけ。
+  // ループ内で都度 guestData を見ると、同じCSVで先に書き込んだ行を
+  // 自分の過去宿泊と誤認するため、必ずループ前に1度だけ作る。
+  const _pastStay=buildPastStayIndex();
+  let _repeatCount=0;
   const _groupedIds=new Set();
   // 既存reservationId を Map で高速検索（value=true は通常予約、false は cont）
   const existingIdMap=new Map(
@@ -1893,6 +1955,9 @@ function importCSVText(text){
       // 変更反映でセルを作り直す場合も、自動メールの送信済み記録は引き継ぐ
       ...(preservedMailSent?{mailSent:preservedMailSent}:{}),
       ...(preservedMailHistory?{mailHistory:preservedMailHistory}:{}),
+      // リピーター（過去に宿泊実績のある同姓同名のお客様）。氏名の前のアイコン表示用。
+      // メモの引き継ぎは別途「メール/電話が一致する場合のみ」で判定する。
+      ...(_pastStay.names.has(_normPersonName(guestName))?{isRepeat:true}:{}),
       // 複数部屋予約の共通チェックインID。各部屋の予約IDはそのまま残す。
       // 今回のCSVで判定できなければ、既存セルの値を引き継ぐ（取込のたびに
       // グループが外れないようにするため）。
@@ -1900,6 +1965,7 @@ function importCSVText(text){
           :(preservedGroupId?{groupId:preservedGroupId}:{})),
     };
     if(_groupMap.get(reservationId))_groupedIds.add(reservationId);
+    if(gBase.isRepeat)_repeatCount++;
 
     if(isCharter&&charterGroupRooms.length>0){
       // 貸切: グループ全部屋×全泊に書き込み（月跨ぎ対応）
@@ -2002,6 +2068,7 @@ function importCSVText(text){
     ${updatedCount>0?`<br>🔄 変更反映：<strong>${updatedCount}件</strong>`:''}
     ${dupSkipList.length>0?`<br>ℹ 重複スキップ：<strong>${dupSkipList.length}件</strong>`:''}
     ${ciSkipList.length>0?`<br>🔒 チェックイン済みのためスキップ：<strong>${ciSkipList.length}件</strong>`:''}
+    ${_repeatCount>0?`<br>Ⓡ リピーター：<strong>${_repeatCount}件</strong>（過去に宿泊実績のある同姓同名のお客様）`:''}
     ${_groupedIds.size>0?`<br>🔗 複数部屋のまとめ：<strong>${_groupedIds.size}件</strong>の予約を${new Set([..._groupedIds].map(id=>_groupMap.get(id))).size}グループに統合（1回のチェックインで全部屋を処理できます）`:''}
     ${parkAdded>0?`<br>🚙 駐車場に<strong>${parkAdded}件</strong>自動追加`:''}
     ${surfAdded>0?`<br>🏄 サーフィンリストに<strong>${surfAdded}件</strong>自動追加`:''}
