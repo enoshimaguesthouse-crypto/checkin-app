@@ -139,7 +139,7 @@ function _auditGuestLabel(g){
 function collectAllData() {
   return {
     guestData,cancelList,parkData,surfList,staffNotes,salesData,
-    occCumul,occGroups,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
+    occCumul,occGroups,guestProfiles,cleaningData,roomSettings,rooms,roomPriorityMaster,unassignedReservations,
     budgets,staffNames,snTypes,priorityCleaningItems,priorityCleaningSettings,
     rentalSpaceReservations,propertySettings,repeatReminders,auditLog,
     posCategories,posProducts,posSales,posSettings,cleaningStaffList,
@@ -682,6 +682,15 @@ function _applyServerDataRaw(data) {
       propertySettings.mailSettings = base;
     }
   }
+  if (data.guestProfiles){
+    Object.keys(data.guestProfiles).forEach(k=>{
+      const sv=data.guestProfiles[k], lv=guestProfiles[k];
+      if(!lv){ guestProfiles[k]=sv; return; }
+      // 両方にある場合は更新日時が新しい方を採用（他端末の編集を取り込む）
+      const st=String(sv&&sv.updatedAt||''), lt=String(lv&&lv.updatedAt||'');
+      if(st>lt)guestProfiles[k]=sv;
+    });
+  }
   if (data.occGroups){
     Object.keys(data.occGroups).forEach(y=>{
       const yi=parseInt(y);
@@ -1024,6 +1033,7 @@ function saveToLS(){
   put('hotel_rankAPanelHidden',rankAPanelHidden?'1':'0');
   put('hotel_roomFilter',JSON.stringify(roomFilter));
   put('hotel_occGroups',JSON.stringify(occGroups));
+  put('hotel_guestProfiles',JSON.stringify(guestProfiles));
   put('hotel_rooms',JSON.stringify(rooms));
   put('hotel_budgets',JSON.stringify(budgets));
 }
@@ -1036,6 +1046,7 @@ function loadFromLS(){
     rankAPanelHidden=localStorage.getItem('hotel_rankAPanelHidden')==='1';
     const rf=localStorage.getItem('hotel_roomFilter');if(rf){const parsed=JSON.parse(rf);FILTER_GROUPS.forEach(g=>{if(parsed[g.key]!==undefined)roomFilter[g.key]=parsed[g.key];});}
     const og=localStorage.getItem('hotel_occGroups');if(og){const parsed=JSON.parse(og);if(parsed&&typeof parsed==='object')occGroups=parsed;}
+    const gp=localStorage.getItem('hotel_guestProfiles');if(gp){const parsed=JSON.parse(gp);if(parsed&&typeof parsed==='object')guestProfiles=parsed;}
     const bg=localStorage.getItem('hotel_budgets');if(bg){
       const parsed=JSON.parse(bg);
       for(let m=1;m<=12;m++){if(parsed[m]!=null)budgets[m]=Number(parsed[m])||0;}

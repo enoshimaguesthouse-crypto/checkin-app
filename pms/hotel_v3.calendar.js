@@ -448,6 +448,8 @@ function renderReg(){
           if(cashOverdue)row+=`<span class="c-cash-alert" title="現金払い・到着時刻を1時間以上超過／未チェックイン">🔴</span>`;
           if(isCharter)row+=`<span style="font-size:8px;font-weight:700;color:#7d4c00;background:rgba(255,200,100,.3);border-radius:2px;padding:0 3px;flex-shrink:0;">🔒</span>`;
           if(allIcons)row+=planIconsHtml;
+          // リピーター：氏名の前に丸囲みRを表示（氏名そのものは変更しない）
+          if(g.isRepeat)row+=`<span class="c-repeat" title="リピーター（過去に宿泊実績のあるお客様）">R</span>`;
           row+=`<span class="${ncls} c-name">${esc(g.name)}</span>`;
           if(g.reservationId)row+=`<span style="font-size:9px;font-weight:600;color:#185FA5;background:#e8f0fe;border-radius:3px;padding:0 4px;flex-shrink:0;">${esc(g.reservationId)}</span>`;
           row+=guestsBadge+payChip+priceChip;
@@ -963,7 +965,8 @@ function onDrop(e,rid,day){
 function openAdd(){
   if(currentRole==='reception')return; // 閲覧専用：新規予約の追加は不可
   editKey=null;document.getElementById('modal-title').textContent='予約追加';document.getElementById('del-btn').style.display='none';
-  ['f-name','f-price','f-note','f-arrival','f-resid'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f-name','f-price','f-note','f-arrival','f-resid','f-repeat-memo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  { const n=document.getElementById('f-repeat-memo-note'); if(n){n.style.display='none';n.textContent='';} }
   // 電話番号・住所をクリア
   document.getElementById('f-phone').value='';
   document.getElementById('f-address').value='';
@@ -1018,6 +1021,25 @@ function openEdit(k){
   document.getElementById('f-guests').value=guestCountOf(g);
   document.getElementById('f-price').value=g.price||'';
   document.getElementById('f-note').value=g.note||'';
+  // リピートメモはお客様に紐づく情報。メール/電話で照合できる場合のみ読み書きする。
+  {
+    const rm=document.getElementById('f-repeat-memo');
+    const note=document.getElementById('f-repeat-memo-note');
+    const key=_customerKeyOf(g);
+    if(rm){
+      rm.value=key?getRepeatMemo(g):'';
+      rm.disabled=!key;
+      rm.style.background=key?'':'#f5f5f5';
+    }
+    if(note){
+      if(key){ note.style.display='none'; note.textContent=''; }
+      else {
+        // 同姓同名の別人へメモが渡らないよう、氏名だけの一致では引き継がない
+        note.style.display='block';
+        note.textContent='※ メールアドレス・電話番号が未登録のため、リピートメモは保存できません（同姓同名の別人と区別できないため）。';
+      }
+    }
+  }
   document.getElementById('f-arrival').value=g.arrivalTime||'';
   if(document.getElementById('f-resid'))document.getElementById('f-resid').value=g.reservationId||'';
   document.getElementById('f-pay').value=g.pay||'事前決済';document.getElementById('f-sex').value=g.sex||'男';
@@ -1304,6 +1326,19 @@ function saveGuest(){
   const day=dateParts?parseInt(dateParts[2]):1;
   const rid=parseInt(document.getElementById('f-room').value),nights=parseInt(document.getElementById('f-nights').value)||1,status=document.getElementById('f-status').value;
   const note=document.getElementById('f-note').value;
+  // リピートメモはお客様単位で保存する（予約データには持たせない）
+  {
+    const rm=document.getElementById('f-repeat-memo');
+    if(rm && !rm.disabled && editKey && guestData[editKey]){
+      // 保存後の連絡先で照合できるよう、フォームの入力値を優先して鍵を作る
+      const _forKey={
+        email:String(document.getElementById('f-email')?.value||guestData[editKey].email||'').trim(),
+        phone:String(document.getElementById('f-phone')?.value||guestData[editKey].phone||'').trim(),
+        name:String(document.getElementById('f-name')?.value||guestData[editKey].name||'').trim()
+      };
+      setRepeatMemo(_forKey, rm.value);
+    }
+  }
   // チェックボックスから備考タグを自動追記（重複なし）
   let noteWithTags=note;
   allPlanRules().forEach(rule=>{
@@ -1356,7 +1391,10 @@ function saveGuest(){
     // mailLang（送信言語の手動上書き）・mailHistory・identityPhotoId もフォームに無いため引き継ぐ。
     // mailSent（自動メールの二重送信防止フラグ）は特に重要。これを落とすと
     // 「まだ送っていない」と判定され、編集のたびに同じメールが再送される。
-    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport','mailLang','mailSent','mailHistory','identityPhotoId'].forEach(f=>{
+    ['guests','agreementAccepted','agreementAcceptedAt','agreementLanguage','agreementMethod','agreementSignature','checkedInAt','checkedOutAt','passport','mailLang','mailSent','mailHistory','identityPhotoId',
+     // isRepeat（リピーター表示）・groupId（複数部屋の共通チェックインID）も
+     // フォームに無いため、編集保存で落ちないよう引き継ぐ
+     'isRepeat','groupId'].forEach(f=>{
       if(guestData[editKey][f]!==undefined)_preserve[f]=guestData[editKey][f];
     });
   }

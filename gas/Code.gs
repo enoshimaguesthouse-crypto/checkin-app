@@ -71,7 +71,7 @@ function getOrCreateFile(fileName, emptyContent) {
 function getHotelFile() {
   return getOrCreateFile(FILE_NAME, {
     guestData:{}, cancelList:[], parkData:{}, surfList:[],
-    staffNotes:[], salesData:{}, occCumul:{}, occGroups:{}, cleaningData:{},
+    staffNotes:[], salesData:{}, occCumul:{}, occGroups:{}, guestProfiles:{}, cleaningData:{},
     roomSettings:{}, rooms:[], roomPriorityMaster:{}, unassignedReservations:[],
     budgets:{},                                                    // ←追加
     staffNames:[], snTypes:[], priorityCleaningItems:[], priorityCleaningSettings:{},
@@ -624,6 +624,7 @@ function doPost(e) {
   salesData:   payload.salesData   || {},
   occCumul:    payload.occCumul    || {},
   occGroups:   payload.occGroups   || {},   // ←稼働率：施設・部屋タイプ別の内訳（2026年11月〜記録）
+  guestProfiles: payload.guestProfiles || {}, // ←お客様単位の継続情報（リピートメモ）
   cleaningData:payload.cleaningData|| {},
   roomSettings:        payload.roomSettings        || {},
   rooms:               payload.rooms               || [],

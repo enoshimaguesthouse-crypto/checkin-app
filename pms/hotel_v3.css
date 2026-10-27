@@ -1220,3 +1220,15 @@ body.viewonly .pc-check{pointer-events:none;opacity:.4;}
   50%    { box-shadow:0 0 0 4px rgba(220,60,60,.55); }
 }
 .mbg.sync-conflict .mb{ animation:syncConflict 1.2s ease-in-out 3; }
+
+
+/* リピーター表示：環境依存のⒶ等の記号に頼らず、丸囲みRをCSSで描く */
+.c-repeat{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:13px;height:13px;flex-shrink:0;
+  border:1.3px solid #b45309;border-radius:50%;
+  color:#b45309;background:#fff7ed;
+  font-size:9px;font-weight:800;line-height:1;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  margin-right:2px;
+}
