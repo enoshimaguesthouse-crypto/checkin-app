@@ -609,13 +609,33 @@ const OCC_GROUPS_FROM={y:2026,m:11};
 // occCumul（全体の累計）が対象としてきた範囲。過去のデータは一貫して
 // Sea Breeze 鎌倉・三浦を含んでいないため、記録も集計もこの5区分でそろえる。
 // Sea Breeze を含めた数値は occGroups（2026年11月〜）で区分別に参照する。
+// 集計対象の区分一覧。FILTER_GROUPS に加えて、部屋マスタに存在する区分も拾う。
+// 新しい物件・部屋が追加されたら、コードを直さなくても自動的に集計対象になる。
+function occAllGroups(){
+  const keys=FILTER_GROUPS.map(g=>g.key);
+  (rooms||[]).forEach(r=>{ if(r&&r.group&&keys.indexOf(r.group)<0)keys.push(r.group); });
+  return keys;
+}
+// 集計対象の総部屋数（＝稼働率の母数のもと）。追加された部屋もそのまま含まれる。
+function occAllRoomCount(){ return (rooms||[]).length; }
+// 【2025年以前のみ】当時の occCumul は Sea Breeze 鎌倉・三浦を集計していない。
+// この期間だけ、母数を当時の集計範囲にそろえる（分子にSBが無いのに
+// 母数だけ広げると稼働率が実態より低く出るため）。
 const OCC_BASE_GROUPS=FILTER_GROUPS.map(g=>g.key)
   .filter(k=>k!=='Sea Breeze 鎌倉'&&k!=='Sea Breeze 三浦');
 function occBaseRoomCount(){ return rooms.filter(r=>OCC_BASE_GROUPS.includes(r.group)).length; }
 // 名簿の現在値から、記録と同じ範囲（Sea Breeze を除く5区分）の月合計を数える
 function occLiveBaseTotal(year,month){
   const by=occUsedCellsByGroup(year,month);
-  return OCC_BASE_GROUPS.reduce((a,k)=>a+(by[k]||0),0);
+  return occAllGroups().reduce((a,k)=>a+(by[k]||0),0);
+}
+// 当月の最新値。絞り込み中は選択区分だけ、全選択時は全区分で数える。
+function occLiveTotalFor(year,month,useSelection){
+  const by=occUsedCellsByGroup(year,month);
+  const keys=useSelection
+    ? occAllGroups().filter(k=>roomFilter[k]!==false)
+    : occAllGroups();
+  return keys.reduce((a,k)=>a+(by[k]||0),0);
 }
 
 function occGroupsTracked(year,month){
@@ -2248,7 +2268,7 @@ function getTodayGuestCount(month){
 // 貸切が占有する建物（本館 or ANNEX）に属する各区分へ、その区分の部屋数×泊数を
 // 割り振る。こうすると区分ごとに数えても合計が全体と一致する。
 function occUsedCellsByGroup(year,month){
-  const out={}; FILTER_GROUPS.forEach(g=>out[g.key]=0);
+  const out={}; occAllGroups().forEach(k=>out[k]=0);
   const days=gDays(year,month);
   const cntOf=k=>rooms.filter(r=>r.group===k).length;
   const HONKAN=['本館−個室','本館−男女混合ドミトリー'];
@@ -2288,7 +2308,8 @@ function recordOccGroups(year,month,day){
   const by=occUsedCellsByGroup(year,month);
   if(!occGroups[year])occGroups[year]={};
   if(!occGroups[year][month])occGroups[year][month]={};
-  FILTER_GROUPS.forEach(g=>{
+  occAllGroups().forEach(gk2=>{
+    const g={key:gk2};
     let arr=occGroups[year][month][g.key];
     if(!Array.isArray(arr))arr=Array(days).fill(null);
     else if(arr.length<days)arr=arr.concat(Array(days-arr.length).fill(null));
@@ -2311,7 +2332,7 @@ function autoCalcTodayOcc(force=false){
   // 記録される値が変わってしまっていた。
   // 記録範囲は occCumul の過去データと同じ「Sea Breeze を除く5区分」。
   const by=occUsedCellsByGroup(y,m);
-  const usedCells=OCC_BASE_GROUPS.reduce((a,k)=>a+(by[k]||0),0);
+  const usedCells=occAllGroups().reduce((a,k)=>a+(by[k]||0),0);
 
   // 既存データをコピー（過去日のExcelデータを維持）
   const days=gDays(y,m);
@@ -2362,7 +2383,7 @@ function clearOccEdit(){
 // その年月に施設別の内訳が記録されているか
 function occHasGroups(year,month){
   return !!(occGroupsTracked(year,month)&&occGroups[year]&&occGroups[year][month]
-            &&FILTER_GROUPS.some(g=>Array.isArray(occGroups[year][month][g.key])));
+            &&occAllGroups().some(k=>Array.isArray(occGroups[year][month][k])));
 }
 
 function getOccData(year,month){
@@ -2372,8 +2393,9 @@ function getOccData(year,month){
   const days=gDays(year,month);
   const maxCumul=totalRoomCount*days; // 例: 30室×30日=900セルが100%（名簿側のtotalCellsと同一定義）
 
-  const selected=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false);
-  const isAll=selected.length===FILTER_GROUPS.length;
+  const _allKeys=occAllGroups();
+  const selected=_allKeys.filter(k=>roomFilter[k]!==false).map(k=>({key:k}));
+  const isAll=selected.length===_allKeys.length;
 
   // ★2025年以前は集計対象の絞り込みを適用しない。
   //   この期間は施設別の内訳が存在せず、記録自体も Sea Breeze 鎌倉・三浦を
@@ -2394,7 +2416,9 @@ function getOccData(year,month){
 
   // 内訳が記録されている月は、選択区分の日別値を足し合わせて使う。
   // 分子（選んだ区分の実績）と分母（選んだ区分の部屋数）が必ず対応する。
-  if(!isAll && occHasGroups(year,month)){
+  // 全選択時もこちらを使う。occCumul（旧来の合計）には Sea Breeze が
+  // 含まれていないため、内訳の合計を使わないとSBが集計に乗らない。
+  if(occHasGroups(year,month)){
     if(!selected.length)return {data:[],max:maxCumul,isReal:true,empty:true};
     const gm=occGroups[year][month];
     const out=Array(days).fill(null);
@@ -2444,25 +2468,28 @@ function toggleOccFilterPanel(){
 function renderOccFilterList(){
   const el=document.getElementById('occ-filter-list');
   if(!el)return;
-  el.innerHTML=FILTER_GROUPS.map(g=>`
+  // 部屋マスタに新しい区分が増えたら、そのままここにも並ぶ（ラベルは区分名）
+  const labelOf=k=>{ const f=FILTER_GROUPS.find(g=>g.key===k); return f?f.label:k; };
+  el.innerHTML=occAllGroups().map(k=>`
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
-      <input type="checkbox" ${roomFilter[g.key]!==false?'checked':''}
-        onchange="onOccFilterChange('${g.key}',this.checked)" style="width:13px;height:13px;cursor:pointer;">
-      ${g.label}
+      <input type="checkbox" ${roomFilter[k]!==false?'checked':''}
+        onchange="onOccFilterChange('${k.replace(/'/g,"\'")}',this.checked)" style="width:13px;height:13px;cursor:pointer;">
+      ${labelOf(k)}
     </label>`).join('');
 }
 function onOccFilterChange(key,checked){
   roomFilter[key]=checked; saveToLS(); renderOccFilterBtn(); renderOcc();
 }
 function setOccFilterAll(val){
-  FILTER_GROUPS.forEach(g=>roomFilter[g.key]=val);
+  occAllGroups().forEach(k=>roomFilter[k]=val);
   saveToLS(); renderOccFilterList(); renderOccFilterBtn(); renderOcc();
 }
 function renderOccFilterBtn(){
   const b=document.getElementById('occ-filter-btn');
   if(!b)return;
-  const on=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false).length;
-  const all=FILTER_GROUPS.length;
+  const _keys=occAllGroups();
+  const on=_keys.filter(k=>roomFilter[k]!==false).length;
+  const all=_keys.length;
   b.textContent=on===all?'集計対象：すべて':`集計対象 ${on}/${all}`;
   b.style.borderColor=on===all?'#e8e6e0':'#185FA5';
   b.style.color=on===all?'#333':'#185FA5';
@@ -2474,7 +2501,7 @@ function renderOcc(){
   const cmpYear=cmpYearVal?parseInt(cmpYearVal):null;
 
   renderOccFilterBtn();
-  const _selCount=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false).length;
+  const _selCount=occAllGroups().filter(k=>roomFilter[k]!==false).length;
   const noteEl=document.getElementById('occ-filter-note');
   // 2025年以前は絞り込みの対象外なので、全解除でも空状態にしない
   if(_selCount===0 && year>=2026){
@@ -2497,7 +2524,7 @@ function renderOcc(){
       noteEl.style.display='block';
       noteEl.innerHTML='<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:9px 13px;border-radius:6px;color:#92400e;">'
         +'集計対象を絞り込み中です。施設別の内訳は<strong>2026年11月</strong>から記録しています。'
-        +'<br><strong>2025年以前は絞り込みの対象外</strong>です（当時は Sea Breeze 鎌倉・三浦を集計しておらず、施設別に分けられないため）。常に全対象の数値を表示します。'
+        +'<br><strong>2025年以前は絞り込みの対象外</strong>です（当時は Sea Breeze 鎌倉・三浦を集計しておらず、施設別に分けられないため）。常に全対象の数値を表示し、稼働率も当時の集計範囲で算出します。'
         +'<br>2026年1月〜10月は内訳が無いため、記録済みの全体の宿泊者数をそのまま表示し（「内訳記録なし」と注記）、稼働率は算出しません。</div>';
     } else { noteEl.style.display='none'; noteEl.innerHTML=''; }
   }
@@ -2530,8 +2557,8 @@ function renderOcc(){
     const cur=getOccData(year,mi+1);
     const hasData=!!cur;
     let curLast=cur?cur.data.filter(v=>v!=null).slice(-1)[0]:null;
-    if(cur&&!cur.byGroup&&!cur.noGroups&&year===NOW.getFullYear()&&mi+1===NOW.getMonth()+1){
-      const _lv=occLiveBaseTotal(year,mi+1); if(_lv>0)curLast=_lv;
+    if(cur&&!cur.noGroups&&year===NOW.getFullYear()&&mi+1===NOW.getMonth()+1){
+      const _lv=occLiveTotalFor(year,mi+1,!!cur.byGroup); if(_lv>0)curLast=_lv;
     }
     const pct=(cur&&cur.max&&curLast)?Math.round(curLast/cur.max*1000)/10:null;
     const isActive=mi+1===defaultMonth;
@@ -2573,8 +2600,10 @@ function selectOccMonth(month,year,cmpYear){
   // 以前は名簿の表示結果(_lastUsedCells)を使っていたため、画面のフィルター次第で
   // 数字が変わっていた。記録（autoCalcTodayOcc）と同じ「Sea Breeze を除く5区分」で
   // 数え直し、表示と記録の定義をそろえる。
-  if(!(cur&&(cur.byGroup||cur.noGroups)) && year===NOW.getFullYear() && month===NOW.getMonth()+1){
-    const _live=occLiveBaseTotal(year,month);
+  // 当月はまだ22時の反映前なので、名簿の最新状態で数え直す。
+  // 絞り込みの有無で基準がずれないよう、同じ関数で揃える。
+  if(cur && !cur.noGroups && !cur.allRooms && year===NOW.getFullYear() && month===NOW.getMonth()+1){
+    const _live=occLiveTotalFor(year,month,!!cur.byGroup);
     if(_live>0)curLast=_live;
   }
   const pct=curMax&&curLast!=null?Math.round(curLast/curMax*1000)/10:null;
