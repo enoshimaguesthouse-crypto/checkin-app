@@ -617,6 +617,7 @@ function occLiveBaseTotal(year,month){
   const by=occUsedCellsByGroup(year,month);
   return OCC_BASE_GROUPS.reduce((a,k)=>a+(by[k]||0),0);
 }
+
 function occGroupsTracked(year,month){
   return (year>OCC_GROUPS_FROM.y)||(year===OCC_GROUPS_FROM.y&&month>=OCC_GROUPS_FROM.m);
 }
@@ -2374,6 +2375,23 @@ function getOccData(year,month){
   const selected=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false);
   const isAll=selected.length===FILTER_GROUPS.length;
 
+  // ★2025年以前は集計対象の絞り込みを適用しない。
+  //   この期間は施設別の内訳が存在せず、記録自体も Sea Breeze 鎌倉・三浦を
+  //   含まない「当時の5区分の合計」でしかない。チェック状態で絞り込むと、
+  //   Sea Breeze のチェックを外しただけで過去データが丸ごと消えてしまう。
+  //   選択年・比較年のどちらから呼ばれても年で判定するため、
+  //   「今年は絞り込み・前年は全対象」が自動的に成立する。
+  if(year<=2025){
+    if(occCumul[year]&&occCumul[year][month]){
+      // 母数も当時の集計範囲（Sea Breeze を除く5区分）にそろえる
+      return {data:occCumul[year][month],max:occBaseRoomCount()*days,isReal:true,allRooms:true};
+    }
+    // 実データが無ければ下の推計データへ（従来どおり）
+  } else {
+
+  // 内訳が記録されている月は、選択区分の日別値を足し合わせて使う。
+  // 分子（選んだ区分の実績）と分母（選んだ区分の部屋数）が必ず対応する。
+
   // 内訳が記録されている月は、選択区分の日別値を足し合わせて使う。
   // 分子（選んだ区分の実績）と分母（選んだ区分の部屋数）が必ず対応する。
   if(!isAll && occHasGroups(year,month)){
@@ -2400,6 +2418,7 @@ function getOccData(year,month){
     return {data:occCumul[year][month],max:isAll?(occBaseRoomCount()*days):null,isReal:true,
             noGroups:!isAll};
   }
+  }  // ← 2026年以降の分岐ここまで
   // 推計データ
   const total=(occMonthlyTotal[year]||[])[month-1];
   if(total==null)return null;
@@ -2457,7 +2476,8 @@ function renderOcc(){
   renderOccFilterBtn();
   const _selCount=FILTER_GROUPS.filter(g=>roomFilter[g.key]!==false).length;
   const noteEl=document.getElementById('occ-filter-note');
-  if(_selCount===0){
+  // 2025年以前は絞り込みの対象外なので、全解除でも空状態にしない
+  if(_selCount===0 && year>=2026){
     if(noteEl){
       noteEl.style.display='block';
       noteEl.innerHTML='<div style="background:#fff4f4;border-left:4px solid #dc2626;padding:9px 13px;border-radius:6px;color:#991b1b;">集計対象が選択されていません。「集計対象」から対象を選んでください。</div>';
@@ -2477,7 +2497,8 @@ function renderOcc(){
       noteEl.style.display='block';
       noteEl.innerHTML='<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:9px 13px;border-radius:6px;color:#92400e;">'
         +'集計対象を絞り込み中です。施設別の内訳は<strong>2026年11月</strong>から記録しています。'
-        +'<br>それ以前の月は内訳が無いため、記録済みの全体の宿泊者数をそのまま表示し（「内訳記録なし」と注記）、稼働率は算出しません。</div>';
+        +'<br><strong>2025年以前は絞り込みの対象外</strong>です（当時は Sea Breeze 鎌倉・三浦を集計しておらず、施設別に分けられないため）。常に全対象の数値を表示します。'
+        +'<br>2026年1月〜10月は内訳が無いため、記録済みの全体の宿泊者数をそのまま表示し（「内訳記録なし」と注記）、稼働率は算出しません。</div>';
     } else { noteEl.style.display='none'; noteEl.innerHTML=''; }
   }
 
