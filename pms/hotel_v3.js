@@ -3527,6 +3527,16 @@ function renderCancel(){
   if(!filtered.length)html+='<tr><td colspan="12" style="text-align:center;color:#aaa;padding:16px;">データなし</td></tr>';
   table.innerHTML=html+'</tbody>';
 }
+// CSV出力の氏名列。会計側で内容が分かるよう「氏名　キャンセル料」で出力する。
+// 保存されている氏名に既に「キャンセル料」が入っている行があるため
+// （2026年分の取込データ）、二重に付かないよう確認してから付ける。
+// 画面表示や保存データ側の氏名は変更しない（出力時だけの整形）。
+function _cancelCsvName(name){
+  const s=String(name==null?'':name).trim();
+  if(!s)return '';
+  return s.indexOf('キャンセル料')>=0 ? s : (s+'　キャンセル料');
+}
+
 function exportCancelCSV(){
   // 列順は会計で使う並びに合わせる（部屋を先頭へ、支払済みをJ列へ移動）。
   // A部屋 B日程 C氏名 D予約サイト E支払方法 Fキャンセル料 G国籍 H性別
@@ -3543,7 +3553,7 @@ function exportCancelCSV(){
   };
   cancelList.forEach(c=>{
     // 決済(L列)は支払方法から出力時だけ変換する。キャンセルデータには書き込まない。
-    csv+=[c.room||'',_fmtCancelDate(c.date),c.name||'',c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.payDone?'済み':'未収','"'+(c.note||'').replace(/"/g,'""')+'"',_settlementFromPay(c.pay)].join(',')+'\n';
+    csv+=[c.room||'',_fmtCancelDate(c.date),_cancelCsvName(c.name),c.site||'',c.pay||'',c.price||0,c.nat||'',c.sex||'',c.cat||'',c.payDone?'済み':'未収','"'+(c.note||'').replace(/"/g,'""')+'"',_settlementFromPay(c.pay)].join(',')+'\n';
   });
   const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='キャンセルリスト.csv';a.click();
