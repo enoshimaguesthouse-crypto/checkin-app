@@ -1536,13 +1536,29 @@ function _settlementFromPay(pay){
   return '';
 }
 
+// CSV出力の部屋名。貸切予約は個別の部屋タイプではなく「◯◯ 貸切」で出力する。
+// 貸切は建物を丸ごと押さえる予約で、会計上も部屋単位ではなくまとめて扱うため。
+// 建物は charterGroup（'本館'/'ANNEX'）で判定し、無ければ区分(cat)から拾う。
+function _csvRoomLabel(g, room){
+  if(g && g.charter){
+    let b=String(g.charterGroup||'').trim();
+    if(!b){
+      const cat=String(g.cat||'');
+      if(cat.indexOf('ANNEX')>=0)b='ANNEX';
+      else if(cat.indexOf('本館')>=0)b='本館';
+    }
+    if(b)return b+' 貸切';
+  }
+  return room?room.type:'';
+}
+
 function exportCSV(){
   const month=parseInt(document.getElementById('sel-month').value);let csv='部屋,日,氏名,予約サイト,支払,料金,国籍,性別,区分,ステータス,備考,決済\n';
   const year=parseInt(document.getElementById('sel-year').value)||2026;
   // 日付列は「10日」ではなく「2026/08/13」形式で出力する。
   // 表計算ソフト側で日付として認識され、並べ替えや期間での集計ができるようにするため。
   const _p2=n=>String(n).padStart(2,'0');
-  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);const dateStr=`${pk.y}/${_p2(pk.m)}/${_p2(pk.d!=null?pk.d:g.day)}`;csv+=`${r?r.type:''},${dateStr},${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}",${_settlementFromPay(g.pay)}\n`;});
+  Object.entries(guestData).forEach(([k,g])=>{if(!g||g.cont)return;const pk=parseKey(k);if(pk.m!==month||pk.y!==year)return;const r=rooms.find(x=>x.id===g.roomId);const dateStr=`${pk.y}/${_p2(pk.m)}/${_p2(pk.d!=null?pk.d:g.day)}`;csv+=`${_csvRoomLabel(g,r)},${dateStr},${g.name},${g.site},${g.pay},${g.price||''},${g.nat||''},${g.sex},${g.cat},${g.status||'reserved'},"${g.note}",${_settlementFromPay(g.pay)}\n`;});
   const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`宿泊者名簿_${year}_${month}月.csv`;a.click();
 }
 
