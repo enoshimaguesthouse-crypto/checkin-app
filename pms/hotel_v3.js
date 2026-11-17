@@ -1194,7 +1194,12 @@ function normalizeRoomName(propName,roomNo){
 
 // Airhost CSV取込
 function importAirhostCSV(text){
-  const lines=text.split('\n').filter(l=>l.trim());
+  // 【重要】単純な改行分割ではなく splitCSVRecords を使う。
+  // コメント欄などにクォートで囲まれた改行が入ることがあり
+  // （例: 一休.comの「メールにて23時から…／車で行きます。」）、
+  // 改行で割ると1件の予約が2行に分かれて列数が合わず、取り込めなかった。
+  // ねっぱんCSV側(importCSVText)は以前からこの関数を使っている。
+  const lines=splitCSVRecords(text);
   if(lines.length<2){
     document.getElementById('import-result').innerHTML='<div class="import-warn">データが空です</div>';
     return;
@@ -1252,7 +1257,10 @@ function importAirhostCSV(text){
     const nights=parseInt(get(cols,'合計日数'))||1;
 
     // 部屋
-    const propName=get(cols,'物件名');
+    // AirHostの書き出し列名が「物件名」→「施設名」へ変更されたため両対応。
+    // （2026/11/11の書き出しは物件名、11/17は施設名。列数・並びは44列のまま）
+    // 新旧どちらのCSVでも取り込めるよう、両方の列名を見る。
+    const propName=get(cols,'施設名')||get(cols,'物件名');
     const roomNo=get(cols,'部屋番号');
     const rid=normalizeRoomName(propName,roomNo);
     if(rid===null||rid===undefined)continue;
@@ -1270,7 +1278,9 @@ function importAirhostCSV(text){
     const note=''; // CSVのコメントは取り込まない（スタッフ手入力のみ備考扱い）
     // 連絡先・住所を独立フィールドへ（noteへの混在を解消）
     const phone=String(get(cols,'電話番号')||'').trim();
-    const address=String(get(cols,'ゲスト住所')||'').trim();
+    // 実際の列名は「ゲストアドレス」。旧実装は「ゲスト住所」を見ていたため
+    // AirHost経由の予約では住所が常に空で取り込まれていた。両方の列名に対応する。
+    const address=String(get(cols,'ゲストアドレス')||get(cols,'ゲスト住所')||'').trim();
     const email=String(
       get(cols,'メールアドレス')||get(cols,'メール')||
       get(cols,'Email')||get(cols,'E-mail')||get(cols,'email')||get(cols,'EMAIL')||''
