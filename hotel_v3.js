@@ -1239,8 +1239,12 @@ function importAirhostCSV(text){
     if(!cols||cols.length<5)continue;
 
     // キャンセル除外
+    // 状態に「キャンセル」を含む行は取り込まない。
+    // AirHostの実際の値は「システムキャンセル」で、完全一致では拾えていなかった。
+    // 今後「ゲストキャンセル」等が増えても部分一致で除外できる。
+    // なお「ブロックされた」はゲスト名が空のため、後段の氏名チェックで除外される。
     const status=get(cols,'状態');
-    if(status==='キャンセル'){cancelled++;continue;}
+    if(status.indexOf('キャンセル')>=0){cancelled++;continue;}
 
     // reservationId：AirHost予約ID（文字列のまま保持）
     const reservationId=String(get(cols,'AirHost予約ID')||'');
