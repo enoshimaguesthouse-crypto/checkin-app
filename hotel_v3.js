@@ -1151,6 +1151,91 @@ function processCSV(file){
   reader.readAsArrayBuffer(file);
 }
 
+// ══════════════════════════════════════════════════════════
+//  予約IDの採番（6桁ランダム）と外部予約番号による照合
+//  予約サイト側の番号をそのまま予約IDにすると桁数も体系もサイトごとに
+//  バラバラになるため、取込時に自前の6桁IDを発行する。
+//  サイト側の番号は extRef / extSource として残し、再取込時の照合に使う。
+// ══════════════════════════════════════════════════════════
+const RESID_MIN=100000, RESID_MAX=999999;
+
+// 現在システムが保持している予約IDをすべて集める。
+// 名簿だけでなく、キャンセル済み（復元用データを含む）・未割当キューも対象にする。
+// ここに漏れがあると、復元やキャンセル戻しでID衝突が起きる。
+function collectUsedReservationIds(){
+  const used=new Set();
+  const add=v=>{ if(v!=null&&String(v).trim())used.add(String(v).trim()); };
+  Object.values(guestData||{}).forEach(g=>{ if(g)add(g.reservationId); });
+  (cancelList||[]).forEach(c=>{
+    if(!c)return;
+    add(c.reservationId);
+    (c.restoreData||[]).forEach(r=>{ if(r&&r.data)add(r.data.reservationId); });
+  });
+  (unassignedReservations||[]).forEach(u=>{ if(u)add(u.reservationId); });
+  return used;
+}
+
+// 未使用の6桁予約IDを1つ発行する。used には発行済みも足していくので、
+// 同じ取込内で重複することもない。空きが無い場合は例外で安全に中断する
+// （既存IDの書き換えや重複発行は絶対にしない）。
+function newReservationId(used){
+  const span=RESID_MAX-RESID_MIN+1;
+  if(used.size>=span)throw new Error('予約IDの空きがありません（6桁IDを使い切りました）');
+  for(let i=0;i<20000;i++){
+    const id=String(RESID_MIN+Math.floor(Math.random()*span));
+    if(!used.has(id)){ used.add(id); return id; }
+  }
+  // ランダムで当たらないほど埋まっている場合は順に探す（無限ループ防止）
+  for(let n=RESID_MIN;n<=RESID_MAX;n++){
+    const id=String(n);
+    if(!used.has(id)){ used.add(id); return id; }
+  }
+  throw new Error('予約IDの空きがありません（6桁IDを使い切りました）');
+}
+
+// 外部予約番号から既存予約の予約IDを探す。
+// ①extRef＋予約元の一致（今回以降に取り込んだ予約）
+// ②旧データ：外部番号がそのまま予約IDとして入っている予約
+// 予約元も見るのは、別サイトで同じ番号が使われていても別予約と識別するため。
+function findReservationIdByExternal(source, extRef){
+  const ref=String(extRef==null?'':extRef).trim();
+  if(!ref)return '';
+  const src=String(source==null?'':source).trim();
+  let legacy='';
+  for(const g of Object.values(guestData||{})){
+    if(!g||!g.reservationId)continue;
+    if(g.extRef!=null&&String(g.extRef).trim()===ref&&String(g.extSource||'').trim()===src)
+      return String(g.reservationId).trim();
+    if(!legacy&&(g.extRef==null||String(g.extRef).trim()==='')&&String(g.reservationId).trim()===ref)
+      legacy=String(g.reservationId).trim();
+  }
+  return legacy;
+}
+
+// 予約IDの重複検査。別々の外部予約番号が同じ予約IDを持っていたら報告する。
+// 他端末と同時に取り込んだ直後など、こちらが採番した後に相手のデータが
+// 入ってくる場合に備えた最終確認。
+// 【自動で振り直さない理由】その予約IDは既にQRコード・メールで
+// お客様へ案内済みの可能性があり、勝手に変えると照合できなくなるため。
+// 検出時は画面とコンソールで知らせ、どちらを直すかは運用で判断する。
+function checkDuplicateReservationIds(){
+  const byId=new Map();
+  Object.values(guestData||{}).forEach(g=>{
+    if(!g||!g.reservationId)return;
+    const id=String(g.reservationId).trim();
+    const ref=(g.extRef!=null&&String(g.extRef).trim())?String(g.extSource||'')+':'+String(g.extRef).trim():'';
+    if(!byId.has(id))byId.set(id,new Set());
+    if(ref)byId.get(id).add(ref);
+  });
+  const dups=[];
+  byId.forEach((refs,id)=>{ if(refs.size>1)dups.push({reservationId:id,外部番号:[...refs]}); });
+  if(dups.length){
+    console.error('[予約ID重複]',dups);
+    try{ showToast('⚠ 予約IDが重複しています（'+dups.length+'件）。コンソールの[予約ID重複]をご確認ください',10000); }catch(e){}
+  }
+  return dups;
+}
+
 // CSV種別自動判定
 function detectCsvType(filename,text){
   const fname=(filename||'').toLowerCase();
@@ -1229,6 +1314,19 @@ function importAirhostCSV(text){
   const existingIds=new Set(
     Object.values(guestData).filter(g=>g&&g.reservationId&&!g.cont).map(g=>String(g.reservationId))
   );
+  // 予約IDの採番：AirHost側の番号はそのまま使わず、6桁IDを発行する。
+  // 既に取り込み済みの予約は、外部番号(extRef)の照合で既存IDを引き継ぐ。
+  const _usedIds=collectUsedReservationIds();
+  const _idByExt=new Map();
+  const _resolveResId=(extRef)=>{
+    const ref=String(extRef||'').trim();
+    if(!ref)return '';
+    if(_idByExt.has(ref))return _idByExt.get(ref);
+    let id=findReservationIdByExternal('airhost',ref);
+    if(id)_usedIds.add(id); else id=newReservationId(_usedIds);
+    _idByExt.set(ref,id);
+    return id;
+  };
 
   let imported=0,skipped=0,cancelled=0;
   const ciSkipList=[];  // チェックイン済みのため取り込まなかった予約 {name,reservationId}
@@ -1246,10 +1344,11 @@ function importAirhostCSV(text){
     const status=get(cols,'状態');
     if(status.indexOf('キャンセル')>=0){cancelled++;continue;}
 
-    // reservationId：AirHost予約ID（文字列のまま保持）
-    const reservationId=String(get(cols,'AirHost予約ID')||'');
+    // AirHost予約IDは「外部予約番号」として保持し、予約IDは自前の6桁を使う
+    const extRef=String(get(cols,'AirHost予約ID')||'').trim();
+    const reservationId=_resolveResId(extRef);
 
-    // 重複チェック
+    // 重複チェック（既に名簿にある予約は取り込まない）
     if(reservationId&&existingIds.has(reservationId)){skipped++;continue;}
 
     // 日程
@@ -1317,6 +1416,8 @@ function importAirhostCSV(text){
       status:'reserved',roomId:rid,day:cd,guests:guestCount,
       arrivalTime:'',charter:false,charterGroup:null,
       reservationId,checkinUrl:generateCheckinUrl(reservationId),
+      // 再取込時に同一予約を特定するための外部予約番号（予約元とセットで使う）
+      extRef,extSource:'airhost',
     };
 
     // 全nights分書き込み
@@ -1338,6 +1439,7 @@ function importAirhostCSV(text){
     <div style="font-weight:700;margin-bottom:6px;color:#1f5c43;">🔒 チェックイン済みのためスキップ（${ciSkipList.length}件・既存データを保護しました）</div>
     <div style="color:#1f5c43;font-size:11px;">${ciSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>${d.既存?`（既存：${esc(d.既存)}）`:''}`).join(' / ')}</div>
   </div>`:''}`;
+  checkDuplicateReservationIds();
   renderReg();autoSave();
 }
 // ── CSV取込：予約ID重複・変更検知ヘルパー ──────────────────
@@ -1590,6 +1692,20 @@ function importCSVText(text){
   const monthCounts={};
   // 貸切の重複予約番号を管理（同一予約番号は1回だけ取り込む）
   const processedCharter=new Set();
+  // 予約IDの採番：ねっぱん側のA列はそのまま使わず、6桁IDを発行する。
+  // 既に取り込み済みの予約は、外部番号(extRef)の照合で既存IDを引き継ぐ。
+  // グループ判定と本処理で同じIDを使うため、ここで1つの関数にまとめる。
+  const _usedIds=collectUsedReservationIds();
+  const _idByExt=new Map();
+  const _resolveResId=(extRef)=>{
+    const ref=String(extRef||'').trim();
+    if(!ref)return '';
+    if(_idByExt.has(ref))return _idByExt.get(ref);
+    let id=findReservationIdByExternal('neppan',ref);
+    if(id)_usedIds.add(id); else id=newReservationId(_usedIds);
+    _idByExt.set(ref,id);
+    return id;
+  };
   // ── 複数部屋予約のグループ判定（本処理の前に全行を1回走査）──
   // 行ごとに判定すると「相手の行をまだ見ていない」ため確定できないので先に作る。
   // 予約者氏名は AD列（予約者氏名）を使う。宿泊者氏名(M列)は部屋ごとに
@@ -1601,7 +1717,7 @@ function importCSVText(text){
     if(get(c,'予約区分')==='キャンセル')continue;
     if((parseInt(get(c,'泊目')||'1'))!==1)continue;
     _groupRows.push({
-      reservationId:(get(c,'予約ID')||'').replace(/\D/g,'').slice(0,6),
+      reservationId:_resolveResId((get(c,'予約ID')||'').replace(/\D/g,'')),
       bookingNo:get(c,'予約番号'),
       bookerName:get(c,'予約者氏名')
     });
@@ -1766,7 +1882,9 @@ function importCSVText(text){
     // ─── 連絡先・住所・予約ID（貸切変更検知・部屋割当より前に必要なため早期定義） ──────
     const addr1=get(cols,'住所1')||'';
     const natGuessed=natFromAddress(addr1);
-    const reservationId=(get(cols,'予約ID')||'').replace(/\D/g,'').slice(0,6);
+    // A列はサイト側の番号。外部予約番号として残し、予約IDは自前の6桁を使う。
+    const extRef=(get(cols,'予約ID')||'').replace(/\D/g,'');
+    const reservationId=_resolveResId(extRef);
     const phone=String(get(cols,'電話番号')||'').trim();
     let address=String(addr1).trim();
     if(!address && yoyakuNo && yoyakuNo.startsWith('TY')){
@@ -1987,6 +2105,8 @@ function importCSVText(text){
       arrivalTime,charter:isCharter,
       charterGroup:isCharter?(isAnnexCharter?'ANNEX':'本館'):null,
       reservationId,checkinUrl:generateCheckinUrl(reservationId),
+      // 再取込時に同一予約を特定するための外部予約番号（予約元とセットで使う）
+      extRef,extSource:'neppan',
       // 変更反映でセルを作り直す場合も、自動メールの送信済み記録は引き継ぐ
       ...(preservedMailSent?{mailSent:preservedMailSent}:{}),
       ...(preservedMailHistory?{mailHistory:preservedMailHistory}:{}),
@@ -2127,6 +2247,7 @@ function importCSVText(text){
     <div style="color:#546e7a;font-size:11px;">${dupSkipList.map(d=>`${esc(d.name)} <span style="color:#999;">#${esc(d.reservationId||'')}</span>`).join(' / ')}</div>
   </div>`:''}`;
   renderUnassignedPanel();
+  checkDuplicateReservationIds();
   renderReg();autoSave();
   _triggerAutoMailsAfterImport();
 }
